@@ -31,7 +31,8 @@ my $READ_BUFSIZE = 8192;
 my @Tests =
   (
    # Elide the exact size of the file.
-   ['elide-b1', "--bytes=-2", {IN=>"a\n"}, {OUT=>''}],
+   #['elide-b1', "--bytes=-2", {IN=>"a\n"}, {OUT=>''}],
+   ['elide-b1', "--bytes=-2", {IN_BINMODE=>"a\n"}, {OUT=>''}], #bird: \r\n
    # Elide more than the size of the file.
    ['elide-b2', "--bytes=-2", {IN=>"a"},   {OUT=>''}],
    # Leave just one byte.

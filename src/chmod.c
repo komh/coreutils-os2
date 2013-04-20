@@ -419,6 +419,10 @@ main (int argc, char **argv)
   char const *reference_file = NULL;
   int c;
 
+#ifdef __OS2__
+  _wildcard (&argc, &argv);
+#endif
+
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
   setlocale (LC_ALL, "");

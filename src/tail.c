@@ -2092,6 +2092,10 @@ main (int argc, char **argv)
      see if it has changed.  */
   double sleep_interval = 1.0;
 
+#ifdef __OS2__
+  _wildcard (&argc, &argv);
+#endif
+
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
   setlocale (LC_ALL, "");

@@ -39,7 +39,7 @@
 #ifndef _D_EXACT_NAMLEN
 # define _D_EXACT_NAMLEN(dp) strlen ((dp)->d_name)
 #endif
-#if D_INO_IN_DIRENT
+#if D_INO_IN_DIRENT && !defined(__INNOTEK_LIBC__) /* this will be fix in 0.7 and will then be removed! */
 # define REAL_DIR_ENTRY(dp) ((dp)->d_ino != 0)
 #else
 # define REAL_DIR_ENTRY(dp) 1

@@ -653,6 +653,7 @@ eval6 (bool evaluate)
     {
       if (nomoreargs ())
         syntax_error ();
+
       return str_value (*args++);
     }
   else if (nextarg ("length"))

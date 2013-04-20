@@ -57,8 +57,10 @@ my @Tests =
       # Before fileutils-4.0.45, the last 10 bytes of output
       # were these "\0\0\0\0\0\0\0\0  ".
       'block-sync-1', qw(ibs=10 cbs=10 status=noxfer), 'conv=block,sync', '<',
-      {IN=> "01234567\nabcdefghijkl\n"},
-      {OUT=> "01234567  abcdefghij          "},
+      #{IN=> "01234567\nabcdefghijkl\n"},               # bird
+      {IN_BINMODE=> "01234567\nabcdefghijkl\n"},        # bird
+      #{OUT=> "01234567  abcdefghij          "},        # bird
+      {OUT_BINMODE=> "01234567  abcdefghij          "}, # bird
       {ERR=> "2+1 records in\n0+1 records out\n1 truncated record\n"},
      ],
      [

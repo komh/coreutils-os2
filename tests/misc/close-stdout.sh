@@ -29,7 +29,11 @@ touch a
 cp a b >&- || fail=1
 test -f b || fail=1
 chmod o-w . >&- || fail=1
+if $srcdir/../is-hardlink-supported; then  #bird
 ln a c >&- || fail=1
+else                                       #bird
+ln -s a c >&- || fail=1                    #bird
+fi                                         #bird
 rm c >&- || fail=1
 mkdir d >&- || fail=1
 mv d e >&- || fail=1

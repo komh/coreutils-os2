@@ -29,10 +29,10 @@ use File::Compare qw(compare);
 my $debug = $ENV{DEBUG};
 
 my @Types = qw (IN IN_PIPE OUT ERR AUX CMP EXIT PRE POST OUT_SUBST
-                ERR_SUBST ENV ENV_DEL);
+                ERR_SUBST ENV ENV_DEL IN_BINMODE OUT_BINMODE ERR_BINMODE);
 my %Types = map {$_ => 1} @Types;
 my %Zero_one_type = map {$_ => 1}
-   qw (OUT ERR EXIT PRE POST OUT_SUBST ERR_SUBST ENV);
+   qw (OUT ERR EXIT PRE POST OUT_SUBST ERR_SUBST ENV OUT_BINMODE ERR_BINMODE);
 my $srcdir = "$ENV{srcdir}";
 my $Global_count = 1;
 
@@ -100,9 +100,9 @@ sub _shell_quote ($)
   return "'$string'";
 }
 
-sub _create_file ($$$$)
+sub _create_file ($$$$$) # bird
 {
-  my ($program_name, $test_name, $file_name, $data) = @_;
+  my ($program_name, $test_name, $file_name, $data, $binary) = @_; # bird
   my $file;
   if (defined $file_name)
     {
@@ -120,6 +120,9 @@ sub _create_file ($$$$)
   # Write it to a temp file and return tempfile name.
   my $fh = new FileHandle "> $file";
   die "$program_name: $file: $!\n" if ! $fh;
+  if ($binary) {    # bird
+      binmode $fh;  # bird
+  }                 # bird
   print $fh $data;
   $fh->close || die "$program_name: $file: $!\n";
 
@@ -143,9 +146,9 @@ sub _compare_files ($$$$$)
   return $differ;
 }
 
-sub _process_file_spec ($$$$$)
+sub _process_file_spec ($$$$$$) # bird
 {
-  my ($program_name, $test_name, $file_spec, $type, $junk_files) = @_;
+  my ($program_name, $test_name, $file_spec, $type, $junk_files, $is_binmode) = @_; # bird
 
   my ($file_name, $contents);
   if (!ref $file_spec)
@@ -174,7 +177,8 @@ sub _process_file_spec ($$$$$)
                       || (($type eq 'IN' || $type eq 'AUX' || $type eq 'CMP')
                           && defined $contents));
   my $file = _create_file ($program_name, $test_name,
-                           $file_name, $contents);
+                           $file_name, $contents,
+                           $is_binmode); # bird
 
   if ($is_junk_file)
     {
@@ -317,6 +321,10 @@ sub run_tests ($$$$$)
           die "$program_name: $test_name: invalid key '$type' in test spec\n"
             if ! $Types{$type};
 
+          # remove _BINMODE                             # bird
+          my $is_binmode = $type =~ s/_BINMODE$//;      # bird
+          $type =~ s/_BINMODE//;                        # bird
+
           # Make sure there's no more than one of OUT, ERR, EXIT, etc.
           die "$program_name: $test_name: more than one $type spec\n"
             if $Zero_one_type{$type} and $seen_type{$type}++;
@@ -360,7 +368,9 @@ sub run_tests ($$$$$)
                         }
                     }
                   my $cmp_file = _process_file_spec ($program_name, $test_name,
-                                                     $e, $type, \@junk_files);
+						     $e, $type, \@junk_files,
+                                                     $is_binmode); # bird
+
                   push @cmp_files, $cmp_file;
                 }
               push @post_compare, [@cmp_files];
@@ -398,7 +408,9 @@ sub run_tests ($$$$$)
             }
 
           my $file = _process_file_spec ($program_name, $test_name, $val,
-                                         $type, \@junk_files);
+					 $type, \@junk_files,
+                                         $is_binmode); # bird
+
 
           if ($type eq 'IN' || $type eq 'IN_PIPE')
             {
@@ -434,7 +446,7 @@ sub run_tests ($$$$$)
           if (!exists $expect->{$eo})
             {
               $expect->{$eo} = _create_file ($program_name, $test_name,
-                                             undef, '');
+					     undef, '', 0); # bird
               push @junk_files, $expect->{$eo};
             }
         }
@@ -527,15 +539,18 @@ sub run_tests ($$$$$)
 
               # Move $out aside (to $orig), then recreate $out
               # by transforming each line of $orig via $subst_expr.
+	      unlink $orig; # bird - emx hack
               rename $out, $orig
                 or (warn "$program_name: cannot rename $out to $orig: $!\n"),
                   $fail = 1, next;
               open IN, $orig
                 or (warn "$program_name: cannot open $orig for reading: $!\n"),
                   $fail = 1, (unlink $orig), next;
-              unlink $orig
-                or (warn "$program_name: cannot unlink $orig: $!\n"),
-                  $fail = 1;
+              if (0) { # bird - emx hack
+	        unlink $orig
+		  or (warn "$program_name: cannot unlink $orig: $!\n"),
+		    $fail = 1;
+              }
               open OUT, ">$out"
                 or (warn "$program_name: cannot open $out for writing: $!\n"),
                   $fail = 1, next;
@@ -548,6 +563,10 @@ sub run_tests ($$$$$)
               close OUT
                 or (warn "$program_name: failed to write $out: $!\n"),
                   $fail = 1, next;
+              if (1) { # bird - emx hack
+                unlink $orig;
+              }
+
             }
 
           my $eo_lower = lc $eo;

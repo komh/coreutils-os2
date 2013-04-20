@@ -1002,6 +1002,19 @@ main (int argc, char **argv)
   int nfiles = 0;
   int i;
 
+#ifdef __EMX__
+  /* a undocumented hack */
+  if (getenv("JOIN_BINARY_MODE"))
+    {
+      extern int _fmode_bin;
+      _fmode_bin = 1;
+      if (!isatty(fileno(stdout)))
+        freopen(NULL, "wb", stdout);
+      if (!isatty(fileno(stdin)))
+        freopen(NULL, "rb", stdin);
+    }
+#endif
+
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
   setlocale (LC_ALL, "");

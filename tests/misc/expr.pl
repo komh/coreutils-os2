@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Basic tests for "expr".
 
 # Copyright (C) 2001-2013 Free Software Foundation, Inc.

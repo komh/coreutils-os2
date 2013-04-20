@@ -1235,6 +1235,10 @@ main (int argc, char **argv)
   struct pending *thispend;
   int n_files;
 
+#ifdef __OS2__
+  _wildcard (&argc, &argv);
+#endif
+
   /* The signals that are trapped, and the number of such signals.  */
   static int const sig[] =
     {

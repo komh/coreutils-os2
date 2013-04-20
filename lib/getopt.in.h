@@ -47,6 +47,7 @@
    identifiers so that they do not collide with the system functions
    and variables.  Renaming avoids problems with some compilers and
    linkers.  */
+#ifndef __KLIBC__x /* this sucks for us */
 #if defined __GETOPT_PREFIX && !defined __need_getopt
 # if !@HAVE_GETOPT_H@
 #  define __need_system_stdlib_h
@@ -77,6 +78,7 @@
 # define option __GETOPT_ID (option)
 # define _getopt_internal __GETOPT_ID (getopt_internal)
 #endif
+#endif /* !__KLIBC__ */
 
 /* Standalone applications get correct prototypes for getopt_long and
    getopt_long_only; they declare "char **argv".  libc uses prototypes

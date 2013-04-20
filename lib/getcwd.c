@@ -73,7 +73,7 @@
 # define PATH_MAX 8192
 #endif
 
-#if D_INO_IN_DIRENT
+#if D_INO_IN_DIRENT && !defined(__INNOTEK_LIBC__) /* this will be fix in 0.7 and will then be removed! */
 # define MATCHING_INO(dp, ino) ((dp)->d_ino == (ino))
 #else
 # define MATCHING_INO(dp, ino) true

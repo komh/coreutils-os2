@@ -37,6 +37,8 @@ test $(cat $ff) = force-contents || fail=1
 
 # This should succeed, even though the source and destination
 # device and inodes are the same.
+if $srcdir/../is-hardlink-supported; then # bird
 mv $ff $ff2 || fail=1
+fi # bird
 
 Exit $fail

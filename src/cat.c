@@ -544,6 +544,10 @@ main (int argc, char **argv)
   bool show_tabs = false;
   int file_open_mode = O_RDONLY;
 
+#ifdef __OS2__
+  _wildcard (&argc, &argv);
+#endif
+
   static struct option const long_options[] =
   {
     {"number-nonblank", no_argument, NULL, 'b'},
@@ -657,12 +661,14 @@ main (int argc, char **argv)
 #endif
     }
 
+#ifndef __OS2__
   if (! (number || show_ends || squeeze_blank))
     {
       file_open_mode |= O_BINARY;
       if (O_BINARY && ! isatty (STDOUT_FILENO))
         xfreopen (NULL, "wb", stdout);
     }
+#endif
 
   /* Check if any of the input files are the same as the output file.  */
 

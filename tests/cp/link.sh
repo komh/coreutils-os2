@@ -25,7 +25,11 @@ touch dest || framework_failure_
 touch dest2 || framework_failure_
 
 
-cp -f --link src dest || fail=1
+if $srcdir/../is-hardlink-supported; then # bird
+    cp -f --link src dest || fail=1
+else
+    echo "link: skipping hardlink test"
+fi
 cp -f --symbolic-link src dest2 || fail=1
 
 Exit $fail

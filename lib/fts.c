@@ -127,7 +127,7 @@ enum
   NOT_AN_INODE_NUMBER = 0
 };
 
-#ifdef D_INO_IN_DIRENT
+#if D_INO_IN_DIRENT && !defined(__INNOTEK_LIBC__) /* this will be fix in 0.7 and will then be removed! */
 # define D_INO(dp) (dp)->d_ino
 #else
 /* Some systems don't have inodes, so fake them to avoid lots of ifdefs.  */
@@ -298,7 +298,6 @@ opendirat (int fd, char const *dir, int extra_flags, int *pdir_fd)
                        (O_RDONLY | O_DIRECTORY | O_NOCTTY | O_NONBLOCK
                         | extra_flags));
   DIR *dirp;
-
   if (new_fd < 0)
     return NULL;
   set_cloexec_flag (new_fd, true);
@@ -1403,7 +1402,11 @@ fts_build (register FTS *sp, int type)
                     if (0 <= dir_fd)
                       set_cloexec_flag (dir_fd, true);
                   }
+#ifdef __EMX__ /* will be fixed in libc 0.7 */
+                if (/*dir_fd < 0 ||*/ fts_safe_changedir(sp, cur, dir_fd, cur->fts_accpath)) {
+#else
                 if (dir_fd < 0 || fts_safe_changedir(sp, cur, dir_fd, NULL)) {
+#endif
                         if (nlinks && type == BREAD)
                                 cur->fts_errno = errno;
                         cur->fts_flags |= FTS_DONTCHDIR;

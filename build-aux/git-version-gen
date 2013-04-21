@@ -126,6 +126,7 @@ fi
 
 tag_sed_script="${tag_sed_script:-s/x/x/}"
 
+cr=''
 nl='
 '
 
@@ -214,7 +215,7 @@ if test "x$v_from_git" != x; then
 fi
 
 # Omit the trailing newline, so that m4_esyscmd can use the result directly.
-echo "$v" | tr -d "$nl"
+echo "$v" | tr -d "$cr$nl"
 
 # Local variables:
 # eval: (add-hook 'write-file-hooks 'time-stamp)

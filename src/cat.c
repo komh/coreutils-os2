@@ -661,14 +661,12 @@ main (int argc, char **argv)
 #endif
     }
 
-#ifndef __OS2__
   if (! (number || show_ends || squeeze_blank))
     {
       file_open_mode |= O_BINARY;
       if (O_BINARY && ! isatty (STDOUT_FILENO))
         xfreopen (NULL, "wb", stdout);
     }
-#endif
 
   /* Check if any of the input files are the same as the output file.  */
 

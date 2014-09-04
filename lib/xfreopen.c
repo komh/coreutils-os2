@@ -29,9 +29,6 @@
 void
 xfreopen (char const *filename, char const *mode, FILE *fp)
 {
-#ifdef __OS2__ /* freopen will fail on stdout on OS/2 */
- if (fp != stdout && fp != stdin && fp != stderr)
-#endif
   if (!freopen (filename, mode, fp))
     {
       char const *f = (filename ? filename

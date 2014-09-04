@@ -44,6 +44,25 @@ protect_fd (int fd)
   return true;
 }
 
+#ifdef __KLIBC__
+/* Workaround for freopen() on OS/2 kLIBC */
+static FILE *
+klibc_freopen (const char *filename, const char *mode, FILE *stream)
+{
+  FILE *result = freopen (filename, mode, stream);
+
+  /* On OS/2 kLIBC, freopen() returns NULL even if it is successful
+     if filename is NULL. */
+  if (!result && !errno)
+    result = stream;
+
+  return result;
+}
+
+# undef freopen
+# define freopen klibc_freopen
+#endif
+
 /* Like freopen, but guarantee that reopening stdin, stdout, or stderr
    preserves the invariant that STDxxx_FILENO==fileno(stdxxx), and
    that no other stream will interfere with the standard streams.

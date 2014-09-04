@@ -29,7 +29,18 @@
 static FILE *
 orig_freopen (const char *filename, const char *mode, FILE *stream)
 {
+#ifdef __KLIBC__
+  FILE *result = freopen (filename, mode, stream);
+
+  /* On OS/2 kLIBC, freopen() returns NULL even if it is successful
+     if filename is NULL. */
+  if (!result && !errno)
+    result = stream;
+
+  return result;
+#else
   return freopen (filename, mode, stream);
+#endif
 }
 
 /* Specification.  */

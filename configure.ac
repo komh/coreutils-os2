@@ -483,6 +483,9 @@ AM_GNU_GETTEXT_VERSION([0.18.1])
 # For a test of uniq: it uses the $LOCALE_FR envvar.
 gt_LOCALE_FR
 
+# In order to support a response file on OS/2
+AS_CASE([$host_os], [os2*], [LDFLAGS="$LDFLAGS -Zargs-resp"])
+
 AC_CONFIG_FILES(
   Makefile
   po/Makefile.in

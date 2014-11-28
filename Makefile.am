@@ -99,7 +99,7 @@ BUILT_SOURCES = .version
 # See the rm_subst comment for details.
 dist-hook: gen-ChangeLog
 	$(AM_V_GEN)echo $(VERSION) > $(distdir)/.tarball-version
-	$(AM_V_at)perl -pi -e '$(rm_subst)' $(distdir)/Makefile.in
+	$(AM_V_at)perl -pi.bak -e '$(rm_subst)' $(distdir)/Makefile.in
 
 gen_start_date = 2008-02-08
 .PHONY: gen-ChangeLog

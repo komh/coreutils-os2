@@ -530,7 +530,7 @@ esac
 # When we can deduce that gnulib-tool will require patch,
 # and when patch is not already listed as a prerequisite, add it, too.
 if test -d "$local_gl_dir" \
-    && ! find "$local_gl_dir" -name '*.diff' -exec false {} + ';'; then
+    && ! find "$local_gl_dir" -name '*.diff' -exec false {} +; then
   case $buildreq in
     *patch*) ;;
     *) buildreq="patch -

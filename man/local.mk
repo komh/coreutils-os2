@@ -185,11 +185,11 @@ man/yes.1:       src/yes$(EXEEXT)
 	  && t=$*.td							\
 	  && rm -rf $$t							\
 	  && $(MKDIR_P) $$t						\
-	  && (cd $$t && $(LN_S) '$(abs_top_builddir)/src/'$$prog$(EXEEXT) $$name) \
+	  && (cd $$t && $(LN_S) '$(abs_top_builddir)/src/'$$prog$(EXEEXT) $$name$(EXEEXT)) \
 	  && $(run_help2man)						\
 		     --source='$(PACKAGE_STRING)'			\
 		     --include=$(srcdir)/man/$$name.x			\
-		     --output=$$t/$$name.1 $$t/$$name			\
+		     --output=$$t/$$name.1 $$t/$$name$(EXEEXT)	\
 	  && sed 's|$*\.td/||g' $$t/$$name.1 > $@-t			\
 	  && rm -rf $$t							\
 	  && chmod a-w $@-t						\

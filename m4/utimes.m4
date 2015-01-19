@@ -45,7 +45,9 @@ main ()
 {
   int result = 0;
   char const *file = "conftest.utimes";
-  static struct timeval timeval[2] = {{9, 10}, {999999, 999999}};
+  /* On OS/2, a file date should be since 1980 year and even seconds */
+  static struct timeval timeval[2] = {{315620000 + 10, 10},
+                                      {315620000 + 1000000, 999998}};
 
   /* Test whether utimes() essentially works.  */
   {
@@ -82,11 +84,16 @@ main ()
           result |= 1;
         else if (fstat (fd, &st0) != 0)
           result |= 1;
+        /* utimes() of OS/2 kLIBC does not work on an opened file */
+        else if (close (fd) != 0)
+          result |= 1;
         else if (utimes (file, timeval) != 0)
           result |= 2;
         else if (utimes (file, NULL) != 0)
           result |= 8;
-        else if (fstat (fd, &st1) != 0)
+        else if (lstat (file, &st1) != 0)
+          result |= 1;
+        else if ((fd = open (file, O_WRONLY)) < 0 )
           result |= 1;
         else if (write (fd, "\n", 1) != 1)
           result |= 1;

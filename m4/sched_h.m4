@@ -27,9 +27,16 @@ AC_DEFUN([gl_SCHED_H],
      fi
      AC_SUBST([HAVE_SCHED_H])
 
-     AC_CHECK_TYPE([struct sched_param],
-       [HAVE_STRUCT_SCHED_PARAM=1], [HAVE_STRUCT_SCHED_PARAM=0],
-       [#include <sched.h>])
+     if test "$HAVE_SCHED_H" = 1; then
+       AC_CHECK_TYPE([struct sched_param],
+         [HAVE_STRUCT_SCHED_PARAM=1], [HAVE_STRUCT_SCHED_PARAM=0],
+         [#include <sched.h>])
+     else
+       dnl On OS/2 kLIBC, struct sched_param is in spawn.h.
+       AC_CHECK_TYPE([struct sched_param],
+         [HAVE_STRUCT_SCHED_PARAM=1], [HAVE_STRUCT_SCHED_PARAM=0],
+         [#include <spawn.h>])
+     fi
      AC_SUBST([HAVE_STRUCT_SCHED_PARAM])
 
      dnl Ensure the type pid_t gets defined.

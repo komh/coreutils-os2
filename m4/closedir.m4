@@ -16,7 +16,7 @@ AC_DEFUN([gl_FUNC_CLOSEDIR],
   dnl to keep fchdir's bookkeeping up-to-date.
   m4_ifdef([gl_FUNC_FCHDIR], [
     gl_TEST_FCHDIR
-    if test $HAVE_FCHDIR = 0; then
+    if test $HAVE_FCHDIR = 0 || test -z "${host_os##os2*}"; then
       if test $HAVE_CLOSEDIR = 1; then
         REPLACE_CLOSEDIR=1
       fi

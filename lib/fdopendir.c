@@ -62,7 +62,41 @@ static DIR *fd_clone_opendir (int, struct saved_cwd const *);
    If this function returns successfully, FD is under control of the
    dirent.h system, and the caller should not close or modify the state of
    FD other than by the dirent.h functions.  */
-#ifndef __OS2__
+# ifdef __KLIBC__
+#  include <InnoTekLIBC/backend.h>
+
+DIR *
+fdopendir (int fd)
+{
+  char path[_MAX_PATH];
+  DIR *dirp;
+
+  /* Get a path from fd */
+  if (__libc_Back_ioFHToPath (fd, path, sizeof (path)))
+    return NULL;
+
+  dirp = opendir (path);
+  if (!dirp)
+    return NULL;
+
+  /* Unregister fd registered by opendir() */
+  _gl_unregister_dirp_fd (dirfd (dirp));
+
+  /* Register our fd */
+  if (_gl_register_dirp_fd (fd, dirp))
+    {
+      int saved_errno = errno;
+
+      closedir (dirp);
+
+      errno = saved_errno;
+
+      dirp = NULL;
+    }
+
+  return dirp;
+}
+# else
 DIR *
 fdopendir (int fd)
 {
@@ -85,59 +119,8 @@ fdopendir (int fd)
 
   return dir;
 }
-#else
-DIR *
-fdopendir (int fd)
-{
-  int saved_errno;
-  DIR *dir;
+# endif
 
-  char buf[OPENAT_BUFFER_SIZE];
-  char *proc_file = openat_proc_name (buf, fd, ".");
-  if (proc_file)
-    {
-      dir = opendir (proc_file);
-      saved_errno = errno;
-    }
-  else
-    {
-      dir = NULL;
-      saved_errno = EOPNOTSUPP;
-    }
-
-  /* If the syscall fails with an expected errno value, resort to
-     save_cwd/restore_cwd.  */
-  if (! dir && EXPECTED_ERRNO (saved_errno))
-    {
-      struct saved_cwd saved_cwd;
-      if (save_cwd (&saved_cwd) != 0)
-        openat_save_fail (errno);
-
-      if (fchdir (fd) != 0)
-        {
-          dir = NULL;
-          saved_errno = errno;
-        }
-      else
-        {
-          dir = opendir (".");
-          saved_errno = errno;
-
-          if (restore_cwd (&saved_cwd) != 0)
-            openat_restore_fail (errno);
-        }
-
-      free_cwd (&saved_cwd);
-    }
-
-  if (dir)
-    close (fd);
-  if (proc_file != buf)
-    free (proc_file);
-  errno = saved_errno;
-  return dir;
-}
-#endif
 /* Like fdopendir, except that if OLDER_DUPFD is not -1, it is known
    to be a dup of FD which is less than FD - 1 and which will be
    closed by the caller and not otherwise used by the caller.  This

@@ -36,7 +36,8 @@ AC_DEFUN([gl_FUNC_DIRFD],
        gl_cv_func_dirfd_macro=no)])
 
   # Use the replacement only if we have no function or macro with that name.
-  if test $ac_cv_func_dirfd = no && test $gl_cv_func_dirfd_macro = no; then
+  if test $ac_cv_func_dirfd = no && test $gl_cv_func_dirfd_macro = no \
+     || test  -z "${host_os##os2*}" ; then
     if test $ac_cv_have_decl_dirfd = yes; then
       # If the system declares dirfd already, let's declare rpl_dirfd instead.
       REPLACE_DIRFD=1

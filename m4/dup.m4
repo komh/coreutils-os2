@@ -19,6 +19,34 @@ AC_DEFUN([gl_FUNC_DUP],
       REPLACE_DUP=1
     fi
   ])
+  AC_CACHE_CHECK([whether dup works], [gl_cv_func_dup_works],
+    [AC_RUN_IFELSE(
+      [AC_LANG_PROGRAM([[#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>]],
+         [int result = 0;
+          int fd;
+
+          /* On OS/2 kLIBC, dup() does not work on a directory fd.  */
+          fd = open (".", O_RDONLY);
+          if (fd == -1)
+            result |= 1;
+          else if (dup (fd) == -1 )
+            result |= 2;
+
+          close (fd);
+
+          return result;
+         ])
+      ],
+      [gl_cv_func_dup_works=yes], [gl_cv_func_dup_works=no])
+    ])
+  case "$gl_cv_func_dup_works" in
+    *yes) ;;
+    *)
+      REPLACE_DUP=1
+      ;;
+  esac
 ])
 
 # Prerequisites of lib/dup.c.

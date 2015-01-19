@@ -42,6 +42,17 @@ AC_DEFUN([gl_FUNC_DUP2],
             /* Flush out a cygwin core dump.  */
             if (dup2 (2, -1) != -1 || errno != EBADF)
               result |= 32;
+            /* On OS/2 kLIBC, dup2() does not work on a directory fd.  */
+            {
+              int fd = open (".", O_RDONLY);
+              if (fd == -1)
+                result |= 64;
+              else if (dup2 (fd, fd + 1) == -1 )
+                result |= 128;
+
+              close (fd);
+            }
+
             return result;
            ])
         ],

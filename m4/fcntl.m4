@@ -28,11 +28,24 @@ AC_DEFUN([gl_FUNC_FCNTL],
     AC_CACHE_CHECK([whether fcntl handles F_DUPFD correctly],
       [gl_cv_func_fcntl_f_dupfd_works],
       [AC_RUN_IFELSE([AC_LANG_PROGRAM([[
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 ]], [[int result = 0;
       if (fcntl (0, F_DUPFD, -1) != -1) result |= 1;
       if (errno != EINVAL) result |= 2;
+      /* On OS/2 kLIBC, F_DUPFD does not work on a directory fd */
+      {
+        int fd;
+        fd = open (".", O_RDONLY);
+        if (fd == -1)
+          result |= 4;
+        else if (fcntl (fd, F_DUPFD, STDERR_FILENO + 1) == -1)
+          result |= 8;
+
+        close (fd);
+      }
+
       return result;
          ]])],
          [gl_cv_func_fcntl_f_dupfd_works=yes],

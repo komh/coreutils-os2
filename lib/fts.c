@@ -127,7 +127,7 @@ enum
   NOT_AN_INODE_NUMBER = 0
 };
 
-#if D_INO_IN_DIRENT && !defined(__INNOTEK_LIBC__) /* this will be fix in 0.7 and will then be removed! */
+#if D_INO_IN_DIRENT
 # define D_INO(dp) (dp)->d_ino
 #else
 /* Some systems don't have inodes, so fake them to avoid lots of ifdefs.  */

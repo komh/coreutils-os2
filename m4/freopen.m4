@@ -9,7 +9,7 @@ AC_DEFUN([gl_FUNC_FREOPEN],
   AC_REQUIRE([gl_STDIO_H_DEFAULTS])
   AC_REQUIRE([AC_CANONICAL_HOST])
   case "$host_os" in
-    mingw* | pw*)
+    mingw* | pw* | os2*)
       REPLACE_FREOPEN=1
       ;;
   esac

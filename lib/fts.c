@@ -1402,11 +1402,7 @@ fts_build (register FTS *sp, int type)
                     if (0 <= dir_fd)
                       set_cloexec_flag (dir_fd, true);
                   }
-#ifdef __EMX__ /* will be fixed in libc 0.7 */
-                if (/*dir_fd < 0 ||*/ fts_safe_changedir(sp, cur, dir_fd, cur->fts_accpath)) {
-#else
                 if (dir_fd < 0 || fts_safe_changedir(sp, cur, dir_fd, NULL)) {
-#endif
                         if (nlinks && type == BREAD)
                                 cur->fts_errno = errno;
                         cur->fts_flags |= FTS_DONTCHDIR;

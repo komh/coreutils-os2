@@ -30,6 +30,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef __KLIBC__
+# include <InnoTekLIBC/backend.h>
+#endif
+
 #include "intprops.h"
 
 /* The results of open() in this file are not used with fchdir,
@@ -64,6 +68,7 @@ openat_proc_name (char buf[OPENAT_BUFFER_SIZE], int fd, char const *file)
       return buf;
     }
 
+#ifndef __KLIBC__
   if (! proc_status)
     {
       /* Set PROC_STATUS to a positive value if /proc/self/fd is
@@ -107,4 +112,28 @@ openat_proc_name (char buf[OPENAT_BUFFER_SIZE], int fd, char const *file)
       sprintf (result, PROC_SELF_FD_FORMAT, fd, file);
       return result;
     }
+#else
+  /* OS/2 kLIBC provides a function to retrieve a path from a fd. Use it.  */
+  {
+    char path[_MAX_PATH];
+    size_t bufsize;
+    char *result = buf;
+
+    /* Get a path from a fd */
+    if (__libc_Back_ioFHToPath (fd, path, sizeof (path)))
+      return NULL;
+
+    bufsize = strlen (path) + 1 + strlen (file) + 1; /* 1 for '/', 1 for null */
+    if (OPENAT_BUFFER_SIZE < bufsize)
+      {
+        result = malloc (bufsize);
+        if (! result)
+          return NULL;
+      }
+
+    sprintf (result, "%s/%s", path, file);
+
+    return result;
+  }
+#endif
 }

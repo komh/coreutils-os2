@@ -154,11 +154,6 @@ update_timespec (struct stat const *statbuf, struct timespec *ts[2])
   return false;
 }
 
-#ifdef __INNOTEK_LIBC__ /* fs doesn't to better than seconds, but we must use futimes! */
-# define HAVE_WORKING_UTIMES 1
-#endif
-
-
 /* Set the access and modification time stamps of FD (a.k.a. FILE) to be
    TIMESPEC[0] and TIMESPEC[1], respectively.
    FD must be either negative -- in which case it is ignored --

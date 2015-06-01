@@ -24,74 +24,9 @@
 #include <sys/stat.h>
 
 
-#if HAVE_SYMLINK || defined(__OS2__)
+#if HAVE_SYMLINK
 
 # undef symlink
-
-# ifdef __OS2__
-
-#  define INCL_DOS
-#  define INCL_DOSERRORS
-#  include <os2.h>
-
-/* OS/2 kLIBC supports a symlink, but the others do not understand a symlink.
-   So copy instead of creating a symlink. */
-static int
-os2_symlink (char const *contents, char const *name)
-{
-  char szOld[CCHMAXPATH];
-  char szNew[CCHMAXPATH];
-  char *p;
-  ULONG rc;
-
-  if (strlen (contents) >= sizeof (szOld) ||
-      strlen (name) >= sizeof (szNew))
-    {
-      errno = ENAMETOOLONG;
-
-      return -1;
-    }
-
-  strcpy (szOld, contents);
-  strcpy (szNew, name);
-
-  /* Convert slashes to backslashes */
-  for (p = szOld; *p; p++)
-    if (*p == '/')
-      *p = '\\';
-
-  for (p = szNew; *p; p++)
-    if (*p == '/')
-      *p = '\\';
-
-  rc = DosCopy (szOld, szNew, 0);
-
-  if (rc == 0)
-    return 0;
-
-  switch (rc)
-    {
-    case ERROR_FILE_NOT_FOUND:          errno = ENOENT; break;
-    case ERROR_PATH_NOT_FOUND:          errno = ENOENT; break;
-    case ERROR_ACCESS_DENIED:           errno = EACCES; break;
-    case ERROR_NOT_DOS_DISK:            errno = EIO; break;
-    case ERROR_SHARING_VIOLATION:       errno = EACCES; break;
-    case ERROR_SHARING_BUFFER_EXCEEDED: errno = EIO; break;
-    case ERROR_INVALID_PARAMETER:       errno = EINVAL; break;
-    case ERROR_DRIVE_LOCKED:            errno = EACCES; break;
-    case ERROR_DISK_FULL:               errno = ENOSPC; break;
-    case ERROR_FILENAME_EXCED_RANGE:    errno = ENAMETOOLONG; break;
-    case ERROR_DIRECTORY:               errno = EINVAL; break;
-    case ERROR_EAS_NOT_SUPPORTED:       errno = ENOTSUP; break;
-    case ERROR_NEED_EAS_FOUND:          errno = EINVAL; break;
-    default:                            errno = EINVAL; break;
-    }
-
-  return -1;
-}
-
-#  define symlink(a, b) os2_symlink(a, b)
-# endif
 
 /* Create a symlink, but reject trailing slash.  */
 int

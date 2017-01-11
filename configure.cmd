@@ -1,7 +1,6 @@
 extproc sh
 
-./configure --prefix=/usr \
-            --disable-nls \
+./configure --disable-nls \
             --without-gmp \
             FORCE_UNSAFE_CONFIGURE=1 \
             "$@"

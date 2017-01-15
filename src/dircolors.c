@@ -1,5 +1,5 @@
 /* dircolors - output commands to set the LS_COLOR environment variable
-   Copyright (C) 1996-2013 Free Software Foundation, Inc.
+   Copyright (C) 1996-2016 Free Software Foundation, Inc.
    Copyright (C) 1994, 1995, 1997, 1998, 1999, 2000 H. Peter Anvin
 
    This program is free software: you can redistribute it and/or modify
@@ -18,11 +18,13 @@
 #include <config.h>
 
 #include <sys/types.h>
+#include <fnmatch.h>
 #include <getopt.h>
 
 #include "system.h"
 #include "dircolors.h"
 #include "c-strcase.h"
+#include "die.h"
 #include "error.h"
 #include "obstack.h"
 #include "quote.h"
@@ -111,7 +113,7 @@ If FILE is specified, read it to determine which colors to use for which\n\
 file types and extensions.  Otherwise, a precompiled database is used.\n\
 For details on the format of these files, run 'dircolors --print-database'.\n\
 "), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
 
   exit (status);
@@ -284,7 +286,7 @@ dc_parse_stream (FILE *fp, const char *filename)
       if (arg == NULL)
         {
           error (0, 0, _("%s:%lu: invalid line;  missing second token"),
-                 filename, (unsigned long int) line_number);
+                 quotef (filename), (unsigned long int) line_number);
           ok = false;
           free (keywd);
           continue;
@@ -293,7 +295,7 @@ dc_parse_stream (FILE *fp, const char *filename)
       unrecognized = false;
       if (c_strcasecmp (keywd, "TERM") == 0)
         {
-          if (STREQ (arg, term))
+          if (fnmatch (arg, term, 0) == 0)
             state = ST_TERMSURE;
           else if (state != ST_TERMSURE)
             state = ST_TERMNO;
@@ -356,7 +358,7 @@ dc_parse_stream (FILE *fp, const char *filename)
       if (unrecognized && (state == ST_TERMSURE || state == ST_TERMYES))
         {
           error (0, 0, _("%s:%lu: unrecognized keyword %s"),
-                 (filename ? quote (filename) : _("<internal>")),
+                 (filename ? quotef (filename) : _("<internal>")),
                  (unsigned long int) line_number, keywd);
           ok = false;
         }
@@ -375,7 +377,7 @@ dc_parse_file (const char *filename)
 
   if (! STREQ (filename, "-") && freopen (filename, "r", stdin) == NULL)
     {
-      error (0, errno, "%s", filename);
+      error (0, errno, "%s", quotef (filename));
       return false;
     }
 
@@ -383,7 +385,7 @@ dc_parse_file (const char *filename)
 
   if (fclose (stdin) != 0)
     {
-      error (0, errno, "%s", quote (filename));
+      error (0, errno, "%s", quotef (filename));
       return false;
     }
 
@@ -442,7 +444,7 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (!print_database < argc)
+  if ((!print_database) < argc)
     {
       error (0, 0, _("extra operand %s"), quote (argv[!print_database]));
       if (print_database)
@@ -469,7 +471,7 @@ main (int argc, char **argv)
           syntax = guess_shell_syntax ();
           if (syntax == SHELL_SYNTAX_UNKNOWN)
             {
-              error (EXIT_FAILURE, 0,
+              die (EXIT_FAILURE, 0,
          _("no SHELL environment variable, and no shell type option given"));
             }
         }
@@ -503,5 +505,5 @@ main (int argc, char **argv)
         }
     }
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

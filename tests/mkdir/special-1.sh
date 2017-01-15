@@ -1,7 +1,7 @@
 #!/bin/sh
 # verify that mkdir honors special bits in MODE
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ rmdir $tmp || fail=1
 tmp2=$tmp/sub
 
 # This should fail.
-mkdir -m$set_mode_string $tmp2 2> /dev/null && fail=1
+returns_ 1 mkdir -m$set_mode_string $tmp2 2> /dev/null || fail=1
 
 # Now test the --parents option.
 mkdir --parents -m$set_mode_string $tmp2 || fail=1

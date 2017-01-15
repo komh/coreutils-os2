@@ -1,7 +1,7 @@
 #!/bin/sh
 # Demonstrate that "touch -d now writable-but-owned-by-other" works.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,16 +20,15 @@
 print_ver_ touch
 require_root_
 
-group_num=$(id -g $NON_ROOT_USERNAME)
-
 # Create a file owned by root, and writable by $NON_ROOT_USERNAME.
 echo > root-owned || framework_failure_
-chgrp +$group_num . root-owned || framework_failure_
+chgrp +$NON_ROOT_GID . root-owned || framework_failure_
 chmod g+w root-owned
 
 # Ensure that the current directory is searchable by $NON_ROOT_USERNAME.
 chmod g+x .
 
-setuidgid $NON_ROOT_USERNAME env PATH="$PATH" touch -d now root-owned || fail=1
+chroot --skip-chdir --user=$NON_ROOT_USERNAME / env PATH="$PATH" \
+  touch -d now root-owned || fail=1
 
 Exit $fail

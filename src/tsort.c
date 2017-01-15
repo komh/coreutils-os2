@@ -1,5 +1,5 @@
 /* tsort - topological sort.
-   Copyright (C) 1998-2013 Free Software Foundation, Inc.
+   Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,11 +28,12 @@
 
 #include "system.h"
 #include "long-options.h"
+#include "die.h"
 #include "error.h"
 #include "fadvise.h"
-#include "quote.h"
 #include "readtokens.h"
 #include "stdio--.h"
+#include "quote.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "tsort"
@@ -71,7 +72,7 @@ static struct item *loop = NULL;
 
 /* The number of strings to sort.  */
 static size_t n_strings = 0;
-
+
 void
 usage (int status)
 {
@@ -82,12 +83,16 @@ usage (int status)
       printf (_("\
 Usage: %s [OPTION] [FILE]\n\
 Write totally ordered list consistent with the partial ordering in FILE.\n\
-With no FILE, or when FILE is -, read standard input.\n\
-\n\
 "), program_name);
+
+      emit_stdin_note ();
+
+      fputs (_("\
+\n\
+"), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
 
   exit (status);
@@ -280,7 +285,7 @@ record_relation (struct item *j, struct item *k)
 }
 
 static bool
-count_items (struct item *unused ATTRIBUTE_UNUSED)
+count_items (struct item *unused _GL_UNUSED)
 {
   n_strings++;
   return false;
@@ -347,8 +352,7 @@ detect_loop (struct item *k)
                         {
                           struct item *tmp = loop->qlink;
 
-                          fprintf (stderr, "%s: %s\n", program_name,
-                                   loop->str);
+                          error (0, 0, "%s", (loop->str));
 
                           /* Until we encounter K again.  */
                           if (loop == k)
@@ -442,7 +446,7 @@ tsort (const char *file)
   root = new_item (NULL);
 
   if (!is_stdin && ! freopen (file, "r", stdin))
-    error (EXIT_FAILURE, errno, "%s", file);
+    die (EXIT_FAILURE, errno, "%s", quotef (file));
 
   fadvise (stdin, FADVISE_SEQUENTIAL);
 
@@ -469,8 +473,8 @@ tsort (const char *file)
     }
 
   if (k != NULL)
-    error (EXIT_FAILURE, 0, _("%s: input contains an odd number of tokens"),
-           file);
+    die (EXIT_FAILURE, 0, _("%s: input contains an odd number of tokens"),
+         quotef (file));
 
   /* T1. Initialize (N <- n).  */
   walk_tree (root, count_items);
@@ -515,7 +519,7 @@ tsort (const char *file)
       if (n_strings > 0)
         {
           /* The input contains a loop.  */
-          error (0, 0, _("%s: input contains a loop:"), file);
+          error (0, 0, _("%s: input contains a loop:"), quotef (file));
           ok = false;
 
           /* Print the loop and remove a relation to break it.  */
@@ -525,9 +529,11 @@ tsort (const char *file)
         }
     }
 
+  IF_LINT (free (root));
+
   if (fclose (stdin) != 0)
-    error (EXIT_FAILURE, errno, "%s",
-           is_stdin ? _("standard input") : quote (file));
+    die (EXIT_FAILURE, errno, "%s",
+         is_stdin ? _("standard input") : quotef (file));
 
   return ok;
 }
@@ -558,5 +564,5 @@ main (int argc, char **argv)
 
   ok = tsort (optind == argc ? "-" : argv[optind]);
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

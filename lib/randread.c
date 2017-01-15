@@ -1,6 +1,6 @@
 /* Generate buffers of random data.
 
-   Copyright (C) 2006-2013 Free Software Foundation, Inc.
+   Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include <error.h>
 #include <exitfail.h>
 #include <fcntl.h>
-#include <quotearg.h>
+#include <quote.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -60,7 +60,7 @@
 # define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
-#if _STRING_ARCH_unaligned
+#if _STRING_ARCH_unaligned || _STRING_INLINE_unaligned
 # define ALIGNED_POINTER(ptr, type) true
 #else
 # define ALIGNED_POINTER(ptr, type) ((size_t) (ptr) % alignof (type) == 0)
@@ -125,8 +125,8 @@ randread_error (void const *file_name)
 {
   if (file_name)
     error (exit_failure, errno,
-           _(errno == 0 ? "%s: end of file" : "%s: read error"),
-           quotearg_colon (file_name));
+           errno == 0 ? _("%s: end of file") : _("%s: read error"),
+           quote (file_name));
   abort ();
 }
 
@@ -275,12 +275,14 @@ readsource (struct randread_source *s, unsigned char *p, size_t size)
    the buffered ISAAC generator in ISAAC.  */
 
 static void
-readisaac (struct isaac *isaac, unsigned char *p, size_t size)
+readisaac (struct isaac *isaac, void *p, size_t size)
 {
   size_t inbytes = isaac->buffered;
 
   while (true)
     {
+      char *char_p = p;
+
       if (size <= inbytes)
         {
           memcpy (p, isaac->data.b + ISAAC_BYTES - inbytes, size);
@@ -289,14 +291,14 @@ readisaac (struct isaac *isaac, unsigned char *p, size_t size)
         }
 
       memcpy (p, isaac->data.b + ISAAC_BYTES - inbytes, inbytes);
-      p += inbytes;
+      p = char_p + inbytes;
       size -= inbytes;
 
       /* If P is aligned, write to *P directly to avoid the overhead
          of copying from the buffer.  */
       if (ALIGNED_POINTER (p, isaac_word))
         {
-          isaac_word *wp = (isaac_word *) p;
+          isaac_word *wp = p;
           while (ISAAC_BYTES <= size)
             {
               isaac_refill (&isaac->state, wp);
@@ -308,7 +310,7 @@ readisaac (struct isaac *isaac, unsigned char *p, size_t size)
                   return;
                 }
             }
-          p = (unsigned char *) wp;
+          p = wp;
         }
 
       isaac_refill (&isaac->state, isaac->data.w);

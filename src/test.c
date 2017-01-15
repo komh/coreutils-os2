@@ -2,7 +2,7 @@
 
 /* Modified to run with the GNU shell by bfox. */
 
-/* Copyright (C) 1987-2013 Free Software Foundation, Inc.
+/* Copyright (C) 1987-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -48,6 +48,9 @@
 #include "stat-time.h"
 #include "strnumcmp.h"
 
+#include <stdarg.h>
+#include "verror.h"
+
 #if HAVE_SYS_PARAM_H
 # include <sys/param.h>
 #endif
@@ -57,10 +60,12 @@ enum { TEST_TRUE, TEST_FALSE, TEST_FAILURE };
 
 #if defined TEST_STANDALONE
 # define test_exit(val) exit (val)
+# define test_main_return(val) return val
 #else
    static jmp_buf test_exit_buf;
    static int test_error_return = 0;
 # define test_exit(val) test_error_return = val, longjmp (test_exit_buf, 1)
+# define test_main_return(val) test_exit (val)
 #endif /* !TEST_STANDALONE */
 
 static int pos;		/* The offset of the current argument in ARGV. */
@@ -79,17 +84,16 @@ static bool term (void);
 static bool and (void);
 static bool or (void);
 
-static void test_syntax_error (char const *format, char const *arg)
+static void test_syntax_error (char const *format, ...)
      ATTRIBUTE_NORETURN;
 static void beyond (void) ATTRIBUTE_NORETURN;
 
 static void
-test_syntax_error (char const *format, char const *arg)
+test_syntax_error (char const *format, ...)
 {
-  fprintf (stderr, "%s: ", argv[0]);
-  fprintf (stderr, format, arg);
-  fputc ('\n', stderr);
-  fflush (stderr);
+  va_list ap;
+  va_start (ap, format);
+  verror (0, 0, format, ap);
   test_exit (TEST_FAILURE);
 }
 
@@ -238,10 +242,11 @@ term (void)
 
       value = posixtest (nargs);
       if (argv[pos] == 0)
-        test_syntax_error (_("')' expected"), NULL);
+        test_syntax_error (_("%s expected"), quote (")"));
       else
         if (argv[pos][0] != ')' || argv[pos][1])
-          test_syntax_error (_("')' expected, found %s"), argv[pos]);
+          test_syntax_error (_("%s expected, found %s"),
+                             quote_n (0, ")"), quote_n (1, argv[pos]));
       advance (false);
     }
 
@@ -257,7 +262,7 @@ term (void)
       if (test_unop (argv[pos]))
         value = unary_operator ();
       else
-        test_syntax_error (_("%s: unary operator expected"), argv[pos]);
+        test_syntax_error (_("%s: unary operator expected"), quote (argv[pos]));
     }
   else
     {
@@ -364,7 +369,7 @@ binary_operator (bool l_is_l)
         }
 
       /* FIXME: is this dead code? */
-      test_syntax_error (_("unknown binary operator"), argv[op]);
+      test_syntax_error (_("%s: unknown binary operator"), quote (argv[op]));
     }
 
   if (argv[op][0] == '='
@@ -615,7 +620,7 @@ two_arguments (void)
       if (test_unop (argv[pos]))
         value = unary_operator ();
       else
-        test_syntax_error (_("%s: unary operator expected"), argv[pos]);
+        test_syntax_error (_("%s: unary operator expected"), quote (argv[pos]));
     }
   else
     beyond ();
@@ -643,7 +648,7 @@ three_arguments (void)
   else if (STREQ (argv[pos + 1], "-a") || STREQ (argv[pos + 1], "-o"))
     value = expr ();
   else
-    test_syntax_error (_("%s: binary operator expected"), argv[pos+1]);
+    test_syntax_error (_("%s: binary operator expected"), quote (argv[pos+1]));
   return (value);
 }
 
@@ -785,11 +790,16 @@ INTEGER may also be -l STRING, which evaluates to the length of STRING.\n\
 "), stdout);
       fputs (_("\
 \n\
+NOTE: Binary -a and -o are inherently ambiguous.  Use 'test EXPR1 && test\n\
+EXPR2' or 'test EXPR1 || test EXPR2' instead.\n\
+"), stdout);
+      fputs (_("\
+\n\
 NOTE: [ honors the --help and --version options, but test does not.\n\
 test treats each of those as it treats any other nonempty STRING.\n\
 "), stdout);
       printf (USAGE_BUILTIN_WARNING, _("test and/or ["));
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -851,11 +861,11 @@ main (int margc, char **margv)
             {
               version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, Version, AUTHORS,
                            (char *) NULL);
-              test_exit (EXIT_SUCCESS);
+              test_main_return (EXIT_SUCCESS);
             }
         }
       if (margc < 2 || !STREQ (margv[margc - 1], "]"))
-        test_syntax_error (_("missing ']'"), NULL);
+        test_syntax_error (_("missing %s"), quote ("]"));
 
       --margc;
     }
@@ -864,12 +874,12 @@ main (int margc, char **margv)
   pos = 1;
 
   if (pos >= argc)
-    test_exit (TEST_FALSE);
+    test_main_return (TEST_FALSE);
 
   value = posixtest (argc - 1);
 
   if (pos != argc)
     test_syntax_error (_("extra argument %s"), quote (argv[pos]));
 
-  test_exit (value ? TEST_TRUE : TEST_FALSE);
+  test_main_return (value ? TEST_TRUE : TEST_FALSE);
 }

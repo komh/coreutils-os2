@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Basic tests for "numfmt".
 
-# Copyright (C) 2012 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ use strict;
 (my $program_name = $0) =~ s|.*/||;
 my $prog = 'numfmt';
 
+my $limits = getlimits ();
+
 # TODO: add localization tests with "grouping"
 # Turn off localization of executable's output.
 @ENV{qw(LANGUAGE LANG LC_ALL)} = ('C') x 3;
@@ -28,6 +30,8 @@ my $prog = 'numfmt';
 my $locale = $ENV{LOCALE_FR_UTF8};
 ! defined $locale || $locale eq 'none'
   and $locale = 'C';
+
+my $try = "Try '$prog --help' for more information.\n";
 
 my @Tests =
     (
@@ -92,10 +96,16 @@ my @Tests =
      ['unit-6', '--from-unit=54W --from=iec --to=iec 4M',
              {ERR => "$prog: invalid unit size: '54W'\n"},
              {EXIT => '1'}],
-     # Not fully documented.. "--{from,to}-unit" can accept IEC suffixes
-     ['unit-7', '--from-unit=2K --to=iec 30', {OUT=>"60K"}],
-     ['unit-8', '--from-unit=1234567890123456789012345 --to=iec 30',
-             {ERR => "$prog: invalid unit size: '1234567890123456789012345'\n"},
+     ['unit-7', '--from-unit=K 30', {OUT=>"30000"}],
+     ['unit-7.1', '--from-unit=Ki 30', {OUT=>"30720"}],
+     ['unit-7.2', '--from-unit=i 0',
+             {ERR => "$prog: invalid unit size: 'i'\n"},
+             {EXIT => '1'}],
+     ['unit-7.3', '--from-unit=1i 0',
+             {ERR => "$prog: invalid unit size: '1i'\n"},
+             {EXIT => '1'}],
+     ['unit-8', '--from-unit='.$limits->{UINTMAX_OFLOW}.' --to=iec 30',
+             {ERR => "$prog: invalid unit size: '$limits->{UINTMAX_OFLOW}'\n"},
              {EXIT => '1'}],
      ['unit-9', '--from-unit=0 1',
              {ERR => "$prog: invalid unit size: '0'\n"},
@@ -188,21 +198,18 @@ my @Tests =
      ['delim-3', '--delimiter=" " --from=auto "40M Foo"',{OUT=>'40000000 Foo'}],
      ['delim-4', '--delimiter=: --from=auto 40M:60M',  {OUT=>'40000000:60M'}],
      ['delim-5', '-d: --field=2 --from=auto :40M:60M',  {OUT=>':40000000:60M'}],
-     ['delim-6', '--delimiter=: --field 3 --from=auto 40M:60M',
-             {EXIT=>2},
-             {ERR=>"$prog: input line is too short, no numbers found " .
-                   "to convert in field 3\n"}],
+     ['delim-6', '-d: --field 3 --from=auto 40M:60M', {OUT=>"40M:60M"}],
+     ['delim-err-1', '-d,, --to=si 1', {EXIT=>1},
+             {ERR => "$prog: the delimiter must be a single character\n"}],
 
      #Fields
      ['field-1', '--field A',
-             {ERR => "$prog: invalid field value 'A'\n"},
-             {EXIT => '1'}],
-     ['field-1.1', '--field -5',
-             {ERR => "$prog: invalid field value '-5'\n"},
+             {ERR => "$prog: invalid field value 'A'\n$try"},
              {EXIT => '1'}],
      ['field-2', '--field 2 --from=auto "Hello 40M World 90G"',
              {OUT=>'Hello 40000000 World 90G'}],
      ['field-3', '--field 3 --from=auto "Hello 40M World 90G"',
+             {OUT=>"Hello 40M "},
              {ERR=>"$prog: invalid number: 'World'\n"},
              {EXIT => 2},],
      # Last field - no text after number
@@ -217,10 +224,93 @@ my @Tests =
              {OUT=>"Hello:40000000:World:90G"}],
 
      # not enough fields
-     ['field-8', '--field 3 --to=si "Hello World"',
-             {EXIT=>2},
-             {ERR=>"$prog: input line is too short, no numbers found " .
-                   "to convert in field 3\n"}],
+     ['field-8', '--field 3 --to=si "Hello World"', {OUT=>"Hello World"}],
+
+     # Multiple fields
+     ['field-range-1', '--field 2,4 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1000 2.0K 3000 4.0K 5000"}],
+
+     ['field-range-2', '--field 2-4 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1000 2.0K 3.0K 4.0K 5000"}],
+
+     ['field-range-3', '--field 1,2,3-5 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5.0K"}],
+
+     ['field-range-4', '--field 1-5 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5.0K"}],
+
+     ['field-range-5', '--field 1-3,5 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4000 5.0K"}],
+
+     ['field-range-6', '--field 3- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1000 2000 3.0K 4.0K 5.0K"}],
+
+     ['field-range-7', '--field -3 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4000 5000"}],
+
+     ['field-range-8', '--field 1-2,4-5 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3000 4.0K 5.0K"}],
+     ['field-range-9', '--field 4-5,1-2 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3000 4.0K 5.0K"}],
+
+     ['field-range-10','--field 1-3,2-4 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5000"}],
+     ['field-range-11','--field 2-4,1-3 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5000"}],
+
+     ['field-range-12','--field 1-1,3-3 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2000 3.0K 4000 5000"}],
+
+     ['field-range-13', '--field 1,-2 --to=si "1000 2000 3000"',
+             {OUT=>"1.0K 2.0K 3000"}],
+
+     ['field-range-14', '--field -2,4- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3000 4.0K 5.0K"}],
+     ['field-range-15', '--field -2,-4 --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5000"}],
+     ['field-range-16', '--field 2-,4- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1000 2.0K 3.0K 4.0K 5.0K"}],
+     ['field-range-17', '--field 4-,2- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1000 2.0K 3.0K 4.0K 5.0K"}],
+
+     # white space are valid field separators
+     # (undocumented? but works in cut as well).
+     ['field-range-18', '--field "1,2 4" --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3000 4.0K 5000"}],
+
+     # Unlike 'cut', a lone '-' means 'all fields', even as part of a list
+     # of fields.
+     ['field-range-19','--field 3,- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5.0K"}],
+
+     ['all-fields-1', '--field=- --to=si "1000 2000 3000 4000 5000"',
+             {OUT=>"1.0K 2.0K 3.0K 4.0K 5.0K"}],
+
+     ['field-range-err-1', '--field -foo --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: invalid field value 'foo'\n$try"}],
+     ['field-range-err-2', '--field --3 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: invalid field range\n$try"}],
+     ['field-range-err-3', '--field 0 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: fields are numbered from 1\n$try"}],
+     ['field-range-err-4', '--field 3-2 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: invalid decreasing range\n$try"}],
+     ['field-range-err-6', '--field - --field 1- --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: multiple field specifications\n"}],
+     ['field-range-err-7', '--field -1 --field 1- --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: multiple field specifications\n"}],
+     ['field-range-err-8', '--field -1 --field 1,2,3 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: multiple field specifications\n"}],
+     ['field-range-err-9', '--field 1- --field 1,2,3 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: multiple field specifications\n"}],
+     ['field-range-err-10','--field 1,2,3 --field 1- --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: multiple field specifications\n"}],
+     ['field-range-err-11','--field 1-2-3 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: invalid field range\n$try"}],
+     ['field-range-err-12','--field 0-1 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: fields are numbered from 1\n$try"}],
+     ['field-range-err-13','--field '.$limits->{SIZE_MAX}.',22 --to=si 10',
+             {EXIT=>1}, {ERR=>"$prog: field number " .
+                              "'".$limits->{SIZE_MAX}."' is too large\n$try"}],
 
      # Auto-consume white-space, setup auto-padding
      ['whitespace-1', '--to=si --field 2 "A    500 B"', {OUT=>"A    500 B"}],
@@ -260,7 +350,7 @@ my @Tests =
      #   so these are 40 of "M", not 40,000,000.
      ['mix-1', '--suffix=M --from=si 40M',     {OUT=>"40M"}],
 
-     # These are fourty-million Ms .
+     # These are forty-million Ms .
      ['mix-2', '--suffix=M --from=si 40MM',     {OUT=>"40000000M"}],
 
      ['mix-3', '--suffix=M --from=auto 40MM',     {OUT=>"40000000M"}],
@@ -336,15 +426,6 @@ my @Tests =
              {ERR=>"$prog: invalid number: ''\n"},
              {EXIT=> 2}],
 
-     # INTEGRAL_OVERFLOW
-     ['strtod-3', '--from=si "1234567890123456789012345678901234567890'.
-                  '1234567890123456789012345678901234567890"',
-             {ERR=>"$prog: value too large to be converted: '" .
-                     "1234567890123456789012345678901234567890" .
-                     "1234567890123456789012345678901234567890'\n",
-                     },
-             {EXIT=> 2}],
-
      # FRACTION_NO_DIGITS_FOUND
      ['strtod-5', '--from=si 12.',
              {ERR=>"$prog: invalid number: '12.'\n"},
@@ -357,15 +438,6 @@ my @Tests =
      ['strtod-6.1', '--from=si --delimiter=, "12.  2"',
              {ERR=>"$prog: invalid number: '12.  2'\n"},
              {EXIT=>2}],
-
-     # FRACTION_OVERFLOW
-     ['strtod-7', '--from=si "12.1234567890123456789012345678901234567890'.
-                  '1234567890123456789012345678901234567890"',
-             {ERR=>"$prog: value too large to be converted: '" .
-                     "12.1234567890123456789012345678901234567890" .
-                     "1234567890123456789012345678901234567890'\n",
-                     },
-             {EXIT=> 2}],
 
      # INVALID_SUFFIX
      ['strtod-9', '--from=si 12.2Q',
@@ -502,6 +574,264 @@ my @Tests =
              {OUT=>"5.8594\n-5.8594"}],
 
 
+     # Leading zeros weren't handled appropriately before 8.24
+     ['leading-1','0000000000000000000000000001', {OUT=>"1"}],
+     ['leading-2','.1', {OUT=>"0.1"}],
+     ['leading-3','bad.1',
+             {ERR => "$prog: invalid number: 'bad.1'\n"},
+             {EXIT => 2}],
+     ['leading-4','..1',
+             {ERR => "$prog: invalid suffix in input: '..1'\n"},
+             {EXIT => 2}],
+     ['leading-5','1.',
+             {ERR => "$prog: invalid number: '1.'\n"},
+             {EXIT => 2}],
+
+     # precision override
+     ['precision-1','--format=%.4f 9991239123 --to=si', {OUT=>"9.9913G"}],
+     ['precision-2','--format=%.1f 9991239123 --to=si', {OUT=>"10.0G"}],
+     ['precision-3','--format=%.1f 1', {OUT=>"1.0"}],
+     ['precision-4','--format=%.1f 1.12', {OUT=>"1.2"}],
+     ['precision-5','--format=%.1f 9991239123 --to-unit=G', {OUT=>"10.0"}],
+     ['precision-6','--format="% .1f" 9991239123 --to-unit=G', {OUT=>"10.0"}],
+     ['precision-7','--format=%.-1f 1.1',
+             {ERR => "$prog: invalid precision in format '%.-1f'\n"},
+             {EXIT => 1}],
+     ['precision-8','--format=%.+1f 1.1',
+             {ERR => "$prog: invalid precision in format '%.+1f'\n"},
+             {EXIT => 1}],
+     ['precision-9','--format="%. 1f" 1.1',
+             {ERR => "$prog: invalid precision in format '%. 1f'\n"},
+             {EXIT => 1}],
+
+     # debug warnings
+     ['debug-1', '--debug 4096', {OUT=>"4096"},
+             {ERR=>"$prog: no conversion option specified\n"}],
+     # '--padding' is a valid conversion option - no warning should be printed
+     ['debug-1.1', '--debug --padding 10 4096', {OUT=>"      4096"}],
+     ['debug-2', '--debug --grouping --from=si 4.0K', {OUT=>"4000"},
+             {ERR=>"$prog: grouping has no effect in this locale\n"}],
+
+     # dev-debug messages - the actual messages don't matter
+     # just ensure the program works, and for code coverage testing.
+     ['devdebug-1', '---debug --from=si 4.9K', {OUT=>"4900"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-2', '---debug 4900', {OUT=>"4900"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-3', '---debug --from=auto 4Mi', {OUT=>"4194304"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-4', '---debug --to=si 4000000', {OUT=>"4.0M"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-5', '---debug --to=si --padding=5 4000000', {OUT=>" 4.0M"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-6', '---debug --suffix=Foo 1234Foo', {OUT=>"1234Foo"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-7', '---debug --suffix=Foo 1234', {OUT=>"1234Foo"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-9', '---debug --grouping 10000', {OUT=>"10000"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-10', '---debug --format %f 10000', {OUT=>"10000"},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+     ['devdebug-11', '---debug --format "%\'-10f" 10000',{OUT=>"10000     "},
+             {ERR=>""},
+             {ERR_SUBST=>"s/.*//msg"}],
+
+     # Invalid parameters
+     ['help-1', '--foobar',
+             {ERR=>"$prog: unrecognized option\n$try"},
+             {ERR_SUBST=>"s/option.*/option/; s/unknown/unrecognized/"},
+             {EXIT=>1}],
+
+     ## Format string - check error detection
+     ['fmt-err-1', '--format ""',
+             {ERR=>"$prog: format '' has no % directive\n"},
+             {EXIT=>1}],
+     ['fmt-err-2', '--format "hello"',
+             {ERR=>"$prog: format 'hello' has no % directive\n"},
+             {EXIT=>1}],
+     ['fmt-err-3', '--format "hello%"',
+             {ERR=>"$prog: format 'hello%' ends in %\n"},
+             {EXIT=>1}],
+     ['fmt-err-4', '--format "%d"',
+             {ERR=>"$prog: invalid format '%d', " .
+                   "directive must be %[0]['][-][N][.][N]f\n"},
+             {EXIT=>1}],
+     ['fmt-err-5', '--format "% -43 f"',
+             {ERR=>"$prog: invalid format '% -43 f', " .
+                   "directive must be %[0]['][-][N][.][N]f\n"},
+             {EXIT=>1}],
+     ['fmt-err-6', '--format "%f %f"',
+             {ERR=>"$prog: format '%f %f' has too many % directives\n"},
+             {EXIT=>1}],
+     ['fmt-err-7', '--format "%'.$limits->{LONG_OFLOW}.'f"',
+             {ERR=>"$prog: invalid format '%$limits->{LONG_OFLOW}f'".
+                   " (width overflow)\n"},
+             {EXIT=>1}],
+     ['fmt-err-9', '--format "%f" --grouping',
+             {ERR=>"$prog: --grouping cannot be combined with --format\n"},
+             {EXIT=>1}],
+     ['fmt-err-10', '--format "%\'f" --to=si',
+             {ERR=>"$prog: grouping cannot be combined with --to\n"},
+             {EXIT=>1}],
+     ['fmt-err-11', '--debug --format "%\'f" 5000', {OUT=>"5000"},
+             {ERR=>"$prog: grouping has no effect in this locale\n"}],
+
+     ## Format string - check some corner cases
+     ['fmt-1', '--format "%% %f" 5000', {OUT=>"%%5000"}],
+     ['fmt-2', '--format "%f %%" 5000', {OUT=>"5000 %%"}],
+
+     ['fmt-3', '--format "--%f--" 5000000', {OUT=>"--5000000--"}],
+     ['fmt-4', '--format "--%f--" --to=si 5000000', {OUT=>"--5.0M--"}],
+
+     ['fmt-5', '--format "--%10f--" --to=si 5000000',{OUT=>"--      5.0M--"}],
+     ['fmt-6', '--format "--%-10f--" --to=si 5000000',{OUT=>"--5.0M      --"}],
+     ['fmt-7', '--format "--%10f--" 5000000',{OUT=>"--   5000000--"}],
+     ['fmt-8', '--format "--%-10f--" 5000000',{OUT=>"--5000000   --"}],
+
+     # too-short width
+     ['fmt-9', '--format "--%5f--" 5000000',{OUT=>"--5000000--"}],
+
+     # Format + Suffix
+     ['fmt-10', '--format "--%10f--" --suffix Foo 50', {OUT=>"--     50Foo--"}],
+     ['fmt-11', '--format "--%-10f--" --suffix Foo 50',{OUT=>"--50Foo     --"}],
+
+     # Grouping in C locale - no grouping effect
+     ['fmt-12', '--format "%\'f" 50000',{OUT=>"50000"}],
+     ['fmt-13', '--format "%\'10f" 50000', {OUT=>"     50000"}],
+     ['fmt-14', '--format "%\'-10f" 50000',{OUT=>"50000     "}],
+
+     # Very large format strings
+     ['fmt-15', '--format "--%100000f--" --to=si 4200',
+                  {OUT=>"--" . " " x 99996 . "4.2K--" }],
+
+     # --format padding overrides --padding
+     ['fmt-16', '--format="%6f" --padding=66 1234',{OUT=>"  1234"}],
+
+     # zero padding
+     ['fmt-17', '--format="%06f" 1234',{OUT=>"001234"}],
+     # also support spaces (which are ignored as spacing is handled separately)
+     ['fmt-18', '--format="%0 6f" 1234',{OUT=>"001234"}],
+     # handle generic padding in combination
+     ['fmt-22', '--format="%06f" --padding=7 1234',{OUT=>" 001234"}],
+     ['fmt-23', '--format="%06f" --padding=-7 1234',{OUT=>"001234 "}],
+
+
+     ## Check all errors again, this time with --invalid=fail
+     ##  Input will be printed without conversion,
+     ##  and exit code will be 2
+     ['ign-err-1', '--invalid=fail 4Q',
+             {ERR => "$prog: invalid suffix in input: '4Q'\n"},
+             {OUT => "4Q\n"},
+             {EXIT => 2}],
+     ['ign-err-2', '--invalid=fail 4M',
+             {ERR => "$prog: rejecting suffix " .
+             "in input: '4M' (consider using --from)\n"},
+             {OUT => "4M\n"},
+             {EXIT => 2}],
+     ['ign-err-3', '--invalid=fail --from=si 4MQ',
+             {ERR => "$prog: invalid suffix in input '4MQ': 'Q'\n"},
+             {OUT => "4MQ\n"},
+             {EXIT => 2}],
+     ['ign-err-4', '--invalid=fail --suffix=Foo --to=si   7000FooF',
+              {ERR => "$prog: invalid suffix in input: '7000FooF'\n"},
+              {OUT => "7000FooF\n"},
+              {EXIT => 2}],
+     ['ign-err-5','--invalid=fail --field 3 --from=auto "Hello 40M World 90G"',
+             {ERR => "$prog: invalid number: 'World'\n"},
+             {OUT => "Hello 40M World 90G\n"},
+             {EXIT => 2}],
+     ['ign-err-7', '--invalid=fail --from=si "foo"',
+             {ERR => "$prog: invalid number: 'foo'\n"},
+             {OUT => "foo\n"},
+             {EXIT=> 2}],
+     ['ign-err-8', '--invalid=fail 12M',
+             {ERR => "$prog: rejecting suffix " .
+                     "in input: '12M' (consider using --from)\n"},
+             {OUT => "12M\n"},
+             {EXIT => 2}],
+     ['ign-err-9', '--invalid=fail --from=iec-i 12M',
+             {ERR => "$prog: missing 'i' suffix in input: " .
+                     "'12M' (e.g Ki/Mi/Gi)\n"},
+             {OUT => "12M\n"},
+             {EXIT=>2}],
+
+     ## Ignore Errors with multiple conversions
+     ['ign-err-m1', '--invalid=ignore --to=si 1000 2000 bad 3000',
+             {OUT => "1.0K\n2.0K\nbad\n3.0K"},
+             {EXIT => 0}],
+     ['ign-err-m1.1', '--invalid=ignore --to=si',
+             {IN_PIPE => "1000\n2000\nbad\n3000\n"},
+             {OUT => "1.0K\n2.0K\nbad\n3.0K"},
+             {EXIT => 0}],
+     ['ign-err-m1.3', '--invalid=fail --debug --to=si 1000 2000 3000',
+             {OUT => "1.0K\n2.0K\n3.0K"},
+             {EXIT => 0}],
+     ['ign-err-m2', '--invalid=fail --to=si 1000 Foo 3000',
+             {OUT => "1.0K\nFoo\n3.0K\n"},
+             {ERR => "$prog: invalid number: 'Foo'\n"},
+             {EXIT => 2}],
+     ['ign-err-m2.1', '--invalid=warn --to=si',
+             {IN_PIPE => "1000\nFoo\n3000\n"},
+             {OUT => "1.0K\nFoo\n3.0K"},
+             {ERR => "$prog: invalid number: 'Foo'\n"},
+             {EXIT => 0}],
+
+     # --debug will trigger a final warning at EOF
+     ['ign-err-m2.2', '--invalid=fail --debug --to=si 1000 Foo 3000',
+             {OUT => "1.0K\nFoo\n3.0K\n"},
+             {ERR => "$prog: invalid number: 'Foo'\n" .
+                     "$prog: failed to convert some of the input numbers\n"},
+             {EXIT => 2}],
+
+     ['ign-err-m3', '--invalid=fail --field 2 --from=si --to=iec',
+             {IN_PIPE => "A 1K x\nB 2M y\nC 3G z\n"},
+             {OUT => "A 1000 x\nB 2.0M y\nC 2.8G z"},
+             {EXIT => 0}],
+     # invalid input on one of the fields
+     ['ign-err-m3.1', '--invalid=fail --field 2 --from=si --to=iec',
+             {IN_PIPE => "A 1K x\nB Foo y\nC 3G z\n"},
+             {OUT => "A 1000 x\nB Foo y\nC 2.8G z\n"},
+             {ERR => "$prog: invalid number: 'Foo'\n"},
+             {EXIT => 2}],
+    );
+
+# test null-terminated lines
+my @NullDelim_Tests =
+  (
+     # Input from STDIN
+     ['z1', '-z --to=iec',
+             {IN_PIPE => "1025\x002048\x00"}, {OUT=>"1.1K\x002.0K\x00"}],
+
+     # Input from the commandline - terminated by NULL vs NL
+     ['z3', '   --to=iec 1024',  {OUT=>"1.0K\n"}],
+     ['z2', '-z --to=iec 1024',  {OUT=>"1.0K\x00"}],
+
+     # Input from STDIN, with fields
+     ['z4', '-z --field=3 --to=si',
+             {IN_PIPE => "A B 1001 C\x00" .
+                         "D E 2002 F\x00"},
+             {OUT => "A B 1.1K C\x00" .
+                     "D E 2.1K F\x00"}],
+
+     # Input from STDIN, with fields and embedded NL
+     ['z5', '-z --field=3 --to=si',
+             {IN_PIPE => "A\nB 1001 C\x00" .
+                         "D E\n2002 F\x00"},
+             {OUT => "A B 1.1K C\x00" .
+                     "D E 2.1K F\x00"}],
+  );
+
+my @Limit_Tests =
+  (
      # Large Values
      ['large-1','1000000000000000', {OUT=>"1000000000000000"}],
      # 18 digits is OK
@@ -511,6 +841,11 @@ my @Tests =
              {ERR => "$prog: value too large to be printed: '1e+19' " .
                      "(consider using --to)\n"},
              {EXIT=>2}],
+     ['large-4','1000000000000000000.0',
+             {ERR => "$prog: value/precision too large to be printed: " .
+                     "'1e+18/1' (consider using --to)\n"},
+             {EXIT=>2}],
+
 
      # Test input:
      # Up to 27 digits is OK.
@@ -625,13 +960,28 @@ my @Tests =
                      "(cannot handle values > 999Y)\n"},
              {EXIT => 2}],
 
-     # debug warnings
-     ['debug-1', '--debug 4096', {OUT=>"4096"},
-             {ERR=>"$prog: no conversion option specified\n"}],
-     # '--padding' is a valid conversion option - no warning should be printed
-     ['debug-1.1', '--debug --padding 10 4096', {OUT=>"      4096"}],
-     ['debug-2', '--debug --grouping --from=si 4.0K', {OUT=>"4000"},
-             {ERR=>"$prog: grouping has no effect in this locale\n"}],
+     # intmax_t overflow when rounding caused this to fail before 8.24
+     ['large-15',$limits->{INTMAX_OFLOW}, {OUT=>$limits->{INTMAX_OFLOW}}],
+     ['large-16','9.300000000000000000', {OUT=>'9.300000000000000000'}],
+
+     # INTEGRAL_OVERFLOW
+     ['strtod-3', '--from=si "1234567890123456789012345678901234567890'.
+                  '1234567890123456789012345678901234567890"',
+             {ERR=>"$prog: value too large to be converted: '" .
+                     "1234567890123456789012345678901234567890" .
+                     "1234567890123456789012345678901234567890'\n",
+                     },
+             {EXIT=> 2}],
+
+     # FRACTION_OVERFLOW
+     ['strtod-7', '--from=si "12.1234567890123456789012345678901234567890'.
+                  '1234567890123456789012345678901234567890"',
+             {ERR=>"$prog: value too large to be converted: '" .
+                     "12.1234567890123456789012345678901234567890" .
+                     "1234567890123456789012345678901234567890'\n",
+                     },
+             {EXIT=> 2}],
+
      ['debug-4', '--to=si --debug 12345678901234567890',
              {OUT=>"13E"},
              {ERR=>"$prog: large input value '12345678901234567890':" .
@@ -641,157 +991,6 @@ my @Tests =
              {ERR=>"$prog: large input value '1.12345678901234567890Y':" .
                    " possible precision loss\n"}],
 
-     # dev-debug messages - the actual messages don't matter
-     # just ensure the program works, and for code coverage testing.
-     ['devdebug-1', '---debug --from=si 4.9K', {OUT=>"4900"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-2', '---debug 4900', {OUT=>"4900"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-3', '---debug --from=auto 4Mi', {OUT=>"4194304"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-4', '---debug --to=si 4000000', {OUT=>"4.0M"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-5', '---debug --to=si --padding=5 4000000', {OUT=>" 4.0M"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-6', '---debug --suffix=Foo 1234Foo', {OUT=>"1234Foo"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-7', '---debug --suffix=Foo 1234', {OUT=>"1234Foo"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-9', '---debug --grouping 10000', {OUT=>"10000"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-10', '---debug --format %f 10000', {OUT=>"10000"},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-11', '---debug --format "%\'-10f" 10000',{OUT=>"10000     "},
-             {ERR=>""},
-             {ERR_SUBST=>"s/.*//msg"}],
-     ['devdebug-12', '---debug --field 2 A',{OUT=>""},
-             {ERR=>""}, {EXIT=>2},
-             {ERR_SUBST=>"s/.*//msg"}],
-
-     # Invalid parameters
-     ['help-1', '--foobar',
-             {ERR=>"$prog: unrecognized option '--foobar'\n" .
-                   "Try '$prog --help' for more information.\n"},
-             {EXIT=>1}],
-
-     ## Format string - check error detection
-     ['fmt-err-1', '--format ""',
-             {ERR=>"$prog: format '' has no % directive\n"},
-             {EXIT=>1}],
-     ['fmt-err-2', '--format "hello"',
-             {ERR=>"$prog: format 'hello' has no % directive\n"},
-             {EXIT=>1}],
-     ['fmt-err-3', '--format "hello%"',
-             {ERR=>"$prog: format 'hello%' ends in %\n"},
-             {EXIT=>1}],
-     ['fmt-err-4', '--format "%d"',
-             {ERR=>"$prog: invalid format '%d', " .
-                   "directive must be %['][-][N]f\n"},
-             {EXIT=>1}],
-     ['fmt-err-5', '--format "% -43 f"',
-             {ERR=>"$prog: invalid format '% -43 f', " .
-                   "directive must be %['][-][N]f\n"},
-             {EXIT=>1}],
-     ['fmt-err-6', '--format "%f %f"',
-             {ERR=>"$prog: format '%f %f' has too many % directives\n"},
-             {EXIT=>1}],
-     ['fmt-err-7', '--format "%123456789012345678901234567890f"',
-             {ERR=>"$prog: invalid format '%123456789012345678901234567890f'".
-                   " (width overflow)\n"},
-             {EXIT=>1}],
-     ['fmt-err-8', '--format "%f" --padding 20',
-             {ERR=>"$prog: --padding cannot be combined with --format\n"},
-             {EXIT=>1}],
-     ['fmt-err-9', '--format "%f" --grouping',
-             {ERR=>"$prog: --grouping cannot be combined with --format\n"},
-             {EXIT=>1}],
-     ['fmt-err-10', '--format "%\'f" --to=si',
-             {ERR=>"$prog: grouping cannot be combined with --to\n"},
-             {EXIT=>1}],
-     ['fmt-err-11', '--debug --format "%\'f" 5000', {OUT=>"5000"},
-             {ERR=>"$prog: grouping has no effect in this locale\n"}],
-
-     ## Format string - check some corner cases
-     ['fmt-1', '--format "%% %f" 5000', {OUT=>"%%5000"}],
-     ['fmt-2', '--format "%f %%" 5000', {OUT=>"5000 %%"}],
-
-     ['fmt-3', '--format "--%f--" 5000000', {OUT=>"--5000000--"}],
-     ['fmt-4', '--format "--%f--" --to=si 5000000', {OUT=>"--5.0M--"}],
-
-     ['fmt-5', '--format "--%10f--" --to=si 5000000',{OUT=>"--      5.0M--"}],
-     ['fmt-6', '--format "--%-10f--" --to=si 5000000',{OUT=>"--5.0M      --"}],
-     ['fmt-7', '--format "--%10f--" 5000000',{OUT=>"--   5000000--"}],
-     ['fmt-8', '--format "--%-10f--" 5000000',{OUT=>"--5000000   --"}],
-
-     # too-short width
-     ['fmt-9', '--format "--%5f--" 5000000',{OUT=>"--5000000--"}],
-
-     # Format + Suffix
-     ['fmt-10', '--format "--%10f--" --suffix Foo 50', {OUT=>"--     50Foo--"}],
-     ['fmt-11', '--format "--%-10f--" --suffix Foo 50',{OUT=>"--50Foo     --"}],
-
-     # Grouping in C locale - no grouping effect
-     ['fmt-12', '--format "%\'f" 50000',{OUT=>"50000"}],
-     ['fmt-13', '--format "%\'10f" 50000', {OUT=>"     50000"}],
-     ['fmt-14', '--format "%\'-10f" 50000',{OUT=>"50000     "}],
-
-     # Very large format strings
-     ['fmt-15', '--format "--%100000f--" --to=si 4200',
-                  {OUT=>"--" . " " x 99996 . "4.2K--" }],
-
-
-     ## Check all errors again, this time with --invalid=fail
-     ##  Input will be printed without conversion,
-     ##  and exit code will be 2
-     ['ign-err-1', '--invalid=fail 4Q',
-             {ERR => "$prog: invalid suffix in input: '4Q'\n"},
-             {OUT => "4Q\n"},
-             {EXIT => 2}],
-     ['ign-err-2', '--invalid=fail 4M',
-             {ERR => "$prog: rejecting suffix " .
-             "in input: '4M' (consider using --from)\n"},
-             {OUT => "4M\n"},
-             {EXIT => 2}],
-     ['ign-err-3', '--invalid=fail --from=si 4MQ',
-             {ERR => "$prog: invalid suffix in input '4MQ': 'Q'\n"},
-             {OUT => "4MQ\n"},
-             {EXIT => 2}],
-     ['ign-err-4', '--invalid=fail --suffix=Foo --to=si   7000FooF',
-              {ERR => "$prog: invalid suffix in input: '7000FooF'\n"},
-              {OUT => "7000FooF\n"},
-              {EXIT => 2}],
-     ['ign-err-5','--invalid=fail --field 3 --from=auto "Hello 40M World 90G"',
-             {ERR => "$prog: invalid number: 'World'\n"},
-             {OUT => "Hello 40M World 90G\n"},
-             {EXIT => 2}],
-     ['ign-err-6', '--invalid=fail --field 3 --to=si "Hello World"',
-             {ERR => "$prog: input line is too short, no numbers found " .
-                     "to convert in field 3\n"},
-             {OUT => "Hello World\n"},
-             {EXIT => 2}],
-     ['ign-err-7', '--invalid=fail --from=si "foo"',
-             {ERR => "$prog: invalid number: 'foo'\n"},
-             {OUT => "foo\n"},
-             {EXIT=> 2}],
-     ['ign-err-8', '--invalid=fail 12M',
-             {ERR => "$prog: rejecting suffix " .
-                     "in input: '12M' (consider using --from)\n"},
-             {OUT => "12M\n"},
-             {EXIT => 2}],
-     ['ign-err-9', '--invalid=fail --from=iec-i 12M',
-             {ERR => "$prog: missing 'i' suffix in input: " .
-                     "'12M' (e.g Ki/Mi/Gi)\n"},
-             {OUT => "12M\n"},
-             {EXIT=>2}],
      ['ign-err-10','--invalid=fail 10000000000000000000',
              {ERR => "$prog: value too large to be printed: '1e+19' " .
                      "(consider using --to)\n"},
@@ -802,53 +1001,10 @@ my @Tests =
                      "'9876543210000000000000000000'\n"},
              {OUT => "9876543210000000000000000000\n"},
              {EXIT => 2}],
-
-     ## Ignore Errors with multiple conversions
-     ['ign-err-m1', '--invalid=ignore --to=si 1000 2000 bad 3000',
-             {OUT => "1.0K\n2.0K\nbad\n3.0K"},
-             {EXIT => 0}],
-     ['ign-err-m1.1', '--invalid=ignore --to=si',
-             {IN_PIPE => "1000\n2000\nbad\n3000\n"},
-             {OUT => "1.0K\n2.0K\nbad\n3.0K"},
-             {EXIT => 0}],
-     ['ign-err-m1.3', '--invalid=fail --debug --to=si 1000 2000 3000',
-             {OUT => "1.0K\n2.0K\n3.0K"},
-             {EXIT => 0}],
-     ['ign-err-m2', '--invalid=fail --to=si 1000 Foo 3000',
-             {OUT => "1.0K\nFoo\n3.0K\n"},
-             {ERR => "$prog: invalid number: 'Foo'\n"},
-             {EXIT => 2}],
-     ['ign-err-m2.1', '--invalid=warn --to=si',
-             {IN_PIPE => "1000\nFoo\n3000\n"},
-             {OUT => "1.0K\nFoo\n3.0K"},
-             {ERR => "$prog: invalid number: 'Foo'\n"},
-             {EXIT => 0}],
-
-     # --debug will trigger a final warning at EOF
-     ['ign-err-m2.2', '--invalid=fail --debug --to=si 1000 Foo 3000',
-             {OUT => "1.0K\nFoo\n3.0K\n"},
-             {ERR => "$prog: invalid number: 'Foo'\n" .
-                     "$prog: failed to convert some of the input numbers\n"},
-             {EXIT => 2}],
-
-     ['ign-err-m3', '--invalid=fail --field 2 --from=si --to=iec',
-             {IN_PIPE => "A 1K x\nB 2M y\nC 3G z\n"},
-             {OUT => "A 1000 x\nB 2.0M y\nC 2.8G z"},
-             {EXIT => 0}],
-     # invalid input on one of the fields
-     ['ign-err-m3.1', '--invalid=fail --field 2 --from=si --to=iec',
-             {IN_PIPE => "A 1K x\nB Foo y\nC 3G z\n"},
-             {OUT => "A 1000 x\nB Foo y\nC 2.8G z\n"},
-             {ERR => "$prog: invalid number: 'Foo'\n"},
-             {EXIT => 2}],
-     # one of the lines is too short
-     ['ign-err-m3.2', '--invalid=fail --field 2 --from=si --to=iec',
-             {IN_PIPE => "A 1K x\nB\nC 3G z\n"},
-             {OUT => "A 1000 x\nB\nC 2.8G z\n"},
-             {ERR => "$prog: input line is too short, no numbers found " .
-                     "to convert in field 2\n"},
-             {EXIT => 2}],
-    );
+  );
+# Restrict these tests to systems with LDBL_DIG == 18
+(system "$prog ---debug 1 2>&1|grep 'MAX_UNSCALED_DIGITS: 18' > /dev/null") == 0
+  and push @Tests, @Limit_Tests;
 
 my @Locale_Tests =
   (
@@ -881,13 +1037,20 @@ my @Locale_Tests =
      ['lcl-fmt-4', '--format "--%-10f--" --to=si 5000000',
              {OUT=>"--5,0M      --"},
              {ENV=>"LC_ALL=$locale"}],
+     # handle zero/grouping in combination
+     ['lcl-fmt-5', '--format="%\'06f" 1234',{OUT=>"01 234"},
+             {ENV=>"LC_ALL=$locale"}],
+     ['lcl-fmt-6', '--format="%0\'6f" 1234',{OUT=>"01 234"},
+             {ENV=>"LC_ALL=$locale"}],
+     ['lcl-fmt-7', '--format="%0\'\'6f" 1234',{OUT=>"01 234"},
+             {ENV=>"LC_ALL=$locale"}],
 
   );
 if ($locale ne 'C')
   {
     # Reset locale to 'C' if LOCALE_FR_UTF8 doesn't output as expected
     # as determined by the separate printf program.
-    open(LOC_NUM, "LC_ALL=$locale printf \"%'d\" 1234|")
+    open(LOC_NUM, "env LC_ALL=$locale printf \"%'d\" 1234|")
       or die "Can't fork command: $!";
     my $loc_num = <LOC_NUM>;
     close(LOC_NUM) || die "Failed to read grouped number from printf";
@@ -942,6 +1105,9 @@ foreach $t (@Tests)
           and $e->{OUT} .= "\n"
       }
   }
+
+# Add test for null-terminated lines (after adjusting the OUT string, above).
+push @Tests, @NullDelim_Tests;
 
 my $save_temps = $ENV{SAVE_TEMPS};
 my $verbose = $ENV{VERBOSE};

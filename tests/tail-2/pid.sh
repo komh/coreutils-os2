@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test the --pid option of tail.
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,30 +22,28 @@ getlimits_
 
 touch empty here || framework_failure_
 
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
-for inotify in ---disable-inotify ''; do
+for mode in '' '---disable-inotify'; do
   # Use tail itself to create a background process to monitor,
   # which will auto exit when "here" is removed.
-  tail -f $inotify here &
-  bg_pid=$!
+  tail -f $mode here & pid=$!
 
   # Ensure that tail --pid=PID does not exit when PID is alive.
-  timeout 1 tail -f -s.1 --pid=$bg_pid $inotify here
-  test $? = 124 || fail=1
+  returns_ 124 timeout 1 tail -f -s.1 --pid=$pid $mode here || fail=1
 
-  # Cleanup background process
-  kill $bg_pid
+  cleanup_
 
   # Ensure that tail --pid=PID exits with success status when PID is dead.
   # Use an unlikely-to-be-live PID
-  timeout 10 tail -f -s.1 --pid=$PID_T_MAX $inotify empty
+  timeout 10 tail -f -s.1 --pid=$PID_T_MAX $mode empty
   ret=$?
   test $ret = 124 && skip_ "pid $PID_T_MAX present or tail too slow"
   test $ret = 0 || fail=1
 
   # Ensure tail doesn't wait for data when PID is dead
-  timeout 10 tail -f -s10 --pid=$PID_T_MAX $inotify empty
-  test $? = 124 && fail=1
+  returns_ 124 timeout 10 tail -f -s10 --pid=$PID_T_MAX $mode empty && fail=1
 done
 
 Exit $fail

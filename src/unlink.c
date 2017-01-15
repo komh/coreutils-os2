@@ -1,5 +1,5 @@
 /* unlink utility for GNU.
-   Copyright (C) 2001-2013 Free Software Foundation, Inc.
+   Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include <sys/types.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
 #include "long-options.h"
 #include "quote.h"
@@ -49,7 +50,7 @@ Usage: %s FILE\n\
              stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -83,7 +84,7 @@ main (int argc, char **argv)
     }
 
   if (unlink (argv[optind]) != 0)
-    error (EXIT_FAILURE, errno, _("cannot unlink %s"), quote (argv[optind]));
+    die (EXIT_FAILURE, errno, _("cannot unlink %s"), quoteaf (argv[optind]));
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

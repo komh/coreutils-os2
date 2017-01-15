@@ -13,7 +13,7 @@
 # This test is skipped on systems that lack LD_PRELOAD support; that's fine.
 # Similarly, on a system that lacks <dlfcn.h> or __xstat, skipping it is fine.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,10 +30,12 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ cp
+require_gcc_shared_
 
 # Replace each stat call with a call to this wrapper.
 cat > k.c <<'EOF' || framework_failure_
 #define _GNU_SOURCE
+#include <stdio.h>
 #include <sys/types.h>
 #include <dlfcn.h>
 
@@ -48,6 +50,7 @@ int
 __xstat (int ver, const char *path, struct stat *st)
 {
   static int (*real_stat)(int ver, const char *path, struct stat *st) = NULL;
+  fclose(fopen("preloaded", "w"));
   if (!real_stat)
     real_stat = dlsym (RTLD_NEXT, "__xstat");
   /* When asked to stat nonexistent "d",
@@ -57,14 +60,16 @@ __xstat (int ver, const char *path, struct stat *st)
 EOF
 
 # Then compile/link it:
-$CC -shared -fPIC -O2 k.c -o k.so -ldl \
-  || framework_failure_ 'failed to compile with -shared -fPIC'
+gcc_shared_ k.c k.so \
+  || framework_failure_ 'failed to build shared library'
 
 touch d2 || framework_failure_
 echo xyz > src || framework_failure_
 
 # Finally, run the test:
-LD_PRELOAD=./k.so cp src d || fail=1
+LD_PRELOAD=$LD_PRELOAD:./k.so cp src d || fail=1
+
+test -f preloaded || skip_ 'LD_PRELOAD was ineffective?'
 
 compare src d || fail=1
 Exit $fail

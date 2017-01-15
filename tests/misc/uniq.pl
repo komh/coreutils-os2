@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test uniq.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -80,23 +80,8 @@ sub add_z_variants($)
   return @new;
 }
 
-# I've only ever triggered the problem in a non-C locale.
-my $locale = $ENV{LOCALE_FR};
-! defined $locale || $locale eq 'none'
-  and CuSkip::skip "$prog: skipping this test -- no appropriate locale\n";
-
-# See if isblank returns true for nbsp.
-my $x = qx!env printf '\xa0'| LC_ALL=$locale tr '[:blank:]' x!;
-# If so, expect just one line of output in the schar test.
-# Otherwise, expect two.
-my $in = " y z\n\xa0 y z\n";
-my $schar_exp = $x eq 'x' ? " y z\n" : $in;
-
 my @Tests =
 (
-  # Test for a subtle, system-and-locale-dependent bug in uniq.
- ['schar', '-f1',  {IN => $in}, {OUT => $schar_exp},
-  {ENV => "LC_ALL=$locale"}],
  ['1', '', {IN=>''}, {OUT=>''}],
  ['2', '', {IN=>"a\na\n"}, {OUT=>"a\n"}],
  ['3', '', {IN=>"a\na"}, {OUT=>"a\n"}],
@@ -110,6 +95,7 @@ my @Tests =
  ['3z', '-z', {IN=>"a\na"}, {OUT=>"a\na\0"}],
  ['4z', '-z', {IN=>"a\nb"}, {OUT=>"a\nb\0"}],
  ['5z', '-z', {IN=>"a\na\nb"}, {OUT=>"a\na\nb\0"}],
+ ['10z', '-z -f1', {IN=>"a\nb\n\0c\nb\n\0"}, {OUT=>"a\nb\n\0"}],
  ['20z', '-dz', {IN=>"a\na\n"}, {OUT=>""}],
 
  # Make sure that eight bit characters work
@@ -199,7 +185,75 @@ my @Tests =
  # Check that --zero-terminated is synonymous with -z.
  ['123', '--zero-terminated', {IN=>"a\na\nb"}, {OUT=>"a\na\nb\0"}],
  ['124', '--zero-terminated', {IN=>"a\0a\0b"}, {OUT=>"a\0b\0"}],
+ # Check ignore-case
+ ['125', '',              {IN=>"A\na\n"}, {OUT=>"A\na\n"}],
+ ['126', '-i',            {IN=>"A\na\n"}, {OUT=>"A\n"}],
+ ['127', '--ignore-case', {IN=>"A\na\n"}, {OUT=>"A\n"}],
+ # Check grouping
+ ['128', '--group=prepend', {IN=>"a\na\nb\n"}, {OUT=>"\na\na\n\nb\n"}],
+ ['129', '--group=append',  {IN=>"a\na\nb\n"}, {OUT=>"a\na\n\nb\n\n"}],
+ ['130', '--group=separate',{IN=>"a\na\nb\n"}, {OUT=>"a\na\n\nb\n"}],
+ # no explicit grouping = separate
+ ['131', '--group',         {IN=>"a\na\nb\n"}, {OUT=>"a\na\n\nb\n"}],
+ ['132', '--group=both',    {IN=>"a\na\nb\n"}, {OUT=>"\na\na\n\nb\n\n"}],
+ # Grouping in the special case of a single group
+ ['133', '--group=prepend', {IN=>"a\na\n"}, {OUT=>"\na\na\n"}],
+ ['134', '--group=append',  {IN=>"a\na\n"}, {OUT=>"a\na\n\n"}],
+ ['135', '--group=separate',{IN=>"a\na\n"}, {OUT=>"a\na\n"}],
+ ['136', '--group',         {IN=>"a\na\n"}, {OUT=>"a\na\n"}],
+ # Grouping with empty input - should never print anything
+ ['137', '--group=prepend',  {IN=>""}, {OUT=>""}],
+ ['138', '--group=append',   {IN=>""}, {OUT=>""}],
+ ['139', '--group=separate', {IN=>""}, {OUT=>""}],
+ ['140', '--group=both',     {IN=>""}, {OUT=>""}],
+ # Grouping with other options - must fail
+ ['141', '--group -c',       {IN=>""}, {OUT=>""}, {EXIT=>1},
+  {ERR=>"$prog: --group is mutually exclusive with -c/-d/-D/-u\n" .
+        "Try 'uniq --help' for more information.\n"}],
+ ['142', '--group -d',       {IN=>""}, {OUT=>""}, {EXIT=>1},
+  {ERR=>"$prog: --group is mutually exclusive with -c/-d/-D/-u\n" .
+        "Try 'uniq --help' for more information.\n"}],
+ ['143', '--group -u',       {IN=>""}, {OUT=>""}, {EXIT=>1},
+  {ERR=>"$prog: --group is mutually exclusive with -c/-d/-D/-u\n" .
+        "Try 'uniq --help' for more information.\n"}],
+ ['144', '--group -D',       {IN=>""}, {OUT=>""}, {EXIT=>1},
+  {ERR=>"$prog: --group is mutually exclusive with -c/-d/-D/-u\n" .
+        "Try 'uniq --help' for more information.\n"}],
+ # Grouping with badoption
+ ['145', '--group=badoption',{IN=>""}, {OUT=>""}, {EXIT=>1},
+  {ERR=>"$prog: invalid argument 'badoption' for '--group'\n" .
+        "Valid arguments are:\n" .
+        "  - 'prepend'\n" .
+        "  - 'append'\n" .
+        "  - 'separate'\n" .
+        "  - 'both'\n" .
+        "Try '$prog --help' for more information.\n"}],
 );
+
+# Locale related tests
+
+my $locale = $ENV{LOCALE_FR};
+if ( defined $locale && $locale ne 'none' )
+  {
+    # I've only ever triggered the problem in a non-C locale.
+
+    # See if isblank returns true for nbsp.
+    my $x = qx!env printf '\xa0'| LC_ALL=$locale tr '[:blank:]' x!;
+    # If so, expect just one line of output in the schar test.
+    # Otherwise, expect two.
+    my $in = " y z\n\xa0 y z\n";
+    my $schar_exp = $x eq 'x' ? " y z\n" : $in;
+
+    my @Locale_Tests =
+    (
+      # Test for a subtle, system-and-locale-dependent bug in uniq.
+      ['schar', '-f1',  {IN => $in}, {OUT => $schar_exp},
+        {ENV => "LC_ALL=$locale"}]
+    );
+
+    push @Tests, @Locale_Tests;
+  }
+
 
 # Set _POSIX2_VERSION=199209 in the environment of each obs-plus* test.
 foreach my $t (@Tests)

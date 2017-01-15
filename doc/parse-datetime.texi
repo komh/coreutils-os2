@@ -1,11 +1,11 @@
 @c GNU date syntax documentation
 
-@c Copyright (C) 1994-2006, 2009-2013 Free Software Foundation, Inc.
+@c Copyright (C) 1994-2006, 2009-2016 Free Software Foundation, Inc.
 
 @c Permission is granted to copy, distribute and/or modify this document
 @c under the terms of the GNU Free Documentation License, Version 1.3 or
 @c any later version published by the Free Software Foundation; with no
-@c Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+@c Invariant Sections, no Front-Cover Texts, and no Back-Cover
 @c Texts.  A copy of the license is included in the ``GNU Free
 @c Documentation License'' file as part of this distribution.
 
@@ -336,8 +336,8 @@ excess precision is silently discarded.
 Here are some examples:
 
 @example
-2012-09-24T20:02:00.052-0500
-2012-12-31T23:59:59,999999999+1100
+2012-09-24T20:02:00.052-05:00
+2012-12-31T23:59:59,999999999+11:00
 1970-01-01 00:00Z
 @end example
 

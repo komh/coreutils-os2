@@ -1,7 +1,7 @@
 /* getndelim2 - Read a line from a stream, stopping at one of 2 delimiters,
    with bounded memory allocation.
 
-   Copyright (C) 1993, 1996-1998, 2000, 2003-2004, 2006, 2008-2013 Free
+   Copyright (C) 1993, 1996-1998, 2000, 2003-2004, 2006, 2008-2016 Free
    Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -52,7 +52,7 @@
 #endif
 
 /* Use this to suppress gcc's "...may be used before initialized" warnings. */
-#ifdef lint
+#if defined GCC_LINT || defined lint
 # define IF_LINT(Code) Code
 #else
 # define IF_LINT(Code) /* empty */

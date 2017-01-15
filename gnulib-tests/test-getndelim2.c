@@ -1,5 +1,5 @@
 /* Test of getndelim2() function.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ main (void)
   {
     int i;
     for (i = 0; i < 16; i++)
-      fprintf (f, "%500x%c", i, i % 2 ? '\n' : '\r');
+      fprintf (f, "%500x%c", i + 0u, i % 2 ? '\n' : '\r');
   }
   rewind (f);
   {

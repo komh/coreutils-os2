@@ -1,5 +1,5 @@
 /* cksum -- calculate and print POSIX checksums and sizes of files
-   Copyright (C) 1992-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
-
+
 /* Written by Q. Frank Xia, qx@math.columbia.edu.
    Cosmetic changes and reorganization by David MacKenzie, djm@gnu.ai.mit.edu.
 
@@ -102,13 +102,14 @@ main (void)
               crc_remainder (i * 5 + 5));
     }
   printf ("\n};\n");
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }
 
 #else /* !CRCTAB */
 
 # include <getopt.h>
 # include "long-options.h"
+# include "die.h"
 # include "error.h"
 
 /* Number of bytes to read at once.  */
@@ -201,7 +202,7 @@ cksum (const char *file, bool print_name)
       fp = fopen (file, (O_BINARY ? "rb" : "r"));
       if (fp == NULL)
         {
-          error (0, errno, "%s", file);
+          error (0, errno, "%s", quotef (file));
           return false;
         }
     }
@@ -213,7 +214,7 @@ cksum (const char *file, bool print_name)
       unsigned char *cp = buf;
 
       if (length + bytes_read < length)
-        error (EXIT_FAILURE, 0, _("%s: file too long"), file);
+        die (EXIT_FAILURE, 0, _("%s: file too long"), quotef (file));
       length += bytes_read;
       while (bytes_read--)
         crc = (crc << 8) ^ crctab[((crc >> 24) ^ *cp++) & 0xFF];
@@ -223,7 +224,7 @@ cksum (const char *file, bool print_name)
 
   if (ferror (fp))
     {
-      error (0, errno, "%s", file);
+      error (0, errno, "%s", quotef (file));
       if (!STREQ (file, "-"))
         fclose (fp);
       return false;
@@ -231,7 +232,7 @@ cksum (const char *file, bool print_name)
 
   if (!STREQ (file, "-") && fclose (fp) == EOF)
     {
-      error (0, errno, "%s", file);
+      error (0, errno, "%s", quotef (file));
       return false;
     }
 
@@ -248,7 +249,7 @@ cksum (const char *file, bool print_name)
     printf ("%u %s\n", (unsigned int) crc, hp);
 
   if (ferror (stdout))
-    error (EXIT_FAILURE, errno, "-: %s", _("write error"));
+    die (EXIT_FAILURE, errno, "-: %s", _("write error"));
 
   return true;
 }
@@ -271,7 +272,7 @@ Print CRC checksum and byte counts of each FILE.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -311,8 +312,8 @@ main (int argc, char **argv)
     }
 
   if (have_read_stdin && fclose (stdin) == EOF)
-    error (EXIT_FAILURE, errno, "-");
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+    die (EXIT_FAILURE, errno, "-");
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 #endif /* !CRCTAB */

@@ -2,7 +2,7 @@
 # Test some of cp's options and how cp handles situations in
 # which a naive implementation might overwrite the source file.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ ln dangling-slink hard-link > /dev/null 2>&1 \
 rm -f no-such dangling-slink hard-link
 
 test $hard_link_to_symlink_does_the_deref = yes \
-    && remove_these_sed='/^0 -[bf]*l .*sl1 ->/d' \
+    && remove_these_sed='/^0 -[bf]*l .*sl1 ->/d; /hlsl/d' \
     || remove_these_sed='/^ELIDE NO TEST OUTPUT/d'
 
 exec 3>&1 1> actual
@@ -44,7 +44,8 @@ exec 3>&1 1> actual
 # FIXME: This should be bigger: like more than 8k
 contents=XYZ
 
-for args in 'foo symlink' 'symlink foo' 'foo foo' 'sl1 sl2' 'foo hardlink'; do
+for args in 'foo symlink' 'symlink foo' 'foo foo' 'sl1 sl2' \
+            'foo hardlink' 'hlsl sl2'; do
   for options in '' -d -f -df --rem -b -bd -bf -bdf \
                  -l -dl -fl -dfl -bl -bdl -bfl -bdfl; do
     case $args$options in
@@ -76,6 +77,8 @@ for args in 'foo symlink' 'symlink foo' 'foo foo' 'sl1 sl2' 'foo hardlink'; do
         continue ;;
       'yes:sl1 sl2:-bfl')
         continue ;;
+      yes:hlsl*)
+        continue ;;
     esac
 
     rm -rf dir
@@ -86,6 +89,7 @@ for args in 'foo symlink' 'symlink foo' 'foo foo' 'sl1 sl2' 'foo hardlink'; do
     case "$args" in *hardlink*) ln foo hardlink ;; esac
     case "$args" in *sl1*) ln -s foo sl1;; esac
     case "$args" in *sl2*) ln -s foo sl2;; esac
+    case "$args" in *hlsl*) ln sl2 hlsl;; esac
     (
       (
         # echo 1>&2 cp $options $args
@@ -189,9 +193,9 @@ cat <<\EOF | sed "$remove_these_sed" > expected
 0 -bf (foo sl1 -> foo sl2 sl2.~1~ -> foo)
 0 -bdf (foo sl1 -> foo sl2 -> foo sl2.~1~ -> foo)
 1 -l [cp: cannot create hard link 'sl2' to 'sl1'] (foo sl1 -> foo sl2 -> foo)
-0 -fl (foo sl1 -> foo sl2 -> foo)
-0 -bl (foo sl1 -> foo sl2 -> foo sl2.~1~ -> foo)
-0 -bfl (foo sl1 -> foo sl2 -> foo sl2.~1~ -> foo)
+0 -fl (foo sl1 -> foo sl2)
+0 -bl (foo sl1 -> foo sl2 sl2.~1~ -> foo)
+0 -bfl (foo sl1 -> foo sl2 sl2.~1~ -> foo)
 
 1 [cp: 'foo' and 'hardlink' are the same file] (foo hardlink)
 1 -d [cp: 'foo' and 'hardlink' are the same file] (foo hardlink)
@@ -210,6 +214,24 @@ cat <<\EOF | sed "$remove_these_sed" > expected
 0 -bdl (foo hardlink)
 0 -bfl (foo hardlink)
 0 -bdfl (foo hardlink)
+
+1 [cp: 'hlsl' and 'sl2' are the same file] (foo hlsl -> foo sl2 -> foo)
+0 -d (foo hlsl -> foo sl2 -> foo)
+1 -f [cp: 'hlsl' and 'sl2' are the same file] (foo hlsl -> foo sl2 -> foo)
+0 -df (foo hlsl -> foo sl2 -> foo)
+0 --rem (foo hlsl -> foo sl2)
+0 -b (foo hlsl -> foo sl2 sl2.~1~ -> foo)
+0 -bd (foo hlsl -> foo sl2 -> foo sl2.~1~ -> foo)
+0 -bf (foo hlsl -> foo sl2 sl2.~1~ -> foo)
+0 -bdf (foo hlsl -> foo sl2 -> foo sl2.~1~ -> foo)
+1 -l [cp: cannot create hard link 'sl2' to 'hlsl'] (foo hlsl -> foo sl2 -> foo)
+0 -dl (foo hlsl -> foo sl2 -> foo)
+0 -fl (foo hlsl -> foo sl2)
+0 -dfl (foo hlsl -> foo sl2 -> foo)
+0 -bl (foo hlsl -> foo sl2 sl2.~1~ -> foo)
+0 -bdl (foo hlsl -> foo sl2 -> foo)
+0 -bfl (foo hlsl -> foo sl2 sl2.~1~ -> foo)
+0 -bdfl (foo hlsl -> foo sl2 -> foo)
 
 EOF
 

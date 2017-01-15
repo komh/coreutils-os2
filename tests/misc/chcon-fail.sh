@@ -2,7 +2,7 @@
 # Ensure that chcon fails when it should.
 # These tests don't use any actual SE Linux syscalls.
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,16 +22,16 @@ print_ver_ chcon
 
 
 # neither context nor file
-chcon 2> /dev/null && fail=1
+returns_ 1 chcon 2> /dev/null || fail=1
 
 # No file
-chcon CON 2> /dev/null && fail=1
+returns_ 1 chcon CON 2> /dev/null || fail=1
 
 # No file
 touch f
-chcon --reference=f 2> /dev/null && fail=1
+returns_ 1 chcon --reference=f 2> /dev/null || fail=1
 
 # No file
-chcon -u anyone 2> /dev/null && fail=1
+returns_ 1 chcon -u anyone 2> /dev/null || fail=1
 
 Exit $fail

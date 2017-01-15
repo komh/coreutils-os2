@@ -2,7 +2,7 @@
 # Ensure dd treats '--' properly.
 # Also test some flag values.
 
-# Copyright (C) 1999-2013 Free Software Foundation, Inc.
+# Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,10 +32,15 @@ ln -s $tmp_in $tmp_sym || framework_failure_
 
 # check status=none suppresses all output to stderr
 dd status=none if=$tmp_in of=/dev/null 2> err || fail=1
-test -s err && fail=1
-# check status=none is cumulative with status=noxfer
+compare /dev/null err || fail=1
+dd status=none if=$tmp_in skip=2 of=/dev/null 2> err || fail=1
+compare /dev/null err || fail=1
+# check later status=none overrides earlier status=noxfer
+dd status=noxfer status=none if=$tmp_in of=/dev/null 2> err || fail=1
+compare /dev/null err || fail=1
+# check later status=noxfer overrides earlier status=none
 dd status=none status=noxfer if=$tmp_in of=/dev/null 2> err || fail=1
-test -s err && fail=1
+compare /dev/null err && fail=1
 
 dd if=$tmp_in of=$tmp_out 2> /dev/null || fail=1
 compare $tmp_in $tmp_out || fail=1
@@ -56,12 +61,12 @@ case $(cat /dev/stdin <$tmp_in 2>/dev/null) in
 esac
 
 if dd iflag=nofollow if=$tmp_in count=0 2> /dev/null; then
-  dd iflag=nofollow if=$tmp_sym count=0 2> /dev/null && fail=1
+  returns_ 1 dd iflag=nofollow if=$tmp_sym count=0 2> /dev/null || fail=1
 fi
 
 if dd iflag=directory if=. count=0 2> /dev/null; then
   dd iflag=directory count=0 <. 2> /dev/null || fail=1
-  dd iflag=directory count=0 <$tmp_in 2> /dev/null && fail=1
+  returns_ 1 dd iflag=directory count=0 <$tmp_in 2> /dev/null || fail=1
 fi
 
 old_ls=$(ls -u --full-time $tmp_in)
@@ -82,8 +87,8 @@ EOF
 fi
 
 if dd oflag=nolinks if=$tmp_in of=$tmp_out 2> /dev/null; then
-  dd iflag=nolinks if=$tmp_in > /dev/null 2>&1 && fail=1
-  dd iflag=nolinks < $tmp_in > /dev/null 2>&1 && fail=1
+  returns_ 1 dd iflag=nolinks if=$tmp_in > /dev/null 2>&1 || fail=1
+  returns_ 1 dd iflag=nolinks < $tmp_in > /dev/null 2>&1 || fail=1
   dd oflag=nolinks < $tmp_in > $tmp_out 2>&1 || fail=1
 fi
 
@@ -101,5 +106,15 @@ compare out_ok out || fail=1
 compare err_ok err || fail=1
 
 test $fail -eq 0 && fail=$warn
+
+# Check a warning is issued for ambiguous 0x... numbers
+dd if=/dev/null count=0x1 seek=0x1 skip=0x1 status=none 2>err || fail=1
+cat <<\EOF >exp
+dd: warning: '0x' is a zero multiplier; use '00x' if that is intended
+dd: warning: '0x' is a zero multiplier; use '00x' if that is intended
+dd: warning: '0x' is a zero multiplier; use '00x' if that is intended
+EOF
+compare exp err || fail=1
+
 
 Exit $fail

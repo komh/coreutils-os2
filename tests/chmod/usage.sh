@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify that chmod works correctly with odd option combinations.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ for case in $cases; do
   case $files in
   '')
     touch -- $all_files || framework_failure_
-    chmod $args 2>/dev/null && fail=1
+    returns_ 1 chmod $args 2>/dev/null || fail=1
     ;;
   ?*)
     touch -- $files || framework_failure_
@@ -77,7 +77,7 @@ for case in $cases; do
       # chmod has a bug if it succeeds even though $file is absent.
       rm -f -- $all_files && touch -- $files && rm -- $file \
           || framework_failure_
-      chmod $args 2>/dev/null && fail=1
+      returns_ 1 chmod $args 2>/dev/null || fail=1
     done
     ;;
   esac

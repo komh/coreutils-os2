@@ -1,7 +1,7 @@
-#! /bin/sh
+#!/bin/sh
 # Basic tests for "install".
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,13 +46,17 @@ is not readable, so skipping the remaining tests in this file."
 cp "$just_built_dd" . || fail=1
 cp $dd $dd2 || fail=1
 
-strip $dd2 \
-  || warn_ "WARNING!!! Your strip command doesn't seem to work,
+strip=-s
+if ! strip $dd2; then
+  ! test -e $abs_top_builddir/src/coreutils \
+    && warn_ "WARNING!!! Your strip command doesn't seem to work,
 so skipping the test of install's --strip option."
+  strip=
+fi
 
 # This test would fail with 3.16s when using versions of strip that
 # don't work on read-only files (the one from binutils works fine).
-ginstall -s -c -m 555 $dd $dir || fail=1
+ginstall $strip -c -m 555 $dd $dir || fail=1
 # Make sure the source file is still around.
 test -f $dd || fail=1
 
@@ -76,8 +80,8 @@ iwd=$(pwd)
 mkdir sub || fail=1
 (cd sub &&
  chmod 0 . &&
- ginstall -d "$iwd/xx/yy" rel/sub1 rel/sub2 2> /dev/null
-) && fail=1
+ returns_ 1 ginstall -d "$iwd/xx/yy" rel/sub1 rel/sub2 2> /dev/null
+) || fail=1
 chmod 755 sub
 
 # Ensure that the first argument-dir has been created.
@@ -111,5 +115,37 @@ ginstall: creating directory 'sub3/a/b'
 ginstall: creating directory 'sub3/a/b/c'
 'file' -> 'sub3/a/b/c/file'
 EOF
+
+# Test -D together with -t (available since coreutils >= 8.23).
+# Let ginstall create a completely new destination hierarchy.
+ginstall -t sub4/a/b/c -Dv file >out 2>&1 || fail=1
+compare - out <<\EOF || fail=1
+ginstall: creating directory 'sub4'
+ginstall: creating directory 'sub4/a'
+ginstall: creating directory 'sub4/a/b'
+ginstall: creating directory 'sub4/a/b/c'
+'file' -> 'sub4/a/b/c/file'
+EOF
+
+# Ensure that -D with an already existing file as -t's option argument fails.
+touch sub4/file_exists || framework_failure_
+ginstall -t sub4/file_exists -Dv file >out 2>&1 && fail=1
+compare - out <<\EOF || fail=1
+ginstall: target 'sub4/file_exists' is not a directory
+EOF
+
+# Ensure that -D with an already existing directory for -t's option argument
+# succeeds.
+mkdir sub4/dir_exists || framework_failure_
+touch sub4/dir_exists || framework_failure_
+ginstall -t sub4/dir_exists -Dv file >out 2>&1 || fail=1
+compare - out <<\EOF || fail=1
+'file' -> 'sub4/dir_exists/file'
+EOF
+
+# Ensure omitted directories are diagnosed
+returns_ 1 ginstall . . 2>err || fail=1
+printf '%s\n' "ginstall: omitting directory '.'" >exp || framework_failure_
+compare exp err || fail=1
 
 Exit $fail

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test whether cp -i prompts in the right place.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,6 @@ echo n | cp -vnf c d 2>/dev/null > out7 || fail=1
 compare out7 out_empty || fail=1
 
 # options --backup and --no-clobber are mutually exclusive
-cp -bn c d 2>/dev/null && fail=1
+returns_ 1 cp -bn c d 2>/dev/null || fail=1
 
 Exit $fail

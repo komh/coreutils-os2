@@ -1,6 +1,6 @@
 /* error-checking interface to strtod-like functions
 
-   Copyright (C) 1996, 1999-2000, 2003-2006, 2009-2013 Free Software
+   Copyright (C) 1996, 1999-2000, 2003-2006, 2009-2016 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -36,10 +36,9 @@
 
 /* An interface to a string-to-floating-point conversion function that
    encapsulates all the error checking one should usually perform.
-   Like strtod/strtold, but upon successful
-   conversion put the result in *RESULT and return true.  Return
-   false and don't modify *RESULT upon any failure.  CONVERT
-   specifies the conversion function, e.g., strtod itself.  */
+   Like strtod/strtold, but stores the conversion in *RESULT,
+   and returns true upon successful conversion.
+   CONVERT specifies the conversion function, e.g., strtod itself.  */
 
 bool
 XSTRTOD (char const *str, char const **ptr, DOUBLE *result,
@@ -58,7 +57,8 @@ XSTRTOD (char const *str, char const **ptr, DOUBLE *result,
   else
     {
       /* Allow underflow (in which case CONVERT returns zero),
-         but flag overflow as an error. */
+         but flag overflow as an error.  The user can decide
+         to use the limits in RESULT upon ERANGE.  */
       if (val != 0 && errno == ERANGE)
         ok = false;
     }

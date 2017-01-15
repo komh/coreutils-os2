@@ -1,5 +1,5 @@
 /* Test of wcwidth() function.
-   Copyright (C) 2007-2013 Free Software Foundation, Inc.
+   Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ SIGNATURE_CHECK (wcwidth, int, (wchar_t));
 #include <locale.h>
 #include <string.h>
 
+#include "c-ctype.h"
 #include "localcharset.h"
 #include "macros.h"
 
@@ -34,9 +35,11 @@ main ()
 {
   wchar_t wc;
 
+#ifdef C_CTYPE_ASCII
   /* Test width of ASCII characters.  */
   for (wc = 0x20; wc < 0x7F; wc++)
     ASSERT (wcwidth (wc) == 1);
+#endif
 
   /* Switch to an UTF-8 locale.  */
   if (setlocale (LC_ALL, "fr_FR.UTF-8") != NULL

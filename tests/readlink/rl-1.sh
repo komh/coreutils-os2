@@ -1,7 +1,7 @@
 #!/bin/sh
 # test for readlink mode.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,13 +31,13 @@ test "$v" = regfile || fail=1
 v=$(readlink link2) || fail=1
 test "$v" = missing || fail=1
 
-v=$(readlink subdir) && fail=1
+v=$(returns_ 1 readlink subdir) || fail=1
 test -z "$v" || fail=1
 
-v=$(readlink regfile) && fail=1
+v=$(returns_ 1 readlink regfile) || fail=1
 test -z "$v" || fail=1
 
-v=$(readlink missing) && fail=1
+v=$(returns_ 1 readlink missing) || fail=1
 test -z "$v" || fail=1
 
 Exit $fail

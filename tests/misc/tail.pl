@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test tail.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 use strict;
 
 my $prog = 'tail';
-my $normalize_filename = {ERR_SUBST => 's/^$prog: .*?:/$prog: -:/'};
+my $normalize_strerror = "s/': .*/'/";
 
 # Turn off localization of executable's output.
 @ENV{qw(LANGUAGE LANG LC_ALL)} = ('C') x 3;
@@ -59,7 +59,7 @@ my @tv = (
  "$prog: cannot open '+cl' for reading: No such file or directory\n"],
 
 ['err-2', '-cl', '', '', 1,
- "$prog: l: invalid number of bytes\n"],
+ "$prog: invalid number of bytes: 'l'\n", $normalize_strerror],
 
 ['err-3', '+2cz', '', '', 1,
  "$prog: cannot open '+2cz' for reading: No such file or directory\n"],
@@ -72,9 +72,10 @@ my @tv = (
 # the diagnostic: 'tail: 99999999999999999999: invalid number of bytes'
 # on all systems... probably, for now, maybe.
 ['err-5', '-c99999999999999999999', '', '', 1,
- "$prog: 99999999999999999999: invalid number of bytes\n"],
+ "$prog: invalid number of bytes: '99999999999999999999'\n",
+ $normalize_strerror],
 ['err-6', '-c --', '', '', 1,
- "$prog: -: invalid number of bytes\n", $normalize_filename],
+ "$prog: invalid number of bytes: '-'\n", $normalize_strerror],
 
 # Same as -n 10
 ['minus-1', '-', '', '', 0],
@@ -100,22 +101,29 @@ my @tv = (
 
 # With textutils-1.22, this failed.
 ['f-pipe-1', '-f -n 1', "a\nb\n", "b\n", 0],
+
+# --zero-terminated
+['zero-1', '-z -n 1', "x\0y", "y", 0],
+['zero-2', '-z -n 2', "x\0y", "x\0y", 0],
 );
 
 my @Tests;
 
 foreach my $t (@tv)
   {
-    my ($test_name, $flags, $in, $exp, $ret, $err_msg) = @$t;
+    my ($test_name, $flags, $in, $exp, $ret, $err_msg, $err_sub) = @$t;
     my $e = [$test_name, $flags, {IN=>$in}, {OUT=>$exp}];
     $ret
-      and push @$e, {EXIT=>$ret}, {ERR=>$err_msg};
+      and push @$e, {EXIT=>$ret}, {ERR=>$err_msg}, {ERR_SUBST=>$err_sub};
 
-    $test_name =~ /^(obs-plus-|minus-)/
+    $test_name =~ /^minus-/
       and push @$e, {ENV=>'_POSIX2_VERSION=199209'};
 
     $test_name =~ /^(err-6|c-2)$/
       and push @$e, {ENV=>'_POSIX2_VERSION=200112'};
+
+    $test_name =~ /^obs-plus-/
+      and push @$e, {ENV=>'_POSIX2_VERSION=200809'};
 
     $test_name =~ /^f-pipe-/
       and push @$e, {ENV=>'POSIXLY_CORRECT=1'};

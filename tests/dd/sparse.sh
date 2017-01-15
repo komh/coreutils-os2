@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ dd
+is_local_dir_ . || very_expensive_
 require_sparse_support_
 
 # Ensure basic sparse generation works
@@ -50,6 +51,9 @@ dd if=/dev/zero    of=file.in bs=1M count=1 seek=1 conv=notrunc || fail=1
 
 kb_alloc() { du -k "$1"|cut -f1; }
 
+# sync out data for async allocators like NFS/BTRFS
+# sync file.in || fail=1
+
 # If our just-created input file appears to be too small,
 # skip the remaining tests.  On at least Solaris 10 with NFS,
 # file.in is reported to occupy <= 1KiB for about 50 seconds
@@ -58,11 +62,21 @@ if test $(kb_alloc file.in) -gt 3000; then
 
   # Ensure NUL blocks smaller than the block size are not made sparse.
   # Here, with a 2MiB block size, dd's conv=sparse must *not* introduce a hole.
-  dd if=file.in of=file.out bs=2M conv=sparse
+  dd if=file.in of=file.out bs=2M conv=sparse || fail=1
+
+  # Intermittently BTRFS returns 0 allocation for file.out unless synced
+  sync file.out || framework_failure_
   test 2500 -lt $(kb_alloc file.out) || fail=1
 
+  # Note we recreate a sparse file first to avoid
+  # speculative preallocation seen in XFS, where a write() that
+  # extends a file can preallocate some extra space that
+  # a subsequent seek will not convert to a hole.
+  rm -f file.out
+  truncate --size=3M file.out
+
   # Ensure that this 1MiB string of NULs *is* converted to a hole.
-  dd if=file.in of=file.out bs=1M conv=sparse
+  dd if=file.in of=file.out bs=1M conv=sparse,notrunc
   test $(kb_alloc file.out) -lt 2500 || fail=1
 
 fi

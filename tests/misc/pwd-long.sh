@@ -2,7 +2,7 @@
 # -*- perl -*-
 # Ensure that pwd works even when run from a very deep directory.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,7 +56,6 @@ sub normalize_to_cwd_relative ($$$)
 }
 
 # Set up a safe, well-known environment
-delete @ENV{qw(BASH_ENV CDPATH ENV)};
 $ENV{IFS}  = '';
 
 # Taint checking requires a sanitized $PATH.  This script performs no $PATH

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure dd recognizes failure to write to stderr.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,12 +32,12 @@ dd --help >/dev/null 2>&- || fail=1
 # This exposes a failure present in 6.11 through 7.5.
 if "$p/src/test" -w /dev/stderr 2>/dev/null &&
    "$p/src/test" ! -w /dev/stderr 2>&-; then
-  : | dd 2>&- && fail=1
+  : | returns_ 1 dd 2>&- || fail=1
 fi
 
 # Likewise for /dev/full, if /dev/full works.
 if test -w /dev/full && test -c /dev/full; then
-  : | dd 2>/dev/full && fail=1
+  : | returns_ 1 dd 2>/dev/full || fail=1
 fi
 
 Exit $fail

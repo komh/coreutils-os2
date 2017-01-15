@@ -2,7 +2,7 @@
 # Ensure that 'rm -d -i dir' (i.e., without --recursive) gives a prompt and
 # then deletes the directory if it is empty
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ printf "%s" \
     > exp.err || framework_failure_
 
 printf "%s\n" \
-    "removed directory: 'd'" \
+    "removed directory 'd'" \
     > exp || framework_failure_
 
 compare exp out || fail=1

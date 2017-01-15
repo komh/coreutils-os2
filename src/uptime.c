@@ -1,5 +1,5 @@
 /* GNU's uptime.
-   Copyright (C) 1992-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #endif
 
 #include "c-strtod.h"
+#include "die.h"
 #include "error.h"
 #include "long-options.h"
 #include "quote.h"
@@ -122,7 +123,7 @@ print_uptime (size_t n, const STRUCT_UTMP *this)
 #endif
     {
       if (boot_time == 0)
-        error (EXIT_FAILURE, errno, _("couldn't get boot time"));
+        die (EXIT_FAILURE, errno, _("couldn't get boot time"));
       uptime = time_now - boot_time;
     }
   updays = uptime / 86400;
@@ -176,14 +177,16 @@ static void
 uptime (const char *filename, int options)
 {
   size_t n_users;
-  STRUCT_UTMP *utmp_buf;
+  STRUCT_UTMP *utmp_buf = NULL;
 
 #if HAVE_UTMPX_H || HAVE_UTMP_H
   if (read_utmp (filename, &n_users, &utmp_buf, options) != 0)
-    error (EXIT_FAILURE, errno, "%s", filename);
+    die (EXIT_FAILURE, errno, "%s", quotef (filename));
 #endif
 
   print_uptime (n_users, utmp_buf);
+
+  IF_LINT (free (utmp_buf));
 }
 
 void
@@ -215,7 +218,7 @@ If FILE is not specified, use %s.  %s as FILE is common.\n\
               UTMP_FILE, WTMP_FILE);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -251,5 +254,5 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

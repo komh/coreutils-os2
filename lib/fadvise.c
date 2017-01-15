@@ -1,5 +1,5 @@
 /* Declare an access pattern hint for files.
-   Copyright (C) 2010-2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,6 +13,12 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+/* Without this pragma, gcc suggests that (given !HAVE_POSIX_FADVISE)
+   the fdadvise function might be a candidate for attribute 'const'.  */
+#if (__GNUC__ == 4 && 6 <= __GNUC_MINOR__) || 4 < __GNUC__
+# pragma GCC diagnostic ignored "-Wsuggest-attribute=const"
+#endif
 
 #include <config.h>
 #include "fadvise.h"

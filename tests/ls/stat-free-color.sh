@@ -1,7 +1,7 @@
 #!/bin/sh
 # Show that --color need not use stat, as long as we have d_type support.
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,12 +18,14 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ ls
-require_strace_ stat
-require_dirent_d_type_
 
-for i in 1 2 3; do
-  ln -s nowhere dangle-$i || framework_failure_
-done
+# Note this list of _file name_ stat functions must be
+# as cross platform as possible and so doesn't include
+# fstatat64 as that's not available on aarch64 for example.
+stats='stat,lstat,stat64,lstat64,newfstatat'
+
+require_strace_ $stats
+require_dirent_d_type_
 
 # Disable enough features via LS_COLORS so that ls --color
 # can do its job without calling stat (other than the obligatory
@@ -50,21 +52,33 @@ EOF
 eval $(dircolors -b color-without-stat)
 
 # The system may perform additional stat-like calls before main.
-# To avoid counting those, first get a baseline count by running
-# ls with only the --help option.  Then, compare that with the
+# Furthermore, underlying library functions may also implicitly
+# add an extra stat call, e.g. opendir since glibc-2.21-360-g46f894d.
+# To avoid counting those, first get a baseline count for running
+# ls with one empty directory argument.  Then, compare that with the
 # invocation under test.
-strace -o log-help -e stat,lstat,stat64,lstat64 ls --help >/dev/null || fail=1
-n_lines_help=$(wc -l < log-help)
+mkdir d || framework_failure_
 
-strace -o log -e stat,lstat,stat64,lstat64 ls --color=always . || fail=1
-n_lines=$(wc -l < log)
+strace -o log1 -e $stats ls --color=always d || fail=1
+n_stat1=$(wc -l < log1) || framework_failure_
 
-n_stat=$(expr $n_lines - $n_lines_help)
+test $n_stat1 = 0 \
+  && skip_ 'No stat calls recognized on this platform'
 
-# Expect one or two stat calls.
-case $n_stat in
-  1) ;;
-  *) fail=1; head -n30 log* ;;
-esac
+# Populate the test directory.
+mkdir d/subdir \
+  && touch d/regf \
+  && ln d/regf d/hlink \
+  && ln -s regf d/slink \
+  && ln -s nowhere d/dangle \
+  || framework_failure_
+
+# Invocation under test.
+strace -o log2 -e $stats ls --color=always d || fail=1
+n_stat2=$(wc -l < log2) || framework_failure_
+
+# Expect the same number of stat calls.
+test $n_stat1 = $n_stat2 \
+  || { fail=1; head -n30 log*; }
 
 Exit $fail

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "date".
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,20 +41,6 @@ my $dm = '1997-02-19'; # next month
 my $dy = '1998-01-19'; # next month
 
 my $fmt = "'+%Y-%m-%d %T'";
-
-# Determine a number of seconds that will provoke an invalid
-# time diagnostic from date.  If possible, use a number that
-# is less than 2^64, yet so large that it would cause the resulting
-# tm_year value to be too large for a 32-bit int.  But some systems
-# (Solaris 8) have a buggy localtime that mistakenly accepts such
-# invalid times and give garbage in tm_year.  Other systems might
-# have an int type that is wider than 32.  So if this localtime
-# call succeeds, use 2^64 as the number of seconds.
-my $n_seconds = 72057594037927935;
-my @d = localtime ($n_seconds);
-my $year = $d[5];
-defined $year
-  and $n_seconds = '18446744073709551616';
 
 my @Tests =
     (
@@ -99,6 +85,11 @@ my @Tests =
      ['W92-1', "--date '1992-1-1' +%W", {OUT=>"00"}],
      ['W92-2', "--date '1992-1-5' +%W", {OUT=>"00"}],
      ['W92-3', "--date '1992-1-6' +%W", {OUT=>"01"}],
+
+     ['q-1', "--date '2016-1-1' +%q", {OUT=>"1"}],
+     ['q-2', "--date '2016-4-1' +%q", {OUT=>"2"}],
+     ['q-3', "--date '2016-7-1' +%q", {OUT=>"3"}],
+     ['q-4', "--date '2016-10-1' +%q", {OUT=>"4"}],
 
      ['millen-1', "--date '1998-1-1 3 years' +%Y", {OUT=>"2001"}],
 
@@ -203,17 +194,17 @@ my @Tests =
      ['moname-d-y-r', '--rfc-3339=date -d May-23-2003', {OUT=>"2003-05-23"}],
 
      ['epoch', '--iso=sec -d @31536000',
-      {OUT=>"1971-01-01T00:00:00+0000"}],
+      {OUT=>"1971-01-01T00:00:00+00:00"}],
      ['epoch-r', '--rfc-3339=sec -d @31536000',
       {OUT=>"1971-01-01 00:00:00+00:00"}],
 
      ['ns-10', '--iso=ns', '-d "1969-12-31 13:00:00.00000001-1100"',
-      {OUT=>"1970-01-01T00:00:00,000000010+0000"}],
+      {OUT=>"1970-01-01T00:00:00,000000010+00:00"}],
      ['ns-10-r', '--rfc-3339=ns', '-d "1969-12-31 13:00:00.00000001-1100"',
       {OUT=>"1970-01-01 00:00:00.000000010+00:00"}],
 
      ['ns-max32', '--iso=ns', '-d "2038-01-19 03:14:07.999999999"',
-      {OUT=>"2038-01-19T03:14:07,999999999+0000"}],
+      {OUT=>"2038-01-19T03:14:07,999999999+00:00"}],
      ['ns-max32-r', '--rfc-3339=ns', '-d "2038-01-19 03:14:07.999999999"',
       {OUT=>"2038-01-19 03:14:07.999999999+00:00"}],
 
@@ -232,10 +223,14 @@ my @Tests =
      # Don't recognize %:z with a field width between the ':' and the 'z'.
      ['tz-5wf', '+%:8z', {OUT=>"%:8z"}, {ENV=>'TZ=XXX0:01'}],
 
+     # Test alphabetic timezone abbrv
+     ['tz-6', '+%Z', {OUT=>"UTC"}],
+     ['tz-7', '+%Z', {OUT=>"JST"}, {ENV=>'TZ=JST-9'}],
+
      ['ns-relative',
       '--iso=ns',
       "-d'1970-01-01 00:00:00.1234567 UTC +961062237.987654321 sec'",
-      {OUT=>"2000-06-15T09:43:58,111111021+0000"}],
+      {OUT=>"2000-06-15T09:43:58,111111021+00:00"}],
      ['ns-relativer', '--rfc-3339=ns',
       "-d'1970-01-01 00:00:00.1234567 UTC +961062237.987654321 sec'",
       {OUT=>"2000-06-15 09:43:58.111111021+00:00"}],
@@ -255,22 +250,24 @@ my @Tests =
      ['neg-secs', '-d @-22 +%05s', {OUT=>"-0022"}],
      ['neg-secs2', '-d @-22 +%_5s', {OUT=>"  -22"}],
 
-     # Before today's fix, date would print uninitialized data
-     # to standard output for an out-of-range date:
-     # $ date -d @$(echo 2^56-1|bc) 2> /dev/null | od -a -N3
-     # 0000000   p   4   6
-     # 0000003
-     ['uninit-64', "-d \@$n_seconds",
-      {OUT=>''},
-      # Use ERR_SUBST to get around fact that the diagnostic
-      # you get on a system with 32-bit time_t is not the same as
-      # the one you get for a system where it's 64 bits wide:
-      # - date: time 72057594037927935 is out of range
-      # + date: invalid date '@72057594037927935'
-      {ERR_SUBST => 's/.*//'},
-      {ERR => "\n"},
-      {EXIT => 1},
-     ],
+     # FIXME: Ensure date doesn't print uninitialized data
+     # for an out-of-range date.  This test is currently
+     # disabled as various systems have different limits
+     # for localtime(), and we can't use perl for example
+     # to determine those limits as it doesn't always call
+     # down to the system localtime() as it has configure
+     # time checks and settings itself for these limits.
+     #['uninit-64', "-d \@72057594037927935",
+     # {OUT=>''},
+     # # Use ERR_SUBST to get around fact that the diagnostic
+     # # you get on a system with 32-bit time_t is not the same as
+     # # the one you get for a system where it's 64 bits wide:
+     # # - date: time 72057594037927935 is out of range
+     # # + date: invalid date '@72057594037927935'
+     # {ERR_SUBST => 's/.*//'},
+     # {ERR => "\n"},
+     # {EXIT => 1},
+     #],
 
      ['fill-1', '-d 1999-12-08 +%_3d', {OUT=>'  8'}],
      ['fill-2', '-d 1999-12-08 +%03d', {OUT=>'008'}],
@@ -285,6 +282,13 @@ my @Tests =
 
      ['invalid-high-bit-set', "-d '\xb0'",
       {ERR => "date: invalid date '\\260'\n"},
+      {EXIT => 1},
+     ],
+
+     # From coreutils-5.3.0 to 8.22 inclusive
+     # this would either infinite loop or crash
+     ['invalid-TZ-crash', "-d 'TZ=\"\"\"'",
+      {ERR => "date: invalid date 'TZ=\"\"\"'\n"},
       {EXIT => 1},
      ],
     );
@@ -314,6 +318,35 @@ foreach my $t (@Tests)
           and $e->{OUT} .= "\n";
       }
   }
+
+# Repeat all tests with --debug option, ensure it does not cause any regression
+my @debug_tests;
+foreach my $t (@Tests)
+  {
+    # Skip tests with EXIT!=0 or ERR_SUBST part
+    # (as '--debug' requires its own ERR_SUBST).
+    my $exit_val;
+    my $have_err_subst;
+    foreach my $e (@$t)
+      {
+        next unless ref $e && ref $e eq 'HASH';
+        $exit_val = $e->{EXIT} if defined $e->{EXIT};
+        $have_err_subst = 1 if defined $e->{ERR_SUBST};
+      }
+    next if $exit_val || $have_err_subst;
+
+    # Duplicate the test, add '--debug' argument
+    my @newt = @$t;
+    $newt[0] = 'dbg_' . $newt[0];
+    $newt[1] = '--debug ' . $newt[1];
+
+    # Discard all debug printouts before comparing output
+    push @newt, {ERR_SUBST => q!s/^date: .*\n//m!};
+
+    push @debug_tests, \@newt;
+  }
+push @Tests, @debug_tests;
+
 
 my $save_temps = $ENV{DEBUG};
 my $verbose = $ENV{VERBOSE};

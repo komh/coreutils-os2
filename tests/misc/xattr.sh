@@ -3,7 +3,7 @@
 # attributes and install does not preserve extended attributes.
 # cp -a should preserve xattr, error diagnostics should not be displayed
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ getfattr -d c >out_c || skip_ "failed to get xattr of file"
 grep -F "$xattr_pair" out_c || fail=1
 
 # cp's -a option must produce no diagnostics.
-cp -a a d 2>err && test -s err && fail=1
+cp -a a d 2>err && { compare /dev/null err || fail=1; }
 getfattr -d d >out_d || skip_ "failed to get xattr of file"
 grep -F "$xattr_pair" out_d || fail=1
 

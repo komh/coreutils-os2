@@ -1,8 +1,8 @@
-#serial 110   -*- autoconf -*-
+#serial 111   -*- autoconf -*-
 
 dnl Misc type-related macros for coreutils.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,20 +44,24 @@ AC_DEFUN([coreutils_MACROS],
   # used by shred
   AC_CHECK_FUNCS_ONCE([directio])
 
-  # Used by install.c.
   coreutils_saved_libs=$LIBS
     LIBS="$LIBS $LIB_SELINUX"
+    # Used by selinux.c.
+    AC_CHECK_FUNCS([mode_to_security_class], [], [])
+    # Used by install.c.
     AC_CHECK_FUNCS([matchpathcon_init_prefix], [],
     [
-      case "$ac_cv_search_setfilecon:$ac_cv_header_selinux_selinux_h" in
-        no:*) # SELinux disabled
-          ;;
-        *:no) # SELinux disabled
-          ;;
-        *)
-        AC_MSG_WARN([SELinux enabled, but matchpathcon_init_prefix not found])
-        AC_MSG_WARN([The install utility may run slowly])
-      esac
+      if test "$with_selinux" != no; then
+        case "$ac_cv_search_setfilecon:$ac_cv_header_selinux_selinux_h" in
+          no:*) # SELinux disabled
+            ;;
+          *:no) # SELinux disabled
+            ;;
+          *)
+          AC_MSG_WARN([SELinux enabled, but matchpathcon_init_prefix not found])
+          AC_MSG_WARN([The install utility may run slowly])
+        esac
+      fi
     ])
   LIBS=$coreutils_saved_libs
 
@@ -74,6 +78,7 @@ AC_DEFUN([coreutils_MACROS],
   AC_CHECK_FUNCS_ONCE([
     endgrent
     endpwent
+    fallocate
     fchown
     fchmod
     ftruncate
@@ -84,6 +89,7 @@ AC_DEFUN([coreutils_MACROS],
     sethostname
     siginterrupt
     sync
+    syncfs
     sysctl
     sysinfo
     tcgetpgrp
@@ -159,6 +165,21 @@ AC_DEFUN([coreutils_MACROS],
      LIBS="$ac_seq_save_LIBS"
     ])
 
+
+  # See is fpsetprec() required to use extended double precision
+  # This is needed on 32 bit FreeBSD to give accurate conversion of:
+  # `numfmt 9223372036854775808`
+  AC_TRY_LINK([#include <ieeefp.h>],
+    [#ifdef __i386__
+      fpsetprec(FP_PE);
+     #else
+     # error not required on 64 bit
+     #endif
+    ], [ac_have_fpsetprec=yes], [ac_have_fpsetprec=no])
+  if test "$ac_have_fpsetprec" = "yes" ; then
+    AC_DEFINE([HAVE_FPSETPREC], 1, [whether fpsetprec is present and required])
+  fi
+
   AC_REQUIRE([AM_LANGINFO_CODESET])
 
   # Accept configure options: --with-tty-group[=GROUP], --without-tty-group
@@ -185,6 +206,8 @@ AC_DEFUN([gl_CHECK_ALL_HEADERS],
 [
   AC_CHECK_HEADERS_ONCE([
     hurd.h
+    linux/falloc.h
+    linux/fs.h
     paths.h
     priv.h
     stropts.h

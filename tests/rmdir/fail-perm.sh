@@ -2,7 +2,7 @@
 # For unwritable directory 'd', 'rmdir -p d d/e/f' would emit
 # diagnostics but would not fail.  Fixed in 5.1.2.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,6 @@ chmod a-w d || framework_failure_
 # This rmdir command outputs two diagnostics.
 # Before coreutils-5.1.2, it would mistakenly exit successfully.
 # As of coreutils-5.1.2, it fails, as required.
-rmdir -p d d/e/f 2> /dev/null && fail=1
+returns_ 1 rmdir -p d d/e/f 2> /dev/null || fail=1
 
 Exit $fail

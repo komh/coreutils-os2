@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test stat -c%m
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +19,10 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ stat
 
-df_mnt=$(df -P . | sed -n '2s/.* \([^ ]*$\)/\1/p')
 stat_mnt=$(stat -c%m .) || fail=1
-test "$stat_mnt" || fail=1
+case "$stat_mnt" in
+  /*) ;;
+  *) fail=1;;
+esac
 
 Exit $fail

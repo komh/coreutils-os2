@@ -1,7 +1,7 @@
 #!/bin/sh
 # readlink from 6.9 would fail with a false-positive symlink loop error
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ readlink
-cwd=$("$abs_top_builddir/src/pwd")
+print_ver_ readlink pwd
+cwd=$(env pwd -P)
 
 # To trigger this bug, we have to construct a name/situation during
 # the resolution of which the code dereferences the same symlink (S)
@@ -42,10 +42,10 @@ ln -sf ../s/1 d/2 || framework_failure_
 readlink -v -e p/1 2> out && fail=1
 readlink_msg=$(cat out)
 case $readlink_msg in
-  'readlink: p/1: '*) ;;
+  "readlink: p/1: "*) ;;
   *) fail=1;;
 esac
-symlink_loop_msg=${readlink_msg#'readlink: p/1: '}
+symlink_loop_msg=${readlink_msg#"readlink: p/1: "}
 
 # Exercise the hash table code.
 ln -nsf ../s/3 d/2 || framework_failure_

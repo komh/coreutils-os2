@@ -1,6 +1,6 @@
 /* A substitute for ISO C99 <wctype.h>, for platforms that lack it.
 
-   Copyright (C) 2006-2013 Free Software Foundation, Inc.
+   Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,12 +25,24 @@
  * wctrans_t, and wctype_t are not yet implemented.
  */
 
-#ifndef _@GUARD_PREFIX@_WCTYPE_H
-
 #if __GNUC__ >= 3
 @PRAGMA_SYSTEM_HEADER@
 #endif
 @PRAGMA_COLUMNS@
+
+#if (defined __MINGW32__ && defined __CTYPE_H_SOURCED__)
+
+/* Special invocation convention:
+   - With MinGW 3.22, when <ctype.h> includes <wctype.h>, only some part of
+     <wctype.h> is being processed, which doesn't include the idempotency
+     guard.   */
+
+#@INCLUDE_NEXT@ @NEXT_WCTYPE_H@
+
+#else
+/* Normal invocation convention.  */
+
+#ifndef _@GUARD_PREFIX@_WCTYPE_H
 
 #if @HAVE_WINT_T@
 /* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.
@@ -44,6 +56,13 @@
 # include <wchar.h>
 #endif
 
+/* mingw has declarations of towupper and towlower in <ctype.h> as
+   well <wctype.h>.  Include <ctype.h> in advance to avoid rpl_ prefix
+   being added to the declarations.  */
+#ifdef __MINGW32__
+# include <ctype.h>
+#endif
+
 /* Include the original <wctype.h> if it exists.
    BeOS 5 has the functions but no <wctype.h>.  */
 /* The include_next requires a split double-inclusion guard.  */
@@ -54,6 +73,9 @@
 #ifndef _@GUARD_PREFIX@_WCTYPE_H
 #define _@GUARD_PREFIX@_WCTYPE_H
 
+#ifndef _GL_INLINE_HEADER_BEGIN
+ #error "Please include config.h first."
+#endif
 _GL_INLINE_HEADER_BEGIN
 #ifndef _GL_WCTYPE_INLINE
 # define _GL_WCTYPE_INLINE _GL_INLINE
@@ -502,3 +524,4 @@ _GL_INLINE_HEADER_END
 
 #endif /* _@GUARD_PREFIX@_WCTYPE_H */
 #endif /* _@GUARD_PREFIX@_WCTYPE_H */
+#endif

@@ -1,5 +1,5 @@
 /* Tests of fstatat.
-   Copyright (C) 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ SIGNATURE_CHECK (fstatat, int, (int, char const *, struct stat *, int));
 #include <unistd.h>
 
 #include "openat.h"
-#include "progname.h"
 #include "same-inode.h"
 #include "ignore-value.h"
 #include "macros.h"
@@ -71,8 +70,6 @@ int
 main (int argc _GL_UNUSED, char *argv[])
 {
   int result;
-
-  set_program_name (argv[0]);
 
   /* Remove any leftovers from a previous partial run.  */
   ignore_value (system ("rm -rf " BASE "*"));

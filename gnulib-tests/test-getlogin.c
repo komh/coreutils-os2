@@ -1,5 +1,5 @@
 /* Test of getting user name.
-   Copyright (C) 2010-2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,11 @@ SIGNATURE_CHECK (getlogin, char *, (void));
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pwd.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "macros.h"
 
@@ -62,11 +67,30 @@ main (void)
 #if !((defined _WIN32 || defined __WIN32__) && !defined __CYGWIN__)
   /* Unix platform */
   {
-    const char *name = getenv ("LOGNAME");
-    if (name == NULL || name[0] == '\0')
-      name = getenv ("USER");
-    if (name != NULL && name[0] != '\0')
-      ASSERT (strcmp (buf, name) == 0);
+# if HAVE_TTYNAME
+    const char *tty;
+    struct stat stat_buf;
+    struct passwd *pwd;
+
+    tty = ttyname (STDIN_FILENO);
+    if (tty == NULL)
+      {
+         fprintf (stderr, "Skipping test: stdin is not a tty.\n");
+         return 77;
+      }
+
+    ASSERT (stat (tty, &stat_buf) == 0);
+
+    pwd = getpwuid (stat_buf.st_uid);
+    if (! pwd)
+      {
+        long int uid = stat_buf.st_uid;
+        fprintf (stderr, "Skipping test: no name found for uid %ld\n", uid);
+        return 77;
+      }
+
+    ASSERT (strcmp (pwd->pw_name, buf) == 0);
+# endif
   }
 #endif
 #if (defined _WIN32 || defined __WIN32__) && !defined __CYGWIN__

@@ -1,5 +1,5 @@
 # unlinkat.m4 serial 2
-dnl Copyright (C) 2004-2013 Free Software Foundation, Inc.
+dnl Copyright (C) 2004-2016 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -24,6 +24,7 @@ AC_DEFUN([gl_FUNC_UNLINKAT],
         ;;
       *)
         # GNU/Hurd has unlinkat, but it has the same bug as unlink.
+        # Darwin has unlinkat, but it has the same UNLINK_PARENT_BUG.
         if test $REPLACE_UNLINK = 1; then
           REPLACE_UNLINKAT=1
         fi

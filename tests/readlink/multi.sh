@@ -1,7 +1,7 @@
 #!/bin/sh
 # test multiple argument handling.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@ touch regfile || framework_failure_
 ln -s regfile link1 || framework_failure_
 
 readlink link1 link1 || fail=1
-readlink link1 link2 && fail=1
-readlink link1 link2 link1 && fail=1
+returns_ 1 readlink link1 link2 || fail=1
+returns_ 1 readlink link1 link2 link1 || fail=1
 readlink -m link1 link2 || fail=1
 
 printf '/1\0/1\0' > exp || framework_failure_
@@ -40,7 +40,7 @@ compare exp out || fail=1
 # Note the edge case that the last xargs run may not have a delimiter
 rm out || framework_failure_
 printf '/1\0/1\0/1' > exp || framework_failure_
-printf '/1 /1 /1' | xargs -n2 readlink -n -m --zero >> out || fail=1
+printf '/1 /1 /1 ' | xargs -n2 readlink -n -m --zero >> out || fail=1
 compare exp out || fail=1
 
 Exit $fail

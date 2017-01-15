@@ -1,7 +1,7 @@
 #!/bin/sh
 # Trigger a failed assertion in coreutils-8.9 and earlier.
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ du
+require_trap_signame_
 
 # We use a python-inotify script, so...
 python -m pyinotify -h > /dev/null \
@@ -71,22 +72,24 @@ for i in $(seq 50); do
   mkdir -p $t/3/a/b/c/$i/$long || framework_failure_
 done
 
+# Terminate any background cp process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
 # Prohibit suspension, which could otherwise cause a timeout-induced FP failure.
 trap '' TSTP
 
-timeout 6 ./inotify-watch-for-dir-access.py $t/3/a/b > start-msg &
+timeout 6 ./inotify-watch-for-dir-access.py $t/3/a/b > start-msg & pid=$!
 
 # Wait for the watcher to start...
-nonempty() { test -s start-msg || { sleep $1; return 1; }; }
-retry_delay_ nonempty .1 5
+nonempty() { sleep $1; test -s start-msg; }
+retry_delay_ nonempty .1 5 || fail=1
 
 # The above watches for an IN_OPEN event on $t/3/a/b,
 # and when it triggers, moves the parent, $t/3/a, up one level
 # so it's directly under $t.
 
-du -a $t d2 2> err
 # Before coreutils-8.10, du would abort.
-test $? = 1 || fail=1
+returns_ 1 du -a $t d2 2> err || fail=1
 
 # check for the new diagnostic
 printf "du: fts_read failed: $t/3/a/b: No such file or directory\n" > exp \

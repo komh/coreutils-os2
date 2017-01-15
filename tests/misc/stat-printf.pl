@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "stat --printf".
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,9 +52,9 @@ my @Tests =
          {ERR=>"$prog: warning: backslash at end of format\n"}],
 
      ['err-1', "--printf=%9% .",       {EXIT => 1},
-         {ERR=>"$prog: %9%: invalid directive\n"}],
+         {ERR=>"$prog: '%9%': invalid directive\n"}],
      ['err-2', "--printf=%9 .",        {EXIT => 1},
-         {ERR=>"$prog: %9: invalid directive\n"}],
+         {ERR=>"$prog: '%9': invalid directive\n"}],
     );
 
 my $save_temps = $ENV{DEBUG};

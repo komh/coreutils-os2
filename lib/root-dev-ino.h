@@ -1,6 +1,6 @@
 /* Root device and inode number checking.
 
-   Copyright (C) 2003-2013 Free Software Foundation, Inc.
+   Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,11 +35,11 @@ get_root_dev_ino (struct dev_ino *root_d_i);
     {									\
       if (STREQ (Dirname, "/"))						\
         error (0, 0, _("it is dangerous to operate recursively on %s"),	\
-               quote (Dirname));					\
+               quoteaf (Dirname));					\
       else								\
         error (0, 0,							\
                _("it is dangerous to operate recursively on %s (same as %s)"), \
-               quote_n (0, Dirname), quote_n (1, "/"));			\
+               quoteaf_n (0, Dirname), quoteaf_n (1, "/"));		\
       error (0, 0, _("use --no-preserve-root to override this failsafe")); \
     }									\
   while (0)

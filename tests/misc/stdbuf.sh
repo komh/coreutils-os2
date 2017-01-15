@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise stdbuf functionality
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 print_ver_ stdbuf
 
 getlimits_
-require_built_ stdbuf
 
 # stdbuf fails when the absolute top build dir name contains e.g.,
 # space, TAB, NL
@@ -44,17 +43,20 @@ stdbuf -o1 true || fail=1 # verify size syntax
 stdbuf -oK true || fail=1 # verify size syntax
 stdbuf -o0 true || fail=1 # verify unbuffered syntax
 stdbuf -oL true || fail=1 # verify line buffered syntax
-stdbuf -ol true # Capital 'L' required
-test $? = 125 || fail=1 # Internal error is a particular status
-stdbuf -o$SIZE_OFLOW true # size too large
-test $? = 125 || fail=1
-stdbuf -iL true # line buffering stdin disallowed
-test $? = 125 || fail=1
+
+# Capital 'L' required
+# Internal error is a particular status
+returns_ 125 stdbuf -ol true || fail=1
+
+returns_ 125 stdbuf -o$SIZE_OFLOW true || fail=1 # size too large
+returns_ 125 stdbuf -iL true || fail=1 # line buffering stdin disallowed
+returns_ 125 stdbuf true || fail=1 # a buffering mode must be specified
 stdbuf -i0 -o0 -e0 true || fail=1 #check all files
-stdbuf -o1 . # invalid command
-test $? = 126 || fail=1
-stdbuf -o1 no_such # no such command
-test $? = 127 || fail=1
+returns_ 126 stdbuf -o1 . || fail=1 # invalid command
+returns_ 127 stdbuf -o1 no_such || fail=1 # no such command
+
+# Terminate any background processes
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
 # Ensure line buffering stdout takes effect
 stdbuf_linebuffer()
@@ -62,9 +64,10 @@ stdbuf_linebuffer()
   local delay="$1"
 
   printf '1\n' > exp
-  dd count=1 if=fifo > out 2> err &
+  > out || framework_failure_
+  dd count=1 if=fifo > out 2> err & pid=$!
   (printf '1\n'; sleep $delay; printf '2\n') | stdbuf -oL uniq > fifo
-  wait # for dd to complete
+  wait $pid
   compare exp out
 }
 
@@ -76,16 +79,17 @@ stdbuf_unbuffer()
 
   # Ensure un buffering stdout takes effect
   printf '1\n' > exp
-  dd count=1 if=fifo > out 2> err &
+  > out || framework_failure_
+  dd count=1 if=fifo > out 2> err & pid=$!
   (printf '1\n'; sleep $delay; printf '2\n') | stdbuf -o0 uniq > fifo
-  wait # for dd to complete
+  wait $pid
   compare exp out
 }
 
 retry_delay_ stdbuf_unbuffer .1 6 || fail=1
 
 # Ensure un buffering stdin takes effect
-#  The following works for me, but is racy. I.E. we're depending
+#  The following works for me, but is racy.  I.e., we're depending
 #  on dd to run and close the fifo before the second write by uniq.
 #  If we add a sleep, then we're just testing -oL
     # printf '3\n' > exp

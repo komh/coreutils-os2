@@ -1,5 +1,5 @@
 /* Test of parse_datetime() function.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "progname.h"
 #include "macros.h"
 
 #ifdef DEBUG
@@ -120,8 +119,6 @@ main (int argc _GL_UNUSED, char **argv)
   int i;
   long gmtoff;
   time_t ref_time = 1304250918;
-
-  set_program_name (argv[0]);
 
   /* Set the time zone to US Eastern time with the 2012 rules.  This
      should disable any leap second support.  Otherwise, there will be
@@ -418,6 +415,22 @@ main (int argc _GL_UNUSED, char **argv)
   /* Exercise a sign-extension bug.  Before July 2012, an input
      starting with a high-bit-set byte would be treated like "0".  */
   ASSERT ( ! parse_datetime (&result, "\xb0", &now));
+
+  /* Exercise TZ="" parsing code.  */
+  /* These two would infloop or segfault before Feb 2014.  */
+  ASSERT ( ! parse_datetime (&result, "TZ=\"\"\"", &now));
+  ASSERT ( ! parse_datetime (&result, "TZ=\"\" \"", &now));
+  /* Exercise invalid patterns.  */
+  ASSERT ( ! parse_datetime (&result, "TZ=\"", &now));
+  ASSERT ( ! parse_datetime (&result, "TZ=\"\\\"", &now));
+  ASSERT ( ! parse_datetime (&result, "TZ=\"\\n", &now));
+  ASSERT ( ! parse_datetime (&result, "TZ=\"\\n\"", &now));
+  /* Exercise valid patterns.  */
+  ASSERT (   parse_datetime (&result, "TZ=\"\"", &now));
+  ASSERT (   parse_datetime (&result, "TZ=\"\" ", &now));
+  ASSERT (   parse_datetime (&result, " TZ=\"\"", &now));
+  ASSERT (   parse_datetime (&result, "TZ=\"\\\\\"", &now));
+  ASSERT (   parse_datetime (&result, "TZ=\"\\\"\"", &now));
 
   return 0;
 }

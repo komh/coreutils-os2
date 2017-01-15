@@ -1,5 +1,5 @@
 /* truncate -- truncate or extend the length of files.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,15 +26,16 @@
 #include <sys/types.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
 #include "quote.h"
 #include "stat-size.h"
-#include "xstrtol.h"
+#include "xdectoint.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "truncate"
 
-#define AUTHORS proper_name_utf8 ("Padraig Brady", "P\303\241draig Brady")
+#define AUTHORS proper_name ("Padraig Brady")
 
 /* (-c) If true, don't create if not already there */
 static bool no_create;
@@ -58,33 +59,6 @@ static struct option const longopts[] =
 
 typedef enum
 { rm_abs = 0, rm_rel, rm_min, rm_max, rm_rdn, rm_rup } rel_mode_t;
-
-/* Set size to the value of STR, interpreted as a decimal integer,
-   optionally multiplied by various values.
-   Return -1 on error, 0 on success.
-
-   This supports dd BLOCK size suffixes + lowercase g,t,m for bsd compat
-   Note we don't support dd's b=512, c=1, w=2 or 21x512MiB formats.  */
-static int
-parse_len (char const *str, off_t *size)
-{
-  enum strtol_error e;
-  intmax_t tmp_size;
-  e = xstrtoimax (str, NULL, 10, &tmp_size, "EgGkKmMPtTYZ0");
-  if (e == LONGINT_OK
-      && !(OFF_T_MIN <= tmp_size && tmp_size <= OFF_T_MAX))
-    e = LONGINT_OVERFLOW;
-
-  if (e == LONGINT_OK)
-    {
-      errno = 0;
-      *size = tmp_size;
-      return 0;
-    }
-
-  errno = (e == LONGINT_OVERFLOW ? EOVERFLOW : 0);
-  return -1;
-}
 
 void
 usage (int status)
@@ -114,7 +88,7 @@ reads as zero bytes.\n\
 "), stdout);
       fputs (_("\
   -r, --reference=RFILE  base size on RFILE\n\
-  -s, --size=SIZE        set or adjust the file size by SIZE\n"), stdout);
+  -s, --size=SIZE        set or adjust the file size by SIZE bytes\n"), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       emit_size_note ();
@@ -122,7 +96,7 @@ reads as zero bytes.\n\
 SIZE may also be prefixed by one of the following modifying characters:\n\
 '+' extend by, '-' reduce by, '<' at most, '>' at least,\n\
 '/' round down to multiple of, '%' round up to multiple of.\n"), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -137,7 +111,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
 
   if ((block_mode || (rel_mode && rsize < 0)) && fstat (fd, &sb) != 0)
     {
-      error (0, errno, _("cannot fstat %s"), quote (fname));
+      error (0, errno, _("cannot fstat %s"), quoteaf (fname));
       return false;
     }
   if (block_mode)
@@ -149,7 +123,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
                  _("overflow in %" PRIdMAX
                    " * %" PRIdMAX " byte blocks for file %s"),
                  (intmax_t) ssize, (intmax_t) blksize,
-                 quote (fname));
+                 quoteaf (fname));
           return false;
         }
       ssize *= blksize;
@@ -171,7 +145,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
                   /* Sanity check.  Overflow is the only reason I can think
                      this would ever go negative. */
                   error (0, 0, _("%s has unusable, apparently negative size"),
-                         quote (fname));
+                         quoteaf (fname));
                   return false;
                 }
             }
@@ -181,7 +155,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
               if (file_size < 0)
                 {
                   error (0, errno, _("cannot get the size of %s"),
-                         quote (fname));
+                         quoteaf (fname));
                   return false;
                 }
             }
@@ -203,7 +177,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
           if (overflow > OFF_T_MAX)
             {
               error (0, 0, _("overflow rounding up size of file %s"),
-                     quote (fname));
+                     quoteaf (fname));
               return false;
             }
           nsize = overflow;
@@ -213,7 +187,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
           if (ssize > OFF_T_MAX - (off_t)fsize)
             {
               error (0, 0, _("overflow extending size of file %s"),
-                     quote (fname));
+                     quoteaf (fname));
               return false;
             }
           nsize = fsize + ssize;
@@ -227,7 +201,7 @@ do_ftruncate (int fd, char const *fname, off_t ssize, off_t rsize,
   if (ftruncate (fd, nsize) == -1)      /* note updates mtime & ctime */
     {
       error (0, errno,
-             _("failed to truncate %s at %" PRIdMAX " bytes"), quote (fname),
+             _("failed to truncate %s at %" PRIdMAX " bytes"), quoteaf (fname),
              (intmax_t) nsize);
       return false;
     }
@@ -306,12 +280,13 @@ main (int argc, char **argv)
                 }
               rel_mode = rm_rel;
             }
-          if (parse_len (optarg, &size) == -1)
-            error (EXIT_FAILURE, errno, _("invalid number %s"),
-                   quote (optarg));
+          /* Support dd BLOCK size suffixes + lowercase g,t,m for bsd compat.
+             Note we don't support dd's b=512, c=1, w=2 or 21x512MiB formats. */
+          size = xdectoimax (optarg, OFF_T_MIN, OFF_T_MAX, "EgGkKmMPtTYZ0",
+                             _("Invalid number"), 0);
           /* Rounding to multiple of 0 is nonsensical */
           if ((rel_mode == rm_rup || rel_mode == rm_rdn) && size == 0)
-            error (EXIT_FAILURE, 0, _("division by zero"));
+            die (EXIT_FAILURE, 0, _("division by zero"));
           got_size = true;
           break;
 
@@ -360,7 +335,7 @@ main (int argc, char **argv)
       struct stat sb;
       off_t file_size = -1;
       if (stat (ref_file, &sb) != 0)
-        error (EXIT_FAILURE, errno, _("cannot stat %s"), quote (ref_file));
+        die (EXIT_FAILURE, errno, _("cannot stat %s"), quoteaf (ref_file));
       if (usable_st_size (&sb))
         file_size = sb.st_size;
       else
@@ -381,8 +356,8 @@ main (int argc, char **argv)
             }
         }
       if (file_size < 0)
-        error (EXIT_FAILURE, errno, _("cannot get the size of %s"),
-               quote (ref_file));
+        die (EXIT_FAILURE, errno, _("cannot get the size of %s"),
+             quoteaf (ref_file));
       if (!got_size)
         size = file_size;
       else
@@ -402,7 +377,7 @@ main (int argc, char **argv)
           if (!(no_create && errno == ENOENT))
             {
               error (0, errno, _("cannot open %s for writing"),
-                     quote (fname));
+                     quoteaf (fname));
               errors = true;
             }
           continue;
@@ -414,7 +389,7 @@ main (int argc, char **argv)
           errors |= !do_ftruncate (fd, fname, size, rsize, rel_mode);
           if (close (fd) != 0)
             {
-              error (0, errno, _("failed to close %s"), quote (fname));
+              error (0, errno, _("failed to close %s"), quoteaf (fname));
               errors = true;
             }
         }

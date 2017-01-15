@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Basic tests for "fmt".
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 use strict;
 
 (my $program_name = $0) =~ s|.*/||;
+my $normalize_strerror = "s/': .*/'/";
 
 my @Tests =
     (
@@ -26,9 +27,11 @@ my @Tests =
       {IN=> "ça\nçb\n"},
       {OUT=>"ça b\n"}],
      ['wide-1', '-w 32768',
-      {ERR => "fmt: invalid width: '32768'\n"}, {EXIT => 1}],
+      {ERR => "fmt: invalid width: '32768'\n"}, {EXIT => 1},
+      {ERR_SUBST => $normalize_strerror}],
      ['wide-2', '-w 2147483647',
-      {ERR => "fmt: invalid width: '2147483647'\n"}, {EXIT => 1}],
+      {ERR => "fmt: invalid width: '2147483647'\n"}, {EXIT => 1},
+      {ERR_SUBST => $normalize_strerror}],
      ['bad-suffix', '-72x',	{IN=> ''},
       {ERR => "fmt: invalid width: '72x'\n"}, {EXIT => 1}],
      ['no-file', 'no-such-file',

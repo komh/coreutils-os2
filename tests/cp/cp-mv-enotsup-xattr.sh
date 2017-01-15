@@ -1,9 +1,9 @@
 #!/bin/sh
 # Ensure that mv, cp -a and cp --preserve=xattr(all) options do work
-# as expected on file system without their support and do show correct
+# as expected on file systems without their support and do show correct
 # diagnostics when required
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -69,23 +69,23 @@ grep -F "$xattr_pair" out_a >/dev/null \
 # This should pass without diagnostics
 cp -a xattr/a noxattr/ 2>err || fail=1
 test -s noxattr/a   || fail=1  # destination file must not be empty
-test -s err         && fail=1  # there must be no stderr output
+compare /dev/null err || fail=1
 
 rm -f err noxattr/a
 
 # This should pass without diagnostics (new file)
 cp --preserve=all xattr/a noxattr/ 2>err || fail=1
 test -s noxattr/a   || fail=1  # destination file must not be empty
-test -s err         && fail=1  # there must be no stderr output
+compare /dev/null err || fail=1
 
 # This should pass without diagnostics (existing file)
 cp --preserve=all xattr/a noxattr/ 2>err || fail=1
 test -s noxattr/a   || fail=1  # destination file must not be empty
-test -s err         && fail=1  # there must be no stderr output
+compare /dev/null err || fail=1
 
 rm -f err noxattr/a
 
-# This should fail with coresponding diagnostics
+# This should fail with corresponding diagnostics
 cp -a --preserve=xattr xattr/a noxattr/ 2>err && fail=1
 if grep '^#define USE_XATTR 1' $CONFIG_HEADER > /dev/null; then
 cat <<\EOF > exp
@@ -104,6 +104,29 @@ rm -f err noxattr/a
 # This should pass without diagnostics
 mv xattr/a noxattr/ 2>err || fail=1
 test -s noxattr/a         || fail=1  # destination file must not be empty
-test -s err               && fail=1  # there must be no stderr output
+compare /dev/null err || fail=1
+
+# This should pass and copy xattrs of the symlink
+# since the xattrs used here are not in the 'user.' namespace.
+# Up to and including coreutils-8.22 xattrs of symlinks
+# were not copied across file systems.
+ln -s 'foo' xattr/symlink || framework_failure_
+# Note 'user.' namespace is only supported on regular files/dirs
+# so use the 'trusted.' namespace here
+txattr='trusted.overlay.whiteout'
+if setfattr -hn "$txattr" -v y xattr/symlink; then
+  # Note only root can read the 'trusted.' namespace
+  if getfattr -h -m- -d xattr/symlink | grep -F "$txattr"; then
+    mv xattr/symlink noxattr/ 2>err || fail=1
+    if grep '^#define USE_XATTR 1' $CONFIG_HEADER > /dev/null; then
+      getfattr -h -m- -d noxattr/symlink | grep -F "$txattr" || fail=1
+    fi
+    compare /dev/null err || fail=1
+  else
+    echo "failed to get '$txattr' xattr. skipping symlink check" >&2
+  fi
+else
+  echo "failed to set '$txattr' xattr. skipping symlink check" >&2
+fi
 
 Exit $fail

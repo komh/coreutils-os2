@@ -3,7 +3,7 @@
    Contributed to the GNU project by Torbjörn Granlund and Niels Möller
    Contains code from GNU MP.
 
-Copyright 2012-2013 Free Software Foundation, Inc.
+Copyright 2012-2016 Free Software Foundation, Inc.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -131,7 +131,7 @@ output_primes (const struct prime *primes, unsigned nprimes)
         abort ();
       printf ("P (%u, %u,\n   (", primes[i].p - p, d8);
       print_wide_uint (primes[i].pinv, 0, wide_uint_bits);
-      printf ("),\n   UINTMAX_MAX / %d)\n", primes[i].p);
+      printf ("),\n   UINTMAX_MAX / %u)\n", primes[i].p);
       p = primes[i].p;
     }
 
@@ -187,7 +187,7 @@ main (int argc, char **argv)
     }
   limit = atoi (argv[1]);
   if (limit < 3)
-    exit (EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 
   /* Make limit odd */
   if ( !(limit & 1))
@@ -211,11 +211,14 @@ main (int argc, char **argv)
       for (j = (p*p - 3)/2; j < size; j+= p)
         sieve[j] = 0;
 
-      while (i < size && sieve[++i] == 0)
+      while (++i < size && sieve[i] == 0)
         ;
     }
 
   output_primes (prime_list, nprimes);
+
+  free (sieve);
+  free (prime_list);
 
   if (ferror (stdout) + fclose (stdout))
     {

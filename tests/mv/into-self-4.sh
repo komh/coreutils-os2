@@ -2,7 +2,7 @@
 # confirm that 'mv symlink symlink' doesn't remove symlink
 # Based on an example from David Luyer.
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ ln -s file s || framework_failure_
 
 
 # This must fail.
-mv s s 2> /dev/null && fail=1
+returns_ 1 mv s s 2> /dev/null || fail=1
 
 # But the symlink, s, must not be removed.
 # Before 4.0.36, 's' would have been removed.

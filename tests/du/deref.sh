@@ -4,7 +4,7 @@
 # Also, up to coreutils-8.5, du -L sometimes incorrectly
 # counted the space of the followed symlinks.
 
-# Copyright (C) 2002-2013 Free Software Foundation, Inc.
+# Copyright (C) 2002-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ ln -s nowhere dangle || framework_failure_
 du -sD slink b > /dev/null 2>&1 || fail=1
 
 # This used to fail to report the dangling symlink.
-du -L dangle > /dev/null 2>&1 && fail=1
+returns_ 1 du -L dangle > /dev/null 2>&1 || fail=1
 
 # du -L used to mess up, either by counting the symlink's disk space itself
 # (-L should follow symlinks, not count their space)

@@ -1,5 +1,5 @@
 /* Test argv iterator
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -47,7 +47,6 @@ write_nul_delimited_argv (char **argv)
 int
 main (void)
 {
-  /* set_program_name (argv[0]); placate overzealous "syntax-check" test.  */
   static char one[] = "1";
   static char two[] = "2";
   static char three[] = "3";

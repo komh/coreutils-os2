@@ -1,6 +1,6 @@
 /* A GNU-like <stdlib.h>.
 
-   Copyright (C) 1995, 2001-2004, 2006-2013 Free Software Foundation, Inc.
+   Copyright (C) 1995, 2001-2004, 2006-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -520,6 +520,44 @@ _GL_CXXALIAS_SYS (putenv, int, (char *string));
 _GL_CXXALIASWARN (putenv);
 #endif
 
+#if @GNULIB_QSORT_R@
+/* Sort an array of NMEMB elements, starting at address BASE, each element
+   occupying SIZE bytes, in ascending order according to the comparison
+   function COMPARE.  */
+# if @REPLACE_QSORT_R@
+#  if !(defined __cplusplus && defined GNULIB_NAMESPACE)
+#   undef qsort_r
+#   define qsort_r rpl_qsort_r
+#  endif
+_GL_FUNCDECL_RPL (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg) _GL_ARG_NONNULL ((1, 4)));
+_GL_CXXALIAS_RPL (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg));
+# else
+#  if !@HAVE_QSORT_R@
+_GL_FUNCDECL_SYS (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg) _GL_ARG_NONNULL ((1, 4)));
+#  endif
+_GL_CXXALIAS_SYS (qsort_r, void, (void *base, size_t nmemb, size_t size,
+                                  int (*compare) (void const *, void const *,
+                                                  void *),
+                                  void *arg));
+# endif
+_GL_CXXALIASWARN (qsort_r);
+#elif defined GNULIB_POSIXCHECK
+# undef qsort_r
+# if HAVE_RAW_DECL_QSORT_R
+_GL_WARN_ON_USE (qsort_r, "qsort_r is not portable - "
+                 "use gnulib module qsort_r for portability");
+# endif
+#endif
+
 
 #if @GNULIB_RANDOM_R@
 # if !@HAVE_RANDOM_R@
@@ -764,6 +802,22 @@ _GL_CXXALIASWARN (rpmatch);
 # if HAVE_RAW_DECL_RPMATCH
 _GL_WARN_ON_USE (rpmatch, "rpmatch is unportable - "
                  "use gnulib module rpmatch for portability");
+# endif
+#endif
+
+#if @GNULIB_SECURE_GETENV@
+/* Look up NAME in the environment, returning 0 in insecure situations.  */
+# if !@HAVE_SECURE_GETENV@
+_GL_FUNCDECL_SYS (secure_getenv, char *,
+                  (char const *name) _GL_ARG_NONNULL ((1)));
+# endif
+_GL_CXXALIAS_SYS (secure_getenv, char *, (char const *name));
+_GL_CXXALIASWARN (secure_getenv);
+#elif defined GNULIB_POSIXCHECK
+# undef secure_getenv
+# if HAVE_RAW_DECL_SECURE_GETENV
+_GL_WARN_ON_USE (secure_getenv, "secure_getenv is unportable - "
+                 "use gnulib module secure_getenv for portability");
 # endif
 #endif
 

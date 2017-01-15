@@ -2,7 +2,7 @@
 # Ensure that md5sum prints each checksum atomically
 # so that concurrent md5sums don't intersperse their output
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +20,17 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ md5sum
 
+xargs -P2 </dev/null >/dev/null 2>&1 \
+  || skip_ 'xargs -P is required'
+
 (mkdir tmp && cd tmp && seq 500 | xargs touch)
 
 # This will output at least 16KiB per process
 # and start 3 processes, with 2 running concurrently,
 # which triggers often on Fedora 11 at least.
-(find tmp tmp tmp -type f | xargs -n500 -P2 md5sum) |
+(find tmp tmp tmp -type f | xargs -n500 -P2 md5sum 2>err) |
 sed -n '/[0-9a-f]\{32\}  /!p' |
 grep . > /dev/null && fail=1
+compare /dev/null err || fail=1
 
 Exit $fail

@@ -1,7 +1,7 @@
 #!/bin/sh
 # show that 'split --additional-suffix=SUFFIX' works.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,6 +39,6 @@ compare exp-2 xab.txt || fail=1
 compare exp-3 xac.txt || fail=1
 
 # Additional suffix must not contain slash
-split --lines=2 --additional-suffix=a/b in 2>/dev/null > out && fail=1
+returns_ 1 split --lines=2 --additional-suffix=a/b in 2>/dev/null >out || fail=1
 
 Exit $fail

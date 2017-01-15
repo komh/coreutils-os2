@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test cp --reflink=auto
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ rm -f "$a_other" || framework_failure_
 echo non_zero_size > "$a_other" || framework_failure_
 
 # we shouldn't be able to reflink() files on separate partitions
-cp --reflink      "$a_other" b && fail=1
+returns_ 1 cp --reflink "$a_other" b || fail=1
 
 # --reflink=auto should fall back to a normal copy
 cp --reflink=auto "$a_other" b || fail=1

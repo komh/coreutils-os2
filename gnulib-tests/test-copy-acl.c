@@ -1,5 +1,5 @@
 /* Test of copying of files.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "progname.h"
 #include "macros.h"
 
 int
@@ -39,8 +38,6 @@ main (int argc, char *argv[])
   struct stat statbuf;
   int mode;
   int fd2;
-
-  set_program_name (argv[0]);
 
   ASSERT (argc == 3);
 

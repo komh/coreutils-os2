@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure mkdir's -p options works properly
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ mkdir
 skip_if_setgid_
+require_no_default_acl_ .
 
 mkdir -m 700 e-dir || framework_failure_
 
@@ -26,7 +27,7 @@ mkdir -m 700 e-dir || framework_failure_
 # Make sure 'mkdir -p existing-dir' succeeds
 # and that 'mkdir existing-dir' fails.
 mkdir -p e-dir || fail=1
-mkdir e-dir > /dev/null 2>&1 && fail=1
+returns_ 1 mkdir e-dir > /dev/null 2>&1 || fail=1
 
 # Create an existing directory.
 umask 077

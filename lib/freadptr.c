@@ -1,5 +1,5 @@
 /* Retrieve information about a FILE stream.
-   Copyright (C) 2007-2013 Free Software Foundation, Inc.
+   Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,8 @@ freadptr (FILE *fp, size_t *sizep)
     return NULL;
   *sizep = size;
   return (const char *) fp->_IO_read_ptr;
-#elif defined __sferror || defined __DragonFly__ /* FreeBSD, NetBSD, OpenBSD, DragonFly, Mac OS X, Cygwin */
+#elif defined __sferror || defined __DragonFly__ || defined __ANDROID__
+  /* FreeBSD, NetBSD, OpenBSD, DragonFly, Mac OS X, Cygwin, Android */
   if ((fp_->_flags & __SWR) != 0 || fp_->_r < 0)
     return NULL;
   size = fp_->_r;
@@ -75,6 +76,8 @@ freadptr (FILE *fp, size_t *sizep)
 #elif defined __UCLIBC__            /* uClibc */
 # ifdef __STDIO_BUFFERS
   if (fp->__modeflags & __FLAG_WRITING)
+    return NULL;
+  if (fp->__modeflags & __FLAG_UNGOT)
     return NULL;
   size = fp->__bufread - fp->__bufpos;
   if (size == 0)

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure stty can parse most of its options - in pairs [expensive].
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@ expensive_
 
 # Make sure there's a tty on stdin.
 require_controlling_input_terminal_
+require_trap_signame_
+
 trap '' TTOU # Ignore SIGTTOU
 
 # Get the reversible settings from stty.c.

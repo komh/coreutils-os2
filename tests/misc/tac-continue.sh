@@ -3,7 +3,7 @@
 # when it encounters an error with say the first one.
 # With coreutils-5.2.1 and earlier, this test would fail.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,9 +33,15 @@ if ! test -d "$FULL_PARTITION_TMPDIR"; then
 fi
 
 fp_tmp="$FULL_PARTITION_TMPDIR/tac-cont-$$"
-cleanup_() { rm -f "$fp_tmp"; }
+cleanup_()
+{
+  # Terminate any background process
+  # and remove tmp dir
+  rm -f "$fp_tmp"
+  kill $pid 2>/dev/null && wait $pid
+}
 
-# Make sure we can create an empty file there (i.e. no shortage of inodes).
+# Make sure we can create an empty file there (i.e., no shortage of inodes).
 if ! touch $fp_tmp; then
   echo "$0: $fp_tmp: cannot create empty file" 1>&2
   Exit 1
@@ -54,7 +60,7 @@ seq 5 > in
 # Give tac a fifo command line argument.
 # This makes it try to create a temporary file in $TMPDIR.
 mkfifo_or_skip_ fifo
-seq 1000 > fifo &
+seq 1000 > fifo & pid=$!
 TMPDIR=$FULL_PARTITION_TMPDIR tac fifo in >out 2>err && fail=1
 
 cat <<\EOF > exp || fail=1

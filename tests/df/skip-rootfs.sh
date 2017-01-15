@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test df's behavior for skipping the pseudo "rootfs" file system.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,14 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ df
 
-df || skip_ "df fails"
+# Protect against inaccessible remote mounts etc.
+timeout 10 df || skip_ "df fails"
 
 # Verify that rootfs is in mtab (and shown when the -a option is specified).
+# Note this is the case when /proc/self/mountinfo is parsed
+# rather than /proc/mounts.  I.e., when libmount is being used.
 df -a >out || fail=1
-grep '^rootfs' out || skip_ "no rootfs in mtab"
+grep '^rootfs' out || skip_ 'no rootfs in mtab'
 
 # Ensure that rootfs is suppressed when no options is specified.
 df >out || fail=1
@@ -32,7 +35,7 @@ grep '^rootfs' out && { fail=1; cat out; }
 # Ensure that rootfs is yet skipped when explicitly specifying "-t rootfs".
 # As df emits "no file systems processed" in this case, it would be a failure
 # if df exited with status Zero.
-df -t rootfs >out && fail=1
+returns_ 1 df -t rootfs >out || fail=1
 grep '^rootfs' out && { fail=1; cat out; }
 
 # Ensure that the rootfs is shown when explicitly both specifying "-t rootfs"
@@ -44,5 +47,7 @@ grep '^rootfs' out || { fail=1; cat out; }
 # black-listed.
 df -a -x rootfs >out || fail=1
 grep '^rootfs' out && { fail=1; cat out; }
+
+test "$fail" = 1 && dump_mount_list_
 
 Exit $fail

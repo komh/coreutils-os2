@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test join.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -274,6 +274,29 @@ my @tv = (
 ['header-6', '--header -a1',
  [ "ID1 Name\n1 A\n", ""],
    "ID1 Name\n1 A\n", 0],
+
+# Zero-terminated lines
+['z1', '-z',
+ ["a\0c\0e\0", "a\0b\0c\0"], "a\0c\0", 0],
+
+# not zero-terminated, but related to the code change:
+#  the old readlinebuffer() auto-added '\n' to the last line.
+#  the new readlinebuffer_delim() does not.
+#  Ensure it doesn't matter.
+['z2', '',
+ ["a\nc\ne\n", "a\nb\nc"], "a\nc\n", 0],
+['z3', '',
+ ["a\nc\ne", "a\nb\nc"], "a\nc\n", 0],
+# missing last NUL at the end of the last line (=end of file)
+['z4', '-z',
+ ["a\0c\0e", "a\0b\0c"], "a\0c\0", 0],
+# With -z, embedded newlines are treated as field separators.
+# Note '\n' are converted to ' ' in this case.
+['z5', '-z -a1 -a2',
+ ["a\n\n1\0c 3\0", "a 2\0b\n8\0c 9\0"], "a 1 2\0b 8\0c 3 9\0"],
+# One can avoid field processing like:
+['z6', '-z -t ""',
+ ["a\n1\n\0", "a\n1\n\0"], "a\n1\n\0"],
 
 );
 

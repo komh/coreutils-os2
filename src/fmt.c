@@ -1,5 +1,5 @@
 /* GNU fmt -- simple text formatter.
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,8 +29,7 @@
 #include "system.h"
 #include "error.h"
 #include "fadvise.h"
-#include "quote.h"
-#include "xstrtol.h"
+#include "xdectoint.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "fmt"
@@ -273,6 +272,7 @@ Reformat each paragraph in the FILE(s), writing to standard output.\n\
 The option -WIDTH is an abbreviated form of --width=DIGITS.\n\
 "), stdout);
 
+      emit_stdin_note ();
       emit_mandatory_arg_note ();
 
       fputs (_("\
@@ -292,11 +292,7 @@ The option -WIDTH is an abbreviated form of --width=DIGITS.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      fputs (_("\
-\n\
-With no FILE, or when FILE is -, read standard input.\n"),
-             stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -399,23 +395,15 @@ main (int argc, char **argv)
     {
       /* Limit max_width to MAXCHARS / 2; otherwise, the resulting
          output can be quite ugly.  */
-      unsigned long int tmp;
-      if (! (xstrtoul (max_width_option, NULL, 10, &tmp, "") == LONGINT_OK
-             && tmp <= MAXCHARS / 2))
-        error (EXIT_FAILURE, 0, _("invalid width: %s"),
-               quote (max_width_option));
-      max_width = tmp;
+      max_width = xdectoumax (max_width_option, 0, MAXCHARS / 2, "",
+                              _("invalid width"), 0);
     }
 
   if (goal_width_option)
     {
       /* Limit goal_width to max_width.  */
-      unsigned long int tmp;
-      if (! (xstrtoul (goal_width_option, NULL, 10, &tmp, "") == LONGINT_OK
-             && tmp <= max_width))
-        error (EXIT_FAILURE, 0, _("invalid width: %s"),
-               quote (goal_width_option));
-      goal_width = tmp;
+      goal_width = xdectoumax (goal_width_option, 0, max_width, "",
+                               _("invalid width"), 0);
       if (max_width_option == NULL)
         max_width = goal_width + 10;
     }
@@ -442,21 +430,21 @@ main (int argc, char **argv)
                   fmt (in_stream);
                   if (fclose (in_stream) == EOF)
                     {
-                      error (0, errno, "%s", file);
+                      error (0, errno, "%s", quotef (file));
                       ok = false;
                     }
                 }
               else
                 {
                   error (0, errno, _("cannot open %s for reading"),
-                         quote (file));
+                         quoteaf (file));
                   ok = false;
                 }
             }
         }
     }
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /* Trim space from the front and back of the string P, yielding the prefix,

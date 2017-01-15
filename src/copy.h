@@ -1,5 +1,5 @@
 /* core functions for copying files and directories
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -137,6 +137,9 @@ struct cp_options
      If that fails, then resort to copying.  */
   bool move_mode;
 
+  /* If true, install(1) is the caller.  */
+  bool install_mode;
+
   /* Whether this process has appropriate privileges to chown a file
      whose owner is not the effective user ID.  */
   bool chown_privileges;
@@ -158,6 +161,9 @@ struct cp_options
   bool preserve_mode;
   bool preserve_timestamps;
   bool explicit_no_preserve_mode;
+
+  /* If true, attempt to set specified security context */
+  bool set_security_context;
 
   /* Enabled for mv, and for cp by the --preserve=links option.
      If true, attempt to preserve in the destination files any
@@ -251,7 +257,7 @@ struct cp_options
      that was specified on the command line.  Use it to avoid clobbering
      source files in commands like this:
        rm -rf a b c; mkdir a b c; touch a/f b/f; mv a/f b/f c
-     For now, it protects only regular files when copying (i.e. not renaming).
+     For now, it protects only regular files when copying (i.e., not renaming).
      When renaming, it protects all non-directories.
      Use dest_info_init to initialize it, or set it to NULL to disable
      this feature.  */

@@ -1,5 +1,5 @@
 /* Test whether two files have the same ACLs.
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 # include <aclv.h>
 #endif
 
-#include "progname.h"
 #include "read-file.h"
 #include "xalloc.h"
 #include "macros.h"
@@ -43,8 +42,6 @@ main (int argc, char *argv[])
 {
   const char *file1;
   const char *file2;
-
-  set_program_name (argv[0]);
 
   ASSERT (argc == 3);
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Show that split -a works.
 
-# Copyright (C) 2002-2013 Free Software Foundation, Inc.
+# Copyright (C) 2002-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ split -a2 -C1000 < /dev/null || fail=1
 
 # Ensure that -a fails early with a -n that is too large
 rm -f x*
-split -a2 -n1000 < /dev/null && fail=1
+returns_ 1 split -a2 -n1000 < /dev/null || fail=1
 test -f xaa && fail=1
 
 Exit $fail

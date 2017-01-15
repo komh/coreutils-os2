@@ -1,5 +1,5 @@
 /* group-list.c --Print a list of group IDs or names.
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 extern bool
 print_group_list (const char *username,
                   uid_t ruid, gid_t rgid, gid_t egid,
-                  bool use_names)
+                  bool use_names, char delim)
 {
   bool ok = true;
   struct passwd *pwd = NULL;
@@ -52,7 +52,7 @@ print_group_list (const char *username,
 
   if (egid != rgid)
     {
-      putchar (' ');
+      putchar (delim);
       if (!print_group (egid, use_names))
         ok = false;
     }
@@ -79,7 +79,7 @@ print_group_list (const char *username,
     for (i = 0; i < n_groups; i++)
       if (groups[i] != rgid && groups[i] != egid)
         {
-          putchar (' ');
+          putchar (delim);
           if (!print_group (groups[i], use_names))
             ok = false;
         }

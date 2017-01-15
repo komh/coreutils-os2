@@ -1,5 +1,5 @@
 /* seq - print sequence of numbers to standard output.
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,15 +22,19 @@
 #include <sys/types.h>
 
 #include "system.h"
+#include "die.h"
 #include "c-strtod.h"
 #include "error.h"
 #include "quote.h"
 #include "xstrtod.h"
 
-/* Roll our own isfinite rather than using <math.h>, so that we don't
+/* Roll our own isfinite/isnan rather than using <math.h>, so that we don't
    have to worry about linking -lm just for isfinite.  */
 #ifndef isfinite
 # define isfinite(x) ((x) * 0 == 0)
+#endif
+#ifndef isnan
+# define isnan(x) ((x) != (x))
 #endif
 
 /* The official name of this program (e.g., no 'g' prefix).  */
@@ -87,16 +91,19 @@ Print numbers from FIRST to LAST, in steps of INCREMENT.\n\
 \n\
 If FIRST or INCREMENT is omitted, it defaults to 1.  That is, an\n\
 omitted INCREMENT defaults to 1 even when LAST is smaller than FIRST.\n\
+The sequence of numbers ends when the sum of the current number and\n\
+INCREMENT would become greater than LAST.\n\
 FIRST, INCREMENT, and LAST are interpreted as floating point values.\n\
 INCREMENT is usually positive if FIRST is smaller than LAST, and\n\
 INCREMENT is usually negative if FIRST is greater than LAST.\n\
+INCREMENT must not be 0; none of FIRST, INCREMENT and LAST may be NaN.\n\
 "), stdout);
       fputs (_("\
 FORMAT must be suitable for printing one argument of type 'double';\n\
 it defaults to %.PRECf if FIRST, INCREMENT, and LAST are all fixed point\n\
 decimal numbers with maximum precision PREC, and to %g otherwise.\n\
 "), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -137,7 +144,14 @@ scan_arg (const char *arg)
 
   if (! xstrtold (arg, NULL, &ret.value, c_strtold))
     {
-      error (0, 0, _("invalid floating point argument: %s"), arg);
+      error (0, 0, _("invalid floating point argument: %s"), quote (arg));
+      usage (EXIT_FAILURE);
+    }
+
+  if (isnan (ret.value))
+    {
+      error (0, 0, _("invalid %s argument: %s"), quote_n (0, "not-a-number"),
+             quote_n (1, arg));
       usage (EXIT_FAILURE);
     }
 
@@ -145,17 +159,24 @@ scan_arg (const char *arg)
   while (isspace (to_uchar (*arg)) || *arg == '+')
     arg++;
 
-  ret.width = strlen (arg);
+  /* Default to auto width and precision.  */
+  ret.width = 0;
   ret.precision = INT_MAX;
 
+  /* Use no precision (and possibly fast generation) for integers.  */
+  char const *decimal_point = strchr (arg, '.');
+  if (! decimal_point && ! strchr (arg, 'p') /* not a hex float */)
+    ret.precision = 0;
+
+  /* auto set width and precision for decimal inputs.  */
   if (! arg[strcspn (arg, "xX")] && isfinite (ret.value))
     {
-      char const *decimal_point = strchr (arg, '.');
-      if (! decimal_point)
-        ret.precision = 0;
-      else
+      size_t fraction_len = 0;
+      ret.width = strlen (arg);
+
+      if (decimal_point)
         {
-          size_t fraction_len = strcspn (decimal_point + 1, "eE");
+          fraction_len = strcspn (decimal_point + 1, "eE");
           if (fraction_len <= INT_MAX)
             ret.precision = fraction_len;
           ret.width += (fraction_len == 0                      /* #.  -> #   */
@@ -169,7 +190,8 @@ scan_arg (const char *arg)
       if (e)
         {
           long exponent = strtol (e + 1, NULL, 10);
-          ret.precision += exponent < 0 ? -exponent : 0;
+          ret.precision += exponent < 0 ? -exponent
+                                        : - MIN (ret.precision, exponent);
           /* Don't account for e.... in the width since this is not output.  */
           ret.width -= strlen (arg) - (e - arg);
           /* Adjust the width as per the exponent.  */
@@ -183,6 +205,12 @@ scan_arg (const char *arg)
               else
                 ret.width++;
               exponent = -exponent;
+            }
+          else
+            {
+              if (decimal_point && ret.precision == 0 && fraction_len)
+                ret.width--; /* discount space for '.'  */
+              exponent -= MIN (fraction_len, exponent);
             }
           ret.width += exponent;
         }
@@ -208,8 +236,8 @@ long_double_format (char const *fmt, struct layout *layout)
   for (i = 0; ! (fmt[i] == '%' && fmt[i + 1] != '%'); i += (fmt[i] == '%') + 1)
     {
       if (!fmt[i])
-        error (EXIT_FAILURE, 0,
-               _("format %s has no %% directive"), quote (fmt));
+        die (EXIT_FAILURE, 0,
+             _("format %s has no %% directive"), quote (fmt));
       prefix_len++;
     }
 
@@ -226,15 +254,15 @@ long_double_format (char const *fmt, struct layout *layout)
   has_L = (fmt[i] == 'L');
   i += has_L;
   if (fmt[i] == '\0')
-    error (EXIT_FAILURE, 0, _("format %s ends in %%"), quote (fmt));
+    die (EXIT_FAILURE, 0, _("format %s ends in %%"), quote (fmt));
   if (! strchr ("efgaEFGA", fmt[i]))
-    error (EXIT_FAILURE, 0,
-           _("format %s has unknown %%%c directive"), quote (fmt), fmt[i]);
+    die (EXIT_FAILURE, 0,
+         _("format %s has unknown %%%c directive"), quote (fmt), fmt[i]);
 
   for (i++; ; i += (fmt[i] == '%') + 1)
     if (fmt[i] == '%' && fmt[i + 1] != '%')
-      error (EXIT_FAILURE, 0, _("format %s has too many %% directives"),
-             quote (fmt));
+      die (EXIT_FAILURE, 0, _("format %s has too many %% directives"),
+           quote (fmt));
     else if (fmt[i])
       suffix_len++;
     else
@@ -249,6 +277,14 @@ long_double_format (char const *fmt, struct layout *layout)
         layout->suffix_len = suffix_len;
         return ldfmt;
       }
+}
+
+static void ATTRIBUTE_NORETURN
+io_error (void)
+{
+  /* FIXME: consider option to silently ignore errno=EPIPE */
+  clearerr (stdout);
+  die (EXIT_FAILURE, errno, _("standard output"));
 }
 
 /* Actually print the sequence of numbers in the specified range, with the
@@ -268,7 +304,8 @@ print_numbers (char const *fmt, struct layout layout,
       for (i = 1; ; i++)
         {
           long double x0 = x;
-          printf (fmt, x);
+          if (printf (fmt, x) < 0)
+            io_error ();
           if (out_of_range)
             break;
           x = first + i * step;
@@ -309,10 +346,12 @@ print_numbers (char const *fmt, struct layout layout,
                 break;
             }
 
-          fputs (separator, stdout);
+          if (fputs (separator, stdout) == EOF)
+            io_error ();
         }
 
-      fputs (terminator, stdout);
+      if (fputs (terminator, stdout) == EOF)
+        io_error ();
     }
 }
 
@@ -409,52 +448,86 @@ trim_leading_zeros (char const *s)
 static bool
 seq_fast (char const *a, char const *b)
 {
+  bool inf = STREQ (b, "inf");
+
   /* Skip past any leading 0's.  Without this, our naive cmp
      function would declare 000 to be larger than 99.  */
   a = trim_leading_zeros (a);
   b = trim_leading_zeros (b);
 
   size_t p_len = strlen (a);
-  size_t q_len = strlen (b);
-  size_t n = MAX (p_len, q_len);
-  char *p0 = xmalloc (n + 1);
-  char *p = memcpy (p0 + n - p_len, a, p_len + 1);
-  char *q0 = xmalloc (n + 1);
-  char *q = memcpy (q0 + n - q_len, b, q_len + 1);
+  size_t q_len = inf ? 0 : strlen (b);
 
-  bool ok = cmp (p, p_len, q, q_len) <= 0;
+  /* Allow for at least 31 digits without realloc.
+     1 more than p_len is needed for the inf case.  */
+  size_t inc_size = MAX (MAX (p_len + 1, q_len), 31);
+
+  /* Copy input strings (incl NUL) to end of new buffers.  */
+  char *p0 = xmalloc (inc_size + 1);
+  char *p = memcpy (p0 + inc_size - p_len, a, p_len + 1);
+  char *q;
+  char *q0;
+  if (! inf)
+    {
+      q0 = xmalloc (inc_size + 1);
+      q = memcpy (q0 + inc_size - q_len, b, q_len + 1);
+    }
+  else
+    q = q0 = NULL;
+
+  bool ok = inf || cmp (p, p_len, q, q_len) <= 0;
   if (ok)
     {
-      /* Buffer at least this many numbers per fwrite call.
-         This gives a speed-up of more than 2x over the unbuffered code
+      /* Reduce number of fwrite calls which is seen to
+         give a speed-up of more than 2x over the unbuffered code
          when printing the first 10^9 integers.  */
-      enum {N = 40};
-      char *buf = xmalloc (N * (n + 1));
-      char const *buf_end = buf + N * (n + 1);
+      size_t buf_size = MAX (BUFSIZ, (inc_size + 1) * 2);
+      char *buf = xmalloc (buf_size);
+      char const *buf_end = buf + buf_size;
 
-      char *z = buf;
+      char *bufp = buf;
 
       /* Write first number to buffer.  */
-      z = mempcpy (z, p, p_len);
+      bufp = mempcpy (bufp, p, p_len);
 
       /* Append separator then number.  */
-      while (cmp (p, p_len, q, q_len) < 0)
+      while (inf || cmp (p, p_len, q, q_len) < 0)
         {
-          *z++ = *separator;
+          *bufp++ = *separator;
           incr (&p, &p_len);
-          z = mempcpy (z, p, p_len);
+
+          /* Double up the buffers when needed for the inf case.  */
+          if (p_len == inc_size)
+            {
+              inc_size *= 2;
+              p0 = xrealloc (p0, inc_size + 1);
+              p = memmove (p0 + p_len, p0, p_len + 1);
+
+              if (buf_size < (inc_size + 1) * 2)
+                {
+                  size_t buf_offset = bufp - buf;
+                  buf_size = (inc_size + 1) * 2;
+                  buf = xrealloc (buf, buf_size);
+                  buf_end = buf + buf_size;
+                  bufp = buf + buf_offset;
+                }
+            }
+
+          bufp = mempcpy (bufp, p, p_len);
           /* If no place for another separator + number then
              output buffer so far, and reset to start of buffer.  */
-          if (buf_end - (n + 1) < z)
+          if (buf_end - (p_len + 1) < bufp)
             {
-              fwrite (buf, z - buf, 1, stdout);
-              z = buf;
+              if (fwrite (buf, bufp - buf, 1, stdout) != 1)
+                io_error ();
+              bufp = buf;
             }
         }
 
       /* Write any remaining buffered output, and the terminator.  */
-      *z++ = *terminator;
-      fwrite (buf, z - buf, 1, stdout);
+      *bufp++ = *terminator;
+      if (fwrite (buf, bufp - buf, 1, stdout) != 1)
+        io_error ();
 
       IF_LINT (free (buf));
     }
@@ -572,7 +645,7 @@ main (int argc, char **argv)
       char const *s1 = n_args == 1 ? "1" : argv[optind];
       char const *s2 = argv[optind + (n_args - 1)];
       if (seq_fast (s1, s2))
-        exit (EXIT_SUCCESS);
+        return EXIT_SUCCESS;
 
       /* Upon any failure, let the more general code deal with it.  */
     }
@@ -587,11 +660,19 @@ main (int argc, char **argv)
       if (optind < argc)
         {
           step = last;
+          if (step.value == 0)
+            {
+              error (0, 0, _("invalid Zero increment value: %s"),
+                     quote (argv[optind-1]));
+              usage (EXIT_FAILURE);
+            }
+
           last = scan_arg (argv[optind++]);
         }
     }
 
-  if (first.precision == 0 && step.precision == 0 && last.precision == 0
+  if ((isfinite (first.value) && first.precision == 0)
+      && step.precision == 0 && last.precision == 0
       && 0 <= first.value && step.value == 1 && 0 <= last.value
       && !equal_width && !format_str && strlen (separator) == 1)
     {
@@ -599,14 +680,16 @@ main (int argc, char **argv)
       char *s2;
       if (asprintf (&s1, "%0.Lf", first.value) < 0)
         xalloc_die ();
-      if (asprintf (&s2, "%0.Lf", last.value) < 0)
+      if (! isfinite (last.value))
+        s2 = xstrdup ("inf"); /* Ensure "inf" is used.  */
+      else if (asprintf (&s2, "%0.Lf", last.value) < 0)
         xalloc_die ();
 
-      if (seq_fast (s1, s2))
+      if (*s1 != '-' && *s2 != '-' && seq_fast (s1, s2))
         {
           IF_LINT (free (s1));
           IF_LINT (free (s2));
-          exit (EXIT_SUCCESS);
+          return EXIT_SUCCESS;
         }
 
       free (s1);
@@ -619,5 +702,5 @@ main (int argc, char **argv)
 
   print_numbers (format_str, layout, first.value, step.value, last.value);
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

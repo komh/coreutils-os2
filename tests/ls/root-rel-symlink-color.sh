@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise the 8.17 ls bug with coloring relative-named symlinks in "/".
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ ls
+print_ver_ ls test
 
 symlink_to_rel=
 for i in /*; do

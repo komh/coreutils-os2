@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure permissions are preserved when moving from one partition to another.
 
-# Copyright (C) 1999-2013 Free Software Foundation, Inc.
+# Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@ print_ver_ mv
 cleanup_() { rm -rf "$other_partition_tmpdir"; }
 . "$abs_srcdir/tests/other-fs-tmpdir"
 
-: > file
-chmod a=rwx file
+> file || framework_failure_
+chmod a=rwx file || framework_failure_
 
 umask 077
-mv file "$other_partition_tmpdir"
+mv file "$other_partition_tmpdir" || framework_failure_
 
 test -f file && fail=1
 test -f "$other_partition_tmpdir/file" || fail=1

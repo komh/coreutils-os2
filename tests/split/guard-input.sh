@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure split doesn't overwrite input with output.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@ seq 10 | tee exp-1 > xaa
 ln -s xaa in2
 ln xaa in3
 
-split -C 6 xaa && fail=1
-split -C 6 in2 && fail=1
-split -C 6 in3 && fail=1
-split -C 6 - < xaa && fail=1
+returns_ 1 split -C 6 xaa || fail=1
+returns_ 1 split -C 6 in2 || fail=1
+returns_ 1 split -C 6 in3 || fail=1
+returns_ 1 split -C 6 - < xaa || fail=1
 
 compare exp-1 xaa || fail=1
 

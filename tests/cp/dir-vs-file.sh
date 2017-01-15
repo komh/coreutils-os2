@@ -1,7 +1,7 @@
 #!/bin/sh
 # A directory may not replace an existing file.
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ touch file || framework_failure_
 
 
 # In 4.0.35, this cp invocation silently succeeded.
-cp -R dir file 2>/dev/null && fail=1
+returns_ 1 cp -R dir file 2>/dev/null || fail=1
 
 # Make sure file is not replaced with a directory.
 # In 4.0.35, it was.

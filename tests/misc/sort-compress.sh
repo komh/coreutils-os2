@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test use of compression by sort
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ sort
+require_trap_signame_
 
 seq -w 2000 > exp || framework_failure_
 tac exp > in || framework_failure_
@@ -27,8 +28,8 @@ sort -S 1k in > out || fail=1
 compare exp out || fail=1
 
 # Create our own gzip program that will be used as the default
-cat <<\EOF > gzip || fail=1
-#!/bin/sh
+cat <<EOF > gzip || fail=1
+#!$SHELL
 tr 41 14
 touch ok
 EOF
@@ -38,8 +39,7 @@ chmod +x gzip
 # Ensure 'sort' is immune to parent's SIGCHLD handler
 # Use a subshell and an exec to work around a bug in FreeBSD 5.0 /bin/sh.
 (
-  # ash doesn't support "trap '' CHLD"; it knows only signal numbers.
-  sig=$("$abs_top_builddir/src/kill" -l CHLD 2>/dev/null) && trap '' $sig
+  trap '' CHLD
 
   # This should force the use of child processes for "compression"
   PATH=.:$PATH exec sort -S 1k --compress-program=gzip in > /dev/null

@@ -3,7 +3,7 @@
 # recurse into directory DIR.  rm -i (without -r) must fail in that case.
 # Fixed in coreutils-4.5.2.
 
-# Copyright (C) 2002-2013 Free Software Foundation, Inc.
+# Copyright (C) 2002-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ echo y > y || framework_failure_
 
 
 # This must fail.
-rm -i dir < y > /dev/null 2>&1 && fail=1
+returns_ 1 rm -i dir < y > /dev/null 2>&1 || fail=1
 
 # The directory must remain.
 test -d dir || fail=1

@@ -1,5 +1,5 @@
 /* Permuted index for GNU, with keywords in their context.
-   Copyright (C) 1990-2013 Free Software Foundation, Inc.
+   Copyright (C) 1990-2016 Free Software Foundation, Inc.
    François Pinard <pinard@iro.umontreal.ca>, 1988.
 
    This program is free software: you can redistribute it and/or modify
@@ -22,13 +22,13 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include "system.h"
+#include "die.h"
 #include <regex.h>
 #include "argmatch.h"
 #include "diacrit.h"
 #include "error.h"
 #include "fadvise.h"
 #include "quote.h"
-#include "quotearg.h"
 #include "read-file.h"
 #include "stdio--.h"
 #include "xstrtol.h"
@@ -55,7 +55,7 @@
 # define MALLOC_FUNC_CHECK 1
 # include <dmalloc.h>
 #endif
-
+
 /* Global definitions.  */
 
 /* FIXME: There are many unchecked integer overflows in this file,
@@ -166,7 +166,7 @@ static int total_line_count;	/* total number of lines seen so far */
 static const char **input_file_name;	/* array of text input file names */
 static int *file_line_count;	/* array of 'total_line_count' values at end */
 
-static BLOCK text_buffer;	/* file to study */
+static BLOCK *text_buffers;	/* files to study */
 
 /* SKIP_NON_WHITE used only for getting or skipping the reference.  */
 
@@ -232,6 +232,7 @@ typedef struct
     DELTA left;			/* distance to left context start */
     DELTA right;		/* distance to right context end */
     int reference;		/* reference descriptor */
+    size_t file_index;		/* corresponding file  */
   }
 OCCURS;
 
@@ -272,7 +273,7 @@ static BLOCK head;		/* head field */
 static int head_truncation;	/* flag truncation before the head field */
 
 static BLOCK reference;		/* reference field for input reference mode */
-
+
 /* Miscellaneous routines.  */
 
 /* Diagnose an error in the regular expression matcher.  Then exit.  */
@@ -280,8 +281,7 @@ static BLOCK reference;		/* reference field for input reference mode */
 static void ATTRIBUTE_NORETURN
 matcher_error (void)
 {
-  error (0, errno, _("error in regular expression matcher"));
-  exit (EXIT_FAILURE);
+  die (EXIT_FAILURE, errno, _("error in regular expression matcher"));
 }
 
 /*------------------------------------------------------.
@@ -416,7 +416,7 @@ compile_regex (struct regex_data *regex)
 
   message = re_compile_pattern (string, strlen (string), pattern);
   if (message)
-    error (EXIT_FAILURE, 0, _("%s (for regexp %s)"), message, quote (string));
+    die (EXIT_FAILURE, 0, _("%s (for regexp %s)"), message, quote (string));
 
   /* The fastmap should be compiled before 're_match'.  The following
      call is not mandatory, because 're_search' is always called sooner,
@@ -520,11 +520,11 @@ swallow_file_in_memory (const char *file_name, BLOCK *block)
     block->start = read_file (file_name, &used_length);
 
   if (!block->start)
-    error (EXIT_FAILURE, errno, "%s", quote (using_stdin ? "-" : file_name));
+    die (EXIT_FAILURE, errno, "%s", quotef (using_stdin ? "-" : file_name));
 
   block->end = block->start + used_length;
 }
-
+
 /* Sort and search routines.  */
 
 /*--------------------------------------------------------------------------.
@@ -630,11 +630,11 @@ sort_found_occurs (void)
 {
 
   /* Only one language for the time being.  */
-
-  qsort (occurs_table[0], number_of_occurs[0], sizeof **occurs_table,
-         compare_occurs);
+  if (number_of_occurs[0])
+    qsort (occurs_table[0], number_of_occurs[0], sizeof **occurs_table,
+           compare_occurs);
 }
-
+
 /* Parameter files reading routines.  */
 
 /*----------------------------------------------------------------------.
@@ -736,7 +736,7 @@ digest_word_file (const char *file_name, WORD_TABLE *table)
 
   qsort (table->start, table->length, sizeof table->start[0], compare_words);
 }
-
+
 /* Keyword recognition and selection.  */
 
 /*----------------------------------------------------------------------.
@@ -744,7 +744,7 @@ digest_word_file (const char *file_name, WORD_TABLE *table)
 `----------------------------------------------------------------------*/
 
 static void
-find_occurs_in_text (void)
+find_occurs_in_text (size_t file_index)
 {
   char *cursor;			/* for scanning the source text */
   char *scan;			/* for scanning the source text also */
@@ -759,6 +759,8 @@ find_occurs_in_text (void)
   char *word_start;		/* start of word */
   char *word_end;		/* end of word */
   char *next_context_start;	/* next start of left context */
+
+  const BLOCK *text_buffer = &text_buffers[file_index];
 
   /* reference_length is always used within 'if (input_reference)'.
      However, GNU C diagnoses that it may be used uninitialized.  The
@@ -775,19 +777,19 @@ find_occurs_in_text (void)
      found inside it.  Also, unconditionally assigning these variable has
      the happy effect of shutting up lint.  */
 
-  line_start = text_buffer.start;
+  line_start = text_buffer->start;
   line_scan = line_start;
   if (input_reference)
     {
-      SKIP_NON_WHITE (line_scan, text_buffer.end);
+      SKIP_NON_WHITE (line_scan, text_buffer->end);
       reference_length = line_scan - line_start;
-      SKIP_WHITE (line_scan, text_buffer.end);
+      SKIP_WHITE (line_scan, text_buffer->end);
     }
 
   /* Process the whole buffer, one line or one sentence at a time.  */
 
-  for (cursor = text_buffer.start;
-       cursor < text_buffer.end;
+  for (cursor = text_buffer->start;
+       cursor < text_buffer->end;
        cursor = next_context_start)
     {
 
@@ -805,11 +807,11 @@ find_occurs_in_text (void)
          This test also accounts for the case of an incomplete line or
          sentence at the end of the buffer.  */
 
-      next_context_start = text_buffer.end;
+      next_context_start = text_buffer->end;
       if (context_regex.string)
         switch (re_search (&context_regex.pattern, cursor,
-                           text_buffer.end - cursor,
-                           0, text_buffer.end - cursor, &context_regs))
+                           text_buffer->end - cursor,
+                           0, text_buffer->end - cursor, &context_regs))
           {
           case -2:
             matcher_error ();
@@ -915,7 +917,7 @@ find_occurs_in_text (void)
                     total_line_count++;
                     line_scan++;
                     line_start = line_scan;
-                    SKIP_NON_WHITE (line_scan, text_buffer.end);
+                    SKIP_NON_WHITE (line_scan, text_buffer->end);
                     reference_length = line_scan - line_start;
                   }
                 else
@@ -956,7 +958,7 @@ find_occurs_in_text (void)
 
           occurs_cursor = occurs_table[0] + number_of_occurs[0];
 
-          /* Define the refence field, if any.  */
+          /* Define the reference field, if any.  */
 
           if (auto_reference)
             {
@@ -973,7 +975,7 @@ find_occurs_in_text (void)
                     total_line_count++;
                     line_scan++;
                     line_start = line_scan;
-                    SKIP_NON_WHITE (line_scan, text_buffer.end);
+                    SKIP_NON_WHITE (line_scan, text_buffer->end);
                   }
                 else
                   line_scan++;
@@ -1007,12 +1009,13 @@ find_occurs_in_text (void)
           occurs_cursor->key = possible_key;
           occurs_cursor->left = context_start - possible_key.start;
           occurs_cursor->right = context_end - possible_key.start;
+          occurs_cursor->file_index = file_index;
 
           number_of_occurs[0]++;
         }
     }
 }
-
+
 /* Formatting and actual output - service routines.  */
 
 /*-----------------------------------------.
@@ -1186,7 +1189,7 @@ print_field (BLOCK field)
         putchar (*cursor);
     }
 }
-
+
 /* Formatting and actual output - planning routines.  */
 
 /*--------------------------------------------------------------------.
@@ -1197,7 +1200,7 @@ print_field (BLOCK field)
 static void
 fix_output_parameters (void)
 {
-  int file_index;		/* index in text input file arrays */
+  size_t file_index;		/* index in text input file arrays */
   int line_ordinal;		/* line ordinal value for reference */
   char ordinal_string[12];	/* edited line ordinal for reference */
   int reference_width;		/* width for the whole reference */
@@ -1232,6 +1235,8 @@ fix_output_parameters (void)
 
   if ((auto_reference || input_reference) && !right_reference)
     line_width -= reference_max_width + gap_size;
+  if (line_width < 0)
+    line_width = 0;
 
   /* The output lines, minimally, will contain from left to right a left
      context, a gap, and a keyword followed by the right context with no
@@ -1356,9 +1361,10 @@ define_all_fields (OCCURS *occurs)
   char *left_context_start;	/* start of left context */
   char *right_context_end;	/* end of right context */
   char *left_field_start;	/* conservative start for 'head'/'before' */
-  int file_index;		/* index in text input file arrays */
   const char *file_name;	/* file name for reference */
   int line_ordinal;		/* line ordinal for reference */
+  const char *buffer_start;	/* start of buffered file for this occurs */
+  const char *buffer_end;	/* end of buffered file for this occurs */
 
   /* Define 'keyafter', start of left context and end of right context.
      'keyafter' starts at the saved position for keyword and extend to the
@@ -1370,6 +1376,9 @@ define_all_fields (OCCURS *occurs)
   keyafter.end = keyafter.start + occurs->key.size;
   left_context_start = keyafter.start + occurs->left;
   right_context_end = keyafter.start + occurs->right;
+
+  buffer_start = text_buffers[occurs->file_index].start;
+  buffer_end = text_buffers[occurs->file_index].end;
 
   cursor = keyafter.end;
   while (cursor < right_context_end
@@ -1422,13 +1431,13 @@ define_all_fields (OCCURS *occurs)
   if (truncation_string)
     {
       cursor = before.start;
-      SKIP_WHITE_BACKWARDS (cursor, text_buffer.start);
+      SKIP_WHITE_BACKWARDS (cursor, buffer_start);
       before_truncation = cursor > left_context_start;
     }
   else
     before_truncation = 0;
 
-  SKIP_WHITE (before.start, text_buffer.end);
+  SKIP_WHITE (before.start, buffer_end);
 
   /* The tail could not take more columns than what has been left in the
      left context field, and a gap is mandatory.  It starts after the
@@ -1443,7 +1452,7 @@ define_all_fields (OCCURS *occurs)
   if (tail_max_width > 0)
     {
       tail.start = keyafter.end;
-      SKIP_WHITE (tail.start, text_buffer.end);
+      SKIP_WHITE (tail.start, buffer_end);
 
       tail.end = tail.start;
       cursor = tail.end;
@@ -1489,7 +1498,7 @@ define_all_fields (OCCURS *occurs)
   if (head_max_width > 0)
     {
       head.end = before.start;
-      SKIP_WHITE_BACKWARDS (head.end, text_buffer.start);
+      SKIP_WHITE_BACKWARDS (head.end, buffer_start);
 
       head.start = left_field_start;
       while (head.start + head_max_width < head.end)
@@ -1520,21 +1529,16 @@ define_all_fields (OCCURS *occurs)
     {
 
       /* Construct the reference text in preallocated space from the file
-         name and the line number.  Find out in which file the reference
-         occurred.  Standard input yields an empty file name.  Insure line
-         numbers are one based, even if they are computed zero based.  */
+         name and the line number.  Standard input yields an empty file name.
+         Ensure line numbers are 1 based, even if they are computed 0 based.  */
 
-      file_index = 0;
-      while (file_line_count[file_index] < occurs->reference)
-        file_index++;
-
-      file_name = input_file_name[file_index];
+      file_name = input_file_name[occurs->file_index];
       if (!file_name)
         file_name = "";
 
       line_ordinal = occurs->reference + 1;
-      if (file_index > 0)
-        line_ordinal -= file_line_count[file_index - 1];
+      if (occurs->file_index > 0)
+        line_ordinal -= file_line_count[occurs->file_index - 1];
 
       sprintf (reference.start, "%s:%d", file_name, line_ordinal);
       reference.end = reference.start + strlen (reference.start);
@@ -1550,7 +1554,7 @@ define_all_fields (OCCURS *occurs)
       SKIP_NON_WHITE (reference.end, right_context_end);
     }
 }
-
+
 /* Formatting and actual output - control routines.  */
 
 /*----------------------------------------------------------------------.
@@ -1800,7 +1804,7 @@ generate_all_output (void)
       occurs_cursor++;
     }
 }
-
+
 /* Option decoding and main program.  */
 
 /*------------------------------------------------------.
@@ -1822,12 +1826,16 @@ Usage: %s [OPTION]... [INPUT]...   (without -G)\n\
 Output a permuted index, including context, of the words in the input files.\n\
 "), stdout);
 
+      emit_stdin_note ();
       emit_mandatory_arg_note ();
 
       fputs (_("\
   -A, --auto-reference           output automatically generated references\n\
   -G, --traditional              behave more like System V 'ptx'\n\
-  -F, --flag-truncation=STRING   use STRING for flagging line truncations\n\
+"), stdout);
+      fputs (_("\
+  -F, --flag-truncation=STRING   use STRING for flagging line truncations.\n\
+                                 The default is '/'\n\
 "), stdout);
       fputs (_("\
   -M, --macro-name=STRING        macro name to use instead of 'xx'\n\
@@ -1851,11 +1859,7 @@ Output a permuted index, including context, of the words in the input files.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      fputs (_("\
-\n\
-With no FILE or if FILE is -, read Standard Input.  '-F /' by default.\n\
-"), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -1945,8 +1949,8 @@ main (int argc, char **argv)
             unsigned long int tmp_ulong;
             if (xstrtoul (optarg, NULL, 0, &tmp_ulong, NULL) != LONGINT_OK
                 || ! (0 < tmp_ulong && tmp_ulong <= INT_MAX))
-              error (EXIT_FAILURE, 0, _("invalid gap width: %s"),
-                     quotearg (optarg));
+              die (EXIT_FAILURE, 0, _("invalid gap width: %s"),
+                   quote (optarg));
             gap_size = tmp_ulong;
             break;
           }
@@ -1972,8 +1976,8 @@ main (int argc, char **argv)
             unsigned long int tmp_ulong;
             if (xstrtoul (optarg, NULL, 0, &tmp_ulong, NULL) != LONGINT_OK
                 || ! (0 < tmp_ulong && tmp_ulong <= INT_MAX))
-              error (EXIT_FAILURE, 0, _("invalid line width: %s"),
-                     quotearg (optarg));
+              die (EXIT_FAILURE, 0, _("invalid line width: %s"),
+                   quote (optarg));
             line_width = tmp_ulong;
             break;
           }
@@ -2015,6 +2019,8 @@ main (int argc, char **argv)
         case 10:
           output_format = XARGMATCH ("--format", optarg,
                                      format_args, format_vals);
+          break;
+
         case_GETOPT_HELP_CHAR;
 
         case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
@@ -2032,6 +2038,7 @@ main (int argc, char **argv)
 
       input_file_name = xmalloc (sizeof *input_file_name);
       file_line_count = xmalloc (sizeof *file_line_count);
+      text_buffers =    xmalloc (sizeof *text_buffers);
       number_input_files = 1;
       input_file_name[0] = NULL;
     }
@@ -2040,6 +2047,7 @@ main (int argc, char **argv)
       number_input_files = argc - optind;
       input_file_name = xmalloc (number_input_files * sizeof *input_file_name);
       file_line_count = xmalloc (number_input_files * sizeof *file_line_count);
+      text_buffers    = xmalloc (number_input_files * sizeof *text_buffers);
 
       for (file_index = 0; file_index < number_input_files; file_index++)
         {
@@ -2058,6 +2066,7 @@ main (int argc, char **argv)
       number_input_files = 1;
       input_file_name = xmalloc (sizeof *input_file_name);
       file_line_count = xmalloc (sizeof *file_line_count);
+      text_buffers    = xmalloc (sizeof *text_buffers);
       if (!*argv[optind] || STREQ (argv[optind], "-"))
         input_file_name[0] = NULL;
       else
@@ -2069,7 +2078,7 @@ main (int argc, char **argv)
       if (optind < argc)
         {
           if (! freopen (argv[optind], "w", stdout))
-            error (EXIT_FAILURE, errno, "%s", argv[optind]);
+            die (EXIT_FAILURE, errno, "%s", quotef (argv[optind]));
           optind++;
         }
 
@@ -2124,11 +2133,12 @@ main (int argc, char **argv)
 
   for (file_index = 0; file_index < number_input_files; file_index++)
     {
+      BLOCK *text_buffer = text_buffers + file_index;
 
-      /* Read the file in core, than study it.  */
+      /* Read the file in core, then study it.  */
 
-      swallow_file_in_memory (input_file_name[file_index], &text_buffer);
-      find_occurs_in_text ();
+      swallow_file_in_memory (input_file_name[file_index], text_buffer);
+      find_occurs_in_text (file_index);
 
       /* Maintain for each file how many lines has been read so far when its
          end is reached.  Incrementing the count first is a simple kludge to
@@ -2146,5 +2156,5 @@ main (int argc, char **argv)
 
   /* All done.  */
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

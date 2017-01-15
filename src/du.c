@@ -1,5 +1,5 @@
 /* du -- summarize disk usage
-   Copyright (C) 1988-2013 Free Software Foundation, Inc.
+   Copyright (C) 1988-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,13 +31,13 @@
 #include "argmatch.h"
 #include "argv-iter.h"
 #include "di-set.h"
+#include "die.h"
 #include "error.h"
 #include "exclude.h"
 #include "fprintftime.h"
 #include "human.h"
 #include "mountlist.h"
 #include "quote.h"
-#include "quotearg.h"
 #include "stat-size.h"
 #include "stat-time.h"
 #include "stdio--.h"
@@ -50,7 +50,7 @@ extern bool fts_debug;
 #define PROGRAM_NAME "du"
 
 #define AUTHORS \
-  proper_name_utf8 ("Torbjorn Granlund", "Torbj\303\266rn Granlund"), \
+  proper_name ("Torbjorn Granlund"), \
   proper_name ("David MacKenzie"), \
   proper_name ("Paul Eggert"), \
   proper_name ("Jim Meyering")
@@ -78,6 +78,9 @@ struct duinfo
   /* Size of files in directory.  */
   uintmax_t size;
 
+  /* Number of inodes in directory.  */
+  uintmax_t inodes;
+
   /* Latest time stamp found.  If tmax.tv_sec == TYPE_MINIMUM (time_t)
      && tmax.tv_nsec < 0, no time stamp has been found.  */
   struct timespec tmax;
@@ -88,6 +91,7 @@ static inline void
 duinfo_init (struct duinfo *a)
 {
   a->size = 0;
+  a->inodes = 0;
   a->tmax.tv_sec = TYPE_MINIMUM (time_t);
   a->tmax.tv_nsec = -1;
 }
@@ -97,6 +101,7 @@ static inline void
 duinfo_set (struct duinfo *a, uintmax_t size, struct timespec tmax)
 {
   a->size = size;
+  a->inodes = 1;
   a->tmax = tmax;
 }
 
@@ -106,6 +111,7 @@ duinfo_add (struct duinfo *a, struct duinfo const *b)
 {
   uintmax_t sum = a->size + b->size;
   a->size = a->size <= sum ? sum : UINTMAX_MAX;
+  a->inodes = a->inodes + b->inodes;
   if (timespec_cmp (a->tmax, b->tmax) < 0)
     a->tmax = b->tmax;
 }
@@ -154,6 +160,9 @@ static intmax_t opt_threshold = 0;
 /* Human-readable options for output.  */
 static int human_output_opts;
 
+/* Output inodes count instead of blocks used.  */
+static bool opt_inodes = false;
+
 /* If true, print most recently modified date, using the specified format.  */
 static bool opt_time = false;
 
@@ -173,6 +182,9 @@ static char const *time_style = NULL;
 
 /* Format used to display date / time. Controlled by --time-style */
 static char const *time_format = NULL;
+
+/* The local time zone rules, as per the TZ environment variable.  */
+static timezone_t localtz;
 
 /* The units to use when printing sizes.  */
 static uintmax_t output_block_size;
@@ -197,7 +209,8 @@ enum
   HUMAN_SI_OPTION,
   FTS_DEBUG,
   TIME_OPTION,
-  TIME_STYLE_OPTION
+  TIME_STYLE_OPTION,
+  INODES_OPTION
 };
 
 static struct option const long_options[] =
@@ -214,6 +227,7 @@ static struct option const long_options[] =
   {"exclude-from", required_argument, NULL, 'X'},
   {"files0-from", required_argument, NULL, FILES0_FROM_OPTION},
   {"human-readable", no_argument, NULL, 'h'},
+  {"inodes", no_argument, NULL, INODES_OPTION},
   {"si", no_argument, NULL, HUMAN_SI_OPTION},
   {"max-depth", required_argument, NULL, 'd'},
   {"null", no_argument, NULL, '0'},
@@ -272,13 +286,13 @@ Usage: %s [OPTION]... [FILE]...\n\
   or:  %s [OPTION]... --files0-from=F\n\
 "), program_name, program_name);
       fputs (_("\
-Summarize disk usage of each FILE, recursively for directories.\n\
+Summarize disk usage of the set of FILEs, recursively for directories.\n\
 "), stdout);
 
       emit_mandatory_arg_note ();
 
       fputs (_("\
-  -0, --null            end each output line with 0 byte rather than newline\n\
+  -0, --null            end each output line with NUL, not newline\n\
   -a, --all             write counts for all files, not just directories\n\
       --apparent-size   print apparent sizes, rather than disk usage; although\
 \n\
@@ -287,9 +301,9 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           fragmentation, indirect blocks, and the like\n\
 "), stdout);
       fputs (_("\
-  -B, --block-size=SIZE  scale sizes by SIZE before printing them.  E.g.,\n\
-                           '-BM' prints sizes in units of 1,048,576 bytes.\n\
-                           See SIZE format below.\n\
+  -B, --block-size=SIZE  scale sizes by SIZE before printing them; e.g.,\n\
+                           '-BM' prints sizes in units of 1,048,576 bytes;\n\
+                           see SIZE format below\n\
   -b, --bytes           equivalent to '--apparent-size --block-size=1'\n\
   -c, --total           produce a grand total\n\
   -D, --dereference-args  dereference only symlinks that are listed on the\n\
@@ -300,12 +314,13 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           --summarize\n\
 "), stdout);
       fputs (_("\
-      --files0-from=F   summarize disk usage of the NUL-terminated file\n\
-                          names specified in file F;\n\
-                          If F is - then read names from standard input\n\
+      --files0-from=F   summarize disk usage of the\n\
+                          NUL-terminated file names specified in file F;\n\
+                          if F is -, then read names from standard input\n\
   -H                    equivalent to --dereference-args (-D)\n\
   -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)\
 \n\
+      --inodes          list inode usage information instead of block usage\n\
 "), stdout);
       fputs (_("\
   -k                    like --block-size=1K\n\
@@ -315,7 +330,7 @@ Summarize disk usage of each FILE, recursively for directories.\n\
 "), stdout);
       fputs (_("\
   -P, --no-dereference  don't follow any symbolic links (this is the default)\n\
-  -S, --separate-dirs   do not include size of subdirectories\n\
+  -S, --separate-dirs   for directories do not include size of subdirectories\n\
       --si              like -h, but use powers of 1000 not 1024\n\
   -s, --summarize       display only a total for each argument\n\
 "), stdout);
@@ -326,9 +341,9 @@ Summarize disk usage of each FILE, recursively for directories.\n\
                           directory, or any of its subdirectories\n\
       --time=WORD       show time as WORD instead of modification time:\n\
                           atime, access, use, ctime or status\n\
-      --time-style=STYLE  show times using style STYLE:\n\
-                          full-iso, long-iso, iso, +FORMAT\n\
-                          FORMAT is interpreted like 'date'\n\
+      --time-style=STYLE  show times using STYLE, which can be:\n\
+                            full-iso, long-iso, iso, or +FORMAT;\n\
+                            FORMAT is interpreted like in 'date'\n\
 "), stdout);
       fputs (_("\
   -X, --exclude-from=FILE  exclude files that match any pattern in FILE\n\
@@ -339,7 +354,7 @@ Summarize disk usage of each FILE, recursively for directories.\n\
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       emit_blocksize_note ("DU");
       emit_size_note ();
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -361,19 +376,18 @@ hash_ins (struct di_set *di_set, ino_t ino, dev_t dev)
    in FORMAT.  */
 
 static void
-show_date (const char *format, struct timespec when)
+show_date (const char *format, struct timespec when, timezone_t tz)
 {
-  struct tm *tm = localtime (&when.tv_sec);
-  if (! tm)
+  struct tm tm;
+  if (localtime_rz (tz, &when.tv_sec, &tm))
+    fprintftime (stdout, format, &tm, tz, when.tv_nsec);
+  else
     {
       char buf[INT_BUFSIZE_BOUND (intmax_t)];
       char *when_str = timetostr (when.tv_sec, buf);
-      error (0, 0, _("time %s is out of range"), when_str);
+      error (0, 0, _("time %s is out of range"), quote (when_str));
       fputs (when_str, stdout);
-      return;
     }
-
-  fprintftime (stdout, format, tm, 0, when.tv_nsec);
 }
 
 /* Print N_BYTES.  Convert it to a readable value before printing.  */
@@ -394,14 +408,75 @@ print_only_size (uintmax_t n_bytes)
 static void
 print_size (const struct duinfo *pdui, const char *string)
 {
-  print_only_size (pdui->size);
+  print_only_size (opt_inodes
+                   ? pdui->inodes
+                   : pdui->size);
+
   if (opt_time)
     {
       putchar ('\t');
-      show_date (time_format, pdui->tmax);
+      show_date (time_format, pdui->tmax, localtz);
     }
   printf ("\t%s%c", string, opt_nul_terminate_output ? '\0' : '\n');
   fflush (stdout);
+}
+
+/* Fill the di_mnt set with local mount point dev/ino pairs.  */
+
+static void
+fill_mount_table (void)
+{
+  struct mount_entry *mnt_ent = read_file_system_list (false);
+  while (mnt_ent)
+    {
+      struct mount_entry *mnt_free;
+      if (!mnt_ent->me_remote && !mnt_ent->me_dummy)
+        {
+          struct stat buf;
+          if (!stat (mnt_ent->me_mountdir, &buf))
+            hash_ins (di_mnt, buf.st_ino, buf.st_dev);
+          else
+            {
+              /* Ignore stat failure.  False positives are too common.
+                 E.g., "Permission denied" on /run/user/<name>/gvfs.  */
+            }
+        }
+
+      mnt_free = mnt_ent;
+      mnt_ent = mnt_ent->me_next;
+      free_mount_entry (mnt_free);
+    }
+}
+
+/* This function checks whether any of the directories in the cycle that
+   fts detected is a mount point.  */
+
+static bool
+mount_point_in_fts_cycle (FTSENT const *ent)
+{
+  FTSENT const *cycle_ent = ent->fts_cycle;
+
+  if (!di_mnt)
+    {
+      /* Initialize the set of dev,inode pairs.  */
+      di_mnt = di_set_alloc ();
+      if (!di_mnt)
+        xalloc_die ();
+
+      fill_mount_table ();
+    }
+
+  while (ent && ent != cycle_ent)
+    {
+      if (di_set_lookup (di_mnt, ent->fts_statp->st_dev,
+                         ent->fts_statp->st_ino) > 0)
+        {
+          return true;
+        }
+      ent = ent->fts_parent;
+    }
+
+  return false;
 }
 
 /* This function is called once for every file system object that fts
@@ -434,7 +509,7 @@ process_file (FTS *fts, FTSENT *ent)
   if (info == FTS_DNR)
     {
       /* An error occurred, but the size is known, so count it.  */
-      error (0, ent->fts_errno, _("cannot read directory %s"), quote (file));
+      error (0, ent->fts_errno, _("cannot read directory %s"), quoteaf (file));
       ok = false;
     }
   else if (info != FTS_DP)
@@ -454,7 +529,7 @@ process_file (FTS *fts, FTSENT *ent)
 
           if (info == FTS_NS || info == FTS_SLNONE)
             {
-              error (0, ent->fts_errno, _("cannot access %s"), quote (file));
+              error (0, ent->fts_errno, _("cannot access %s"), quoteaf (file));
               return false;
             }
 
@@ -494,20 +569,16 @@ process_file (FTS *fts, FTSENT *ent)
 
         case FTS_ERR:
           /* An error occurred, but the size is known, so count it.  */
-          error (0, ent->fts_errno, "%s", quote (file));
+          error (0, ent->fts_errno, "%s", quotef (file));
           ok = false;
           break;
 
         case FTS_DC:
-          if (cycle_warning_required (fts, ent))
+          /* If not following symlinks and not a (bind) mount point.  */
+          if (cycle_warning_required (fts, ent)
+              && ! mount_point_in_fts_cycle (ent))
             {
-              /* If this is a mount point, then diagnose it and avoid
-                 the cycle.  */
-              if (di_set_lookup (di_mnt, sb->st_dev, sb->st_ino))
-                error (0, 0, _("mount point %s already traversed"),
-                       quote (file));
-              else
-                emit_cycle_warning (file);
+              emit_cycle_warning (file);
               return false;
             }
           return true;
@@ -589,9 +660,10 @@ process_file (FTS *fts, FTSENT *ent)
       || level == 0)
     {
       /* Print or elide this entry according to the --threshold option.  */
+      uintmax_t v = opt_inodes ? dui_to_print.inodes : dui_to_print.size;
       if (opt_threshold < 0
-          ? dui_to_print.size <= -opt_threshold
-          : dui_to_print.size >= opt_threshold)
+          ? v <= -opt_threshold
+          : v >= opt_threshold)
         print_size (&dui_to_print, file);
     }
 
@@ -622,7 +694,7 @@ du_files (char **files, int bit_flags)
               if (errno != 0)
                 {
                   error (0, errno, _("fts_read failed: %s"),
-                         quotearg_colon (fts->fts_path));
+                         quotef (fts->fts_path));
                   ok = false;
                 }
 
@@ -645,38 +717,6 @@ du_files (char **files, int bit_flags)
     }
 
   return ok;
-}
-
-/* Fill the di_mnt set with local mount point dev/ino pairs.  */
-
-static void
-fill_mount_table (void)
-{
-  struct mount_entry *mnt_ent = read_file_system_list (false);
-  while (mnt_ent)
-    {
-      struct mount_entry *mnt_free;
-      if (!mnt_ent->me_remote && !mnt_ent->me_dummy)
-        {
-          struct stat buf;
-          if (!stat (mnt_ent->me_mountdir, &buf))
-            hash_ins (di_mnt, buf.st_ino, buf.st_dev);
-          else
-            {
-              /* Ignore stat failure.  False positives are too common.
-                 E.g., "Permission denied" on /run/user/<name>/gvfs.  */
-            }
-        }
-
-      mnt_free = mnt_ent;
-      mnt_ent = mnt_ent->me_next;
-
-      free (mnt_free->me_devname);
-      free (mnt_free->me_mountdir);
-      if (mnt_free->me_type_malloced)
-        free (mnt_free->me_type);
-      free (mnt_free);
-    }
 }
 
 int
@@ -806,7 +846,7 @@ main (int argc, char **argv)
             if (opt_threshold == 0 && *optarg == '-')
               {
                 /* Do not allow -0, as this wouldn't make sense anyway.  */
-                error (EXIT_FAILURE, 0, _("invalid --threshold argument '-0'"));
+                die (EXIT_FAILURE, 0, _("invalid --threshold argument '-0'"));
               }
           }
           break;
@@ -845,7 +885,7 @@ main (int argc, char **argv)
           if (add_exclude_file (add_exclude, exclude, optarg,
                                 EXCLUDE_WILDCARDS, '\n'))
             {
-              error (0, errno, "%s", quotearg_colon (optarg));
+              error (0, errno, "%s", quotef (optarg));
               ok = false;
             }
           break;
@@ -858,12 +898,17 @@ main (int argc, char **argv)
           add_exclude (exclude, optarg, EXCLUDE_WILDCARDS);
           break;
 
+        case INODES_OPTION:
+          opt_inodes = true;
+          break;
+
         case TIME_OPTION:
           opt_time = true;
           time_type =
             (optarg
              ? XARGMATCH ("--time", optarg, time_args, time_types)
              : time_mtime);
+          localtz = tzalloc (getenv ("TZ"));
           break;
 
         case TIME_STYLE_OPTION:
@@ -904,6 +949,16 @@ main (int argc, char **argv)
   if (opt_summarize_only)
     max_depth = 0;
 
+  if (opt_inodes)
+    {
+      if (apparent_size)
+        {
+          error (0, 0, _("warning: options --apparent-size and -b are "
+                         "ineffective with --inodes"));
+        }
+      output_block_size = 1;
+    }
+
   /* Process time style if printing last times.  */
   if (opt_time)
     {
@@ -926,9 +981,9 @@ main (int argc, char **argv)
             {
               /* Ignore "posix-" prefix, for compatibility with ls.  */
               static char const posix_prefix[] = "posix-";
-              while (strncmp (time_style, posix_prefix, sizeof posix_prefix - 1)
-                     == 0)
-                time_style += sizeof posix_prefix - 1;
+              static const size_t prefix_len = sizeof posix_prefix - 1;
+              while (STREQ_LEN (time_style, posix_prefix, prefix_len))
+                time_style += prefix_len;
             }
         }
 
@@ -968,8 +1023,8 @@ main (int argc, char **argv)
         }
 
       if (! (STREQ (files_from, "-") || freopen (files_from, "r", stdin)))
-        error (EXIT_FAILURE, errno, _("cannot open %s for reading"),
-               quote (files_from));
+        die (EXIT_FAILURE, errno, _("cannot open %s for reading"),
+             quoteaf (files_from));
 
       ai = argv_iter_init_stream (stdin);
 
@@ -992,13 +1047,6 @@ main (int argc, char **argv)
     xalloc_die ();
 
   /* Initialize the set of dev,inode pairs.  */
-
-  di_mnt = di_set_alloc ();
-  if (!di_mnt)
-    xalloc_die ();
-
-  fill_mount_table ();
-
   di_files = di_set_alloc ();
   if (!di_files)
     xalloc_die ();
@@ -1024,7 +1072,7 @@ main (int argc, char **argv)
               goto argv_iter_done;
             case AI_ERR_READ:
               error (0, errno, _("%s: read error"),
-                     quotearg_colon (files_from));
+                     quotef (files_from));
               ok = false;
               goto argv_iter_done;
             case AI_ERR_MEM:
@@ -1039,7 +1087,7 @@ main (int argc, char **argv)
              printf - | du --files0-from=- */
           error (0, 0, _("when reading file names from stdin, "
                          "no file name of %s allowed"),
-                 quote (file_name));
+                 quoteaf (file_name));
           skip_file = true;
         }
 
@@ -1061,7 +1109,7 @@ main (int argc, char **argv)
                  not totally appropriate, since NUL is the separator, not NL,
                  but it might be better than nothing.  */
               unsigned long int file_number = argv_iter_n_args (ai);
-              error (0, 0, "%s:%lu: %s", quotearg_colon (files_from),
+              error (0, 0, "%s:%lu: %s", quotef (files_from),
                      file_number, _("invalid zero-length file name"));
             }
           skip_file = true;
@@ -1079,13 +1127,14 @@ main (int argc, char **argv)
 
   argv_iter_free (ai);
   di_set_free (di_files);
-  di_set_free (di_mnt);
+  if (di_mnt)
+    di_set_free (di_mnt);
 
   if (files_from && (ferror (stdin) || fclose (stdin) != 0) && ok)
-    error (EXIT_FAILURE, 0, _("error reading %s"), quote (files_from));
+    die (EXIT_FAILURE, 0, _("error reading %s"), quoteaf (files_from));
 
   if (print_grand_total)
     print_size (&tot_dui, _("total"));
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

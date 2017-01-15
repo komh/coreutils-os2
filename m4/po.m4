@@ -1,5 +1,5 @@
-# po.m4 serial 17c
-dnl Copyright (C) 1995-2013 Free Software Foundation, Inc.
+# po.m4 serial 22 (gettext-0.19)
+dnl Copyright (C) 1995-2014 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -17,7 +17,7 @@ dnl Authors:
 dnl   Ulrich Drepper <drepper@cygnus.com>, 1995-2000.
 dnl   Bruno Haible <haible@clisp.cons.org>, 2000-2003.
 
-AC_PREREQ([2.50])
+AC_PREREQ([2.60])
 
 dnl Checks for all prerequisites of the po subdirectory.
 AC_DEFUN([AM_PO_SUBDIRS],
@@ -25,11 +25,12 @@ AC_DEFUN([AM_PO_SUBDIRS],
   AC_REQUIRE([AC_PROG_MAKE_SET])dnl
   AC_REQUIRE([AC_PROG_INSTALL])dnl
   AC_REQUIRE([AC_PROG_MKDIR_P])dnl
+  AC_REQUIRE([AC_PROG_SED])dnl
   AC_REQUIRE([AM_NLS])dnl
 
   dnl Release version of the gettext macros. This is used to ensure that
   dnl the gettext macros and po/Makefile.in.in are in sync.
-  AC_SUBST([GETTEXT_MACRO_VERSION], [0.18])
+  AC_SUBST([GETTEXT_MACRO_VERSION], [0.19])
 
   dnl Perform the following tests also if --disable-nls has been given,
   dnl because they are needed for "make dist" to work.
@@ -102,7 +103,7 @@ changequote([,])dnl
       case "$ac_file" in */Makefile.in)
         # Adjust a relative srcdir.
         ac_dir=`echo "$ac_file"|sed 's%/[^/][^/]*$%%'`
-        ac_dir_suffix="/`echo "$ac_dir"|sed 's%^\./%%'`"
+        ac_dir_suffix=/`echo "$ac_dir"|sed 's%^\./%%'`
         ac_dots=`echo "$ac_dir_suffix"|sed 's%/[^/]*%../%g'`
         # In autoconf-2.13 it is called $ac_given_srcdir.
         # In autoconf-2.50 it is called $srcdir.
@@ -227,7 +228,7 @@ AC_DEFUN([AM_POSTPROCESS_PO_MAKEFILE],
 changequote(,)dnl
   # Adjust a relative srcdir.
   ac_dir=`echo "$ac_file"|sed 's%/[^/][^/]*$%%'`
-  ac_dir_suffix="/`echo "$ac_dir"|sed 's%^\./%%'`"
+  ac_dir_suffix=/`echo "$ac_dir"|sed 's%^\./%%'`
   ac_dots=`echo "$ac_dir_suffix"|sed 's%/[^/]*%../%g'`
   # In autoconf-2.13 it is called $ac_given_srcdir.
   # In autoconf-2.50 it is called $srcdir.

@@ -1,7 +1,7 @@
-# serial 30
+# serial 32
 # How to list mounted file systems.
 
-# Copyright (C) 1998-2004, 2006, 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2004, 2006, 2009-2016 Free Software Foundation, Inc.
 #
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
@@ -120,7 +120,7 @@ if test $ac_cv_func_getmntent = yes; then
   # Determine whether it's the one-argument variant or the two-argument one.
 
   if test -z "$ac_list_mounted_fs"; then
-    # 4.3BSD, SunOS, HP-UX, Dynix, Irix
+    # GNU/Linux, 4.3BSD, SunOS, HP-UX, Dynix, Irix
     AC_MSG_CHECKING([for one-argument getmntent function])
     AC_CACHE_VAL([fu_cv_sys_mounted_getmntent1],
                  [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
@@ -151,6 +151,7 @@ if test $ac_cv_func_getmntent = yes; then
         [Define if there is a function named getmntent for reading the list
          of mounted file systems, and that function takes a single argument.
          (4.3BSD, SunOS, HP-UX, Dynix, Irix)])
+      AC_CHECK_FUNCS([hasmntopt])
     fi
   fi
 

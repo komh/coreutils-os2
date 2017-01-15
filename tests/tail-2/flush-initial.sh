@@ -1,7 +1,7 @@
 #!/bin/sh
 # inotify-based tail -f didn't flush its initial output before blocking
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,22 +19,26 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
-echo line > in || fail=1
+# Speedup the non inotify case
+fastpoll='-s.1 --max-unchanged-stats=1'
+
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
+echo line > in || framework_failure_
 # Output should be buffered since we're writing to file
 # so we're depending on the flush to write out
-tail -f in > out &
-tail_pid=$!
+tail $fastpoll -f in > out & pid=$!
 
-# Wait for 1.5s for the file to be flushed.
+# Wait for 3.1s for the file to be flushed.
 tail_flush()
 {
   local delay="$1"
-
-  test -s out ||
-    { sleep "$delay"; return 1; }
+  sleep $delay
+  test -s out
 }
 retry_delay_ tail_flush .1 5 || fail=1
 
-kill $tail_pid
+cleanup_
 
 Exit $fail

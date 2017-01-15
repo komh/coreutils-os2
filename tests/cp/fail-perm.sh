@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ chmod u=rx,go=,-st D || framework_failure_
 
 
 # This is expected to exit non-zero, because it can't read D/a.
-cp -pR D DD > /dev/null 2>&1 && fail=1
+returns_ 1 cp -pR D DD > /dev/null 2>&1 || fail=1
 
 # Permissions on DD must be 'dr-x------'
 

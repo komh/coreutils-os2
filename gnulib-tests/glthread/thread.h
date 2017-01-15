@@ -1,5 +1,5 @@
 /* Creating and controlling threads.
-   Copyright (C) 2005-2013 Free Software Foundation, Inc.
+   Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -74,6 +74,9 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#ifndef _GL_INLINE_HEADER_BEGIN
+ #error "Please include config.h first."
+#endif
 _GL_INLINE_HEADER_BEGIN
 #ifndef _GLTHREAD_THREAD_INLINE
 # define _GLTHREAD_THREAD_INLINE _GL_INLINE
@@ -120,7 +123,13 @@ extern int glthread_in_use (void);
    address of a function in libpthread that we don't use.  */
 
 #  pragma weak pthread_create
+
+#  ifdef __clang__
+  /* Without this, clang complains that pthread_sigmask is never declared.  */
+#   include <signal.h>
+#  endif
 #  pragma weak pthread_sigmask
+
 #  pragma weak pthread_join
 #  ifndef pthread_self
 #   pragma weak pthread_self
@@ -162,6 +171,15 @@ typedef pthread_t gl_thread_t;
      (pthread_in_use () ? pthread_self () : gl_null_thread)
 #  define gl_thread_self_pointer() \
      (pthread_in_use () ? pthread_self ().p : NULL)
+extern const gl_thread_t gl_null_thread;
+# elif defined __MVS__
+   /* On IBM z/OS, pthread_t is a struct with an 8-byte '__' field.
+      The first three bytes of this field appear to uniquely identify a
+      pthread_t, though not necessarily representing a pointer.  */
+#  define gl_thread_self() \
+     (pthread_in_use () ? pthread_self () : gl_null_thread)
+#  define gl_thread_self_pointer() \
+     (pthread_in_use () ? *((void **) pthread_self ().__) : NULL)
 extern const gl_thread_t gl_null_thread;
 # else
 #  define gl_thread_self() \

@@ -1,5 +1,5 @@
 /* realpath - print the resolved path
-   Copyright (C) 2011-2013 Free Software Foundation, Inc.
+   Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,14 +23,14 @@
 
 #include "system.h"
 #include "canonicalize.h"
+#include "die.h"
 #include "error.h"
-#include "quote.h"
 #include "relpath.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "realpath"
 
-#define AUTHORS proper_name_utf8 ("Padraig Brady", "P\303\241draig Brady")
+#define AUTHORS proper_name ("Padraig Brady")
 
 enum
 {
@@ -51,7 +51,7 @@ static struct option const longopts[] =
   {"relative-to", required_argument, NULL, RELATIVE_TO_OPTION},
   {"relative-base", required_argument, NULL, RELATIVE_BASE_OPTION},
   {"quiet", no_argument, NULL, 'q'},
-  {"strip", no_argument, NULL, 's' /* FIXME: deprecate in 2013 or so */},
+  {"strip", no_argument, NULL, 's'},
   {"no-symlinks", no_argument, NULL, 's'},
   {"zero", no_argument, NULL, 'z'},
   {"logical", no_argument, NULL, 'L'},
@@ -76,19 +76,20 @@ all but the last component must exist\n\
 "), stdout);
       fputs (_("\
   -e, --canonicalize-existing  all components of the path must exist\n\
-  -m, --canonicalize-missing   no components of the path need exist\n\
+  -m, --canonicalize-missing   no path components need exist or be a directory\
+\n\
   -L, --logical                resolve '..' components before symlinks\n\
   -P, --physical               resolve symlinks as encountered (default)\n\
   -q, --quiet                  suppress most error messages\n\
       --relative-to=FILE       print the resolved path relative to FILE\n\
       --relative-base=FILE     print absolute paths unless paths below FILE\n\
   -s, --strip, --no-symlinks   don't expand symlinks\n\
-  -z, --zero                   separate output with NUL rather than newline\n\
+  -z, --zero                   end each output line with NUL, not newline\n\
 \n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -142,7 +143,7 @@ isdir (const char *path)
 {
   struct stat sb;
   if (stat (path, &sb) != 0)
-    error (EXIT_FAILURE, errno, _("cannot stat %s"), quote (path));
+    die (EXIT_FAILURE, errno, _("cannot stat %s"), quoteaf (path));
   return S_ISDIR (sb.st_mode);
 }
 
@@ -153,7 +154,7 @@ process_path (const char *fname, int can_mode)
   if (!can_fname)
     {
       if (verbose)
-        error (0, errno, "%s", quote (fname));
+        error (0, errno, "%s", quotef (fname));
       return false;
     }
 
@@ -245,9 +246,9 @@ main (int argc, char **argv)
     {
       can_relative_to = realpath_canon (relative_to, can_mode);
       if (!can_relative_to)
-        error (EXIT_FAILURE, errno, "%s", quote (relative_to));
+        die (EXIT_FAILURE, errno, "%s", quotef (relative_to));
       if (need_dir && !isdir (can_relative_to))
-        error (EXIT_FAILURE, ENOTDIR, "%s", quote (relative_to));
+        die (EXIT_FAILURE, ENOTDIR, "%s", quotef (relative_to));
     }
   if (relative_base == relative_to)
     can_relative_base = can_relative_to;
@@ -255,9 +256,9 @@ main (int argc, char **argv)
     {
       char *base = realpath_canon (relative_base, can_mode);
       if (!base)
-        error (EXIT_FAILURE, errno, "%s", quote (relative_base));
+        die (EXIT_FAILURE, errno, "%s", quotef (relative_base));
       if (need_dir && !isdir (base))
-        error (EXIT_FAILURE, ENOTDIR, "%s", quote (relative_base));
+        die (EXIT_FAILURE, ENOTDIR, "%s", quotef (relative_base));
       /* --relative-to is a no-op if it does not have --relative-base
            as a prefix */
       if (path_prefix (base, can_relative_to))
@@ -273,5 +274,5 @@ main (int argc, char **argv)
   for (; optind < argc; ++optind)
     ok &= process_path (argv[optind], can_mode);
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

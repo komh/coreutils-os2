@@ -4,7 +4,7 @@
 # directories the same as the first one -- but only on a file system
 # with dirent.d_type support.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ chmod o+w other-writable || framework_failure_
 chmod o+t sticky || framework_failure_
 
 
-ls --color=always > out || fail=1
+TERM=xterm ls --color=always > out || fail=1
 cat -A out > o1 || fail=1
 mv o1 out || fail=1
 

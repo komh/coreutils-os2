@@ -1,7 +1,7 @@
 #!/bin/sh
 # avoid extra slashes in --verbose output
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ touch a/x || framework_failure_
 rm --verbose -r a/// > out || fail=1
 cat <<\EOF > exp || fail=1
 removed 'a/x'
-removed directory: 'a/'
+removed directory 'a/'
 EOF
 
 compare exp out || fail=1

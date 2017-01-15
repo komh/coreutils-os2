@@ -4,7 +4,7 @@
 # Also, ensure that "mv dir non-exist-dir/" works.
 # Also, ensure that "cp dir non-exist-dir/" works.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,14 +48,14 @@ done
 # underlying rename syscall handles the trailing slash.
 # It does fail, as desired, on recent Linux and Solaris systems.
 #touch a a2
-#mv a a2/ && fail=1
+#returns_ 1 mv a a2/ || fail=1
 
 # Test for a cp-specific diagnostic introduced after coreutils-8.7:
 printf '%s\n' \
   "cp: cannot create regular file 'no-such/': Not a directory" \
 > expected-err
 touch b
-cp b no-such/ 2> err && fail=1
+cp b no-such/ 2> err
 
 # Map "No such file..." diagnostic to the expected "Not a directory"
 sed 's/No such file or directory/Not a directory/' err > k && mv k err

@@ -1,5 +1,5 @@
 /* system-dependent definitions for coreutils
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,16 +17,6 @@
 /* Include this file _after_ system headers if possible.  */
 
 #include <alloca.h>
-
-/* Include <sys/types.h> before this file.
-   Note this doesn't warn if we're included
-   before all system headers.  */
-
-#if 2 < __GLIBC__ || ( 2 == ___GLIBC__ && 2 <= __GLIBC_MINOR__ )
-# if ! defined _SYS_TYPES_H
-you must include <sys/types.h> before including this file
-# endif
-#endif
 
 #include <sys/stat.h>
 
@@ -135,9 +125,14 @@ enum
 #include <inttypes.h>
 
 /* Redirection and wildcarding when done by the utility itself.
-   Generally a noop, but used in particular for native VMS. */
+   Generally a noop, but used in particular for OS/2.  */
 #ifndef initialize_main
-# define initialize_main(ac, av)
+# ifndef __OS2__
+#  define initialize_main(ac, av)
+# else
+#  define initialize_main(ac, av) \
+     do { _wildcard (ac, av); _response (ac, av); } while (0)
+# endif
 #endif
 
 #include "stat-macros.h"
@@ -159,6 +154,13 @@ enum
    a bit safer than casting to unsigned char, since it catches some type
    errors that the cast doesn't.  */
 static inline unsigned char to_uchar (char ch) { return ch; }
+
+/* '\n' is considered a field separator with  --zero-terminated.  */
+static inline bool
+field_sep (unsigned char ch)
+{
+  return isblank (ch) || ch == '\n';
+}
 
 #include <locale.h>
 
@@ -188,31 +190,30 @@ select_plural (uintmax_t n)
 
 #define STREQ(a, b) (strcmp (a, b) == 0)
 #define STREQ_LEN(a, b, n) (strncmp (a, b, n) == 0)
-#define STRPREFIX(a, b) (strncmp(a, b, strlen (b)) == 0)
+#define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
 
 /* Just like strncmp, but the second argument must be a literal string
    and you don't specify the length;  that comes from the literal.  */
-#define STRNCMP_LIT(s, literal) \
-  strncmp (s, "" literal "", sizeof (literal) - 1)
+#define STRNCMP_LIT(s, lit) strncmp (s, "" lit "", sizeof (lit) - 1)
 
 #if !HAVE_DECL_GETLOGIN
-char *getlogin ();
+char *getlogin (void);
 #endif
 
 #if !HAVE_DECL_TTYNAME
-char *ttyname ();
+char *ttyname (int);
 #endif
 
 #if !HAVE_DECL_GETEUID
-uid_t geteuid ();
+uid_t geteuid (void);
 #endif
 
 #if !HAVE_DECL_GETPWUID
-struct passwd *getpwuid ();
+struct passwd *getpwuid (uid_t);
 #endif
 
 #if !HAVE_DECL_GETGRGID
-struct group *getgrgid ();
+struct group *getgrgid (gid_t);
 #endif
 
 /* Interix has replacements for getgr{gid,nam,ent}, that don't
@@ -234,7 +235,7 @@ struct group *getgrgid ();
 #endif
 
 #if !HAVE_DECL_GETUID
-uid_t getuid ();
+uid_t getuid (void);
 #endif
 
 #include "xalloc.h"
@@ -330,7 +331,7 @@ enum
 #define GETOPT_VERSION_OPTION_DECL \
   "version", no_argument, NULL, GETOPT_VERSION_CHAR
 #define GETOPT_SELINUX_CONTEXT_OPTION_DECL \
-  "context", required_argument, NULL, 'Z'
+  "context", optional_argument, NULL, 'Z'
 
 #define case_GETOPT_HELP_CHAR			\
   case GETOPT_HELP_CHAR:			\
@@ -425,10 +426,6 @@ enum
 # define ATTRIBUTE_NORETURN __attribute__ ((__noreturn__))
 #endif
 
-#ifndef ATTRIBUTE_UNUSED
-# define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
-#endif
-
 /* The warn_unused_result attribute appeared first in gcc-3.4.0 */
 #undef ATTRIBUTE_WARN_UNUSED_RESULT
 #if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 4)
@@ -436,6 +433,15 @@ enum
 #else
 # define ATTRIBUTE_WARN_UNUSED_RESULT __attribute__ ((__warn_unused_result__))
 #endif
+
+#ifdef __GNUC__
+# define LIKELY(cond)    __builtin_expect ((cond), 1)
+# define UNLIKELY(cond)  __builtin_expect ((cond), 0)
+#else
+# define LIKELY(cond)    (cond)
+# define UNLIKELY(cond)  (cond)
+#endif
+
 
 #if defined strdupa
 # define ASSIGN_STRDUPA(DEST, S)		\
@@ -497,24 +503,54 @@ ptr_align (void const *ptr, size_t alignment)
 }
 
 /* Return whether the buffer consists entirely of NULs.
-   Note the word after the buffer must be non NUL. */
+   Based on memeqzero in CCAN by Rusty Russell under CC0 (Public domain).  */
 
 static inline bool _GL_ATTRIBUTE_PURE
-is_nul (const char *buf, size_t bufsize)
+is_nul (void const *buf, size_t length)
 {
-  typedef uintptr_t word;
+  const unsigned char *p = buf;
+/* Using possibly unaligned access for the first 16 bytes
+   saves about 30-40 cycles, though it is strictly undefined behavior
+   and so would need __attribute__ ((__no_sanitize_undefined__))
+   to avoid -fsanitize=undefined warnings.
+   Considering coreutils is mainly concerned with relatively
+   large buffers, we'll just use the defined behavior.  */
+#if 0 && (_STRING_ARCH_unaligned || _STRING_INLINE_unaligned)
+  unsigned long word;
+#else
+  unsigned char word;
+#endif
 
-  /* Find first nonzero *word*, or the word with the sentinel.  */
-  word *wp = (word *) buf;
-  while (*wp++ == 0)
-    continue;
+  if (! length)
+      return true;
 
-  /* Find the first nonzero *byte*, or the sentinel.  */
-  char *cp = (char *) (wp - 1);
-  while (*cp++ == 0)
-    continue;
+  /* Check len bytes not aligned on a word.  */
+  while (UNLIKELY (length & (sizeof word - 1)))
+    {
+      if (*p)
+        return false;
+      p++;
+      length--;
+      if (! length)
+        return true;
+   }
 
-  return cp > buf + bufsize;
+  /* Check up to 16 bytes a word at a time.  */
+  for (;;)
+    {
+      memcpy (&word, p, sizeof word);
+      if (word)
+        return false;
+      p += sizeof word;
+      length -= sizeof word;
+      if (! length)
+        return true;
+      if (UNLIKELY (length & 15) == 0)
+        break;
+   }
+
+   /* Now we know first 16 bytes are NUL, memcmp with self.  */
+   return memcmp (buf, p, length) == 0;
 }
 
 /* If 10*Accum + Digit_val is larger than the maximum value for Type,
@@ -539,6 +575,13 @@ is_nul (const char *buf, size_t bufsize)
   )
 
 static inline void
+emit_stdin_note (void)
+{
+  fputs (_("\n\
+With no FILE, or when FILE is -, read standard input.\n\
+"), stdout);
+}
+static inline void
 emit_mandatory_arg_note (void)
 {
   fputs (_("\n\
@@ -550,8 +593,8 @@ static inline void
 emit_size_note (void)
 {
   fputs (_("\n\
-SIZE is an integer and optional unit (example: 10M is 10*1024*1024).  Units\n\
-are K, M, G, T, P, E, Z, Y (powers of 1024) or KB, MB, ... (powers of 1000).\n\
+The SIZE argument is an integer and optional unit (example: 10K is 10*1024).\n\
+Units are K,M,G,T,P,E,Z,Y (powers of 1024) or KB,MB,... (powers of 1000).\n\
 "), stdout);
 }
 
@@ -566,13 +609,47 @@ Otherwise, units default to 1024 bytes (or 512 if POSIXLY_CORRECT is set).\n\
 }
 
 static inline void
-emit_ancillary_info (void)
+emit_backup_suffix_note (void)
 {
-  printf (_("\nReport %s bugs to %s\n"), last_component (program_name),
-          PACKAGE_BUGREPORT);
-  printf (_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
-  fputs (_("General help using GNU software: <http://www.gnu.org/gethelp/>\n"),
-         stdout);
+  fputs (_("\
+\n\
+The backup suffix is '~', unless set with --suffix or SIMPLE_BACKUP_SUFFIX.\n\
+The version control method may be selected via the --backup option or through\n\
+the VERSION_CONTROL environment variable.  Here are the values:\n\
+\n\
+"), stdout);
+  fputs (_("\
+  none, off       never make backups (even if --backup is given)\n\
+  numbered, t     make numbered backups\n\
+  existing, nil   numbered if numbered backups exist, simple otherwise\n\
+  simple, never   always make simple backups\n\
+"), stdout);
+}
+
+static inline void
+emit_ancillary_info (char const *program)
+{
+  struct infomap { char const *program; char const *node; } const infomap[] = {
+    { "[", "test invocation" },
+    { "coreutils", "Multi-call invocation" },
+    { "sha224sum", "sha2 utilities" },
+    { "sha256sum", "sha2 utilities" },
+    { "sha384sum", "sha2 utilities" },
+    { "sha512sum", "sha2 utilities" },
+    { NULL, NULL }
+  };
+
+  char const *node = program;
+  struct infomap const *map_prog = infomap;
+
+  while (map_prog->program && ! STREQ (program, map_prog->program))
+    map_prog++;
+
+  if (map_prog->node)
+    node = map_prog->node;
+
+  printf (_("\n%s online help: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
+
   /* Don't output this redundant message for English locales.
      Note we still output for 'C' so that it gets included in the man page.  */
   const char *lc_messages = setlocale (LC_MESSAGES, NULL);
@@ -583,18 +660,25 @@ emit_ancillary_info (void)
          the URLs at http://translationproject.org/team/.  Otherwise, replace
          the entire URL with your translation team's email address.  */
       printf (_("Report %s translation bugs to "
-                "<http://translationproject.org/team/>\n"),
-                last_component (program_name));
+                "<http://translationproject.org/team/>\n"), program);
     }
-  printf (_("For complete documentation, run: "
-            "info coreutils '%s invocation'\n"), last_component (program_name));
+  printf (_("Full documentation at: <%s%s>\n"),
+          PACKAGE_URL, program);
+  printf (_("or available locally via: info '(coreutils) %s%s'\n"),
+          node, node == program ? " invocation" : "");
 }
 
-static inline void
-emit_try_help (void)
-{
-  fprintf (stderr, _("Try '%s --help' for more information.\n"), program_name);
-}
+/* Use a macro rather than an inline function, as this references
+   the global program_name, which causes dynamic linking issues
+   in libstdbuf.so on some systems where unused functions
+   are not removed by the linker.  */
+#define emit_try_help() \
+  do \
+    { \
+      fprintf (stderr, _("Try '%s --help' for more information.\n"), \
+               program_name); \
+    } \
+  while (0)
 
 #include "inttostr.h"
 
@@ -622,6 +706,16 @@ usable_st_size (struct stat const *sb)
 
 void usage (int status) ATTRIBUTE_NORETURN;
 
+/* Like error(0, 0, ...), but without an implicit newline.
+   Also a noop unless the global DEV_DEBUG is set.  */
+#define devmsg(...)			\
+  do					\
+    {					\
+      if (dev_debug)			\
+        fprintf (stderr, __VA_ARGS__);	\
+    }					\
+  while (0)
+
 #define emit_cycle_warning(file_name)	\
   do					\
     {					\
@@ -630,7 +724,7 @@ WARNING: Circular directory structure.\n\
 This almost certainly means that you have a corrupted file system.\n\
 NOTIFY YOUR SYSTEM MANAGER.\n\
 The following directory is part of the cycle:\n  %s\n"), \
-             quote (file_name));	\
+             quotef (file_name));	\
     }					\
   while (0)
 
@@ -652,3 +746,38 @@ stzncpy (char *restrict dest, char const *restrict src, size_t len)
 #ifndef ARRAY_CARDINALITY
 # define ARRAY_CARDINALITY(Array) (sizeof (Array) / sizeof *(Array))
 #endif
+
+/* Avoid const warnings by casting to more portable type.
+   This is to cater for the incorrect const function declarations
+   in selinux.h before libselinux-2.3 (May 2014).
+   When version >= 2.3 is ubiquitous remove this function.  */
+static inline char * se_const (char const * sctx) { return (char *) sctx; }
+
+/* Return true if ERR is ENOTSUP or EOPNOTSUPP, otherwise false.
+   This wrapper function avoids the redundant 'or'd comparison on
+   systems like Linux for which they have the same value.  It also
+   avoids the gcc warning to that effect.  */
+static inline bool
+is_ENOTSUP (int err)
+{
+  return err == EOPNOTSUPP || (ENOTSUP != EOPNOTSUPP && err == ENOTSUP);
+}
+
+
+/* How coreutils quotes filenames, to minimize use of outer quotes,
+   but also provide better support for copy and paste when used.  */
+#include "quotearg.h"
+
+/* Use these to shell quote only when necessary,
+   when the quoted item is already delimited with colons.  */
+#define quotef(arg) \
+  quotearg_n_style_colon (0, shell_escape_quoting_style, arg)
+#define quotef_n(n, arg) \
+  quotearg_n_style_colon (n, shell_escape_quoting_style, arg)
+
+/* Use these when there are spaces around the file name,
+   in the error message.  */
+#define quoteaf(arg) \
+  quotearg_style (shell_escape_always_quoting_style, arg)
+#define quoteaf_n(n, arg) \
+  quotearg_n_style (n, shell_escape_always_quoting_style, arg)

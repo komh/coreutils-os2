@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure chown --from=... works
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ printf "ownership of 'f' retained as $(id -nu)\n" > exp
 compare exp out || fail=1
 
 # Ensure diagnostics work for non existent files.
-chown -v 0 nf > out && fail=1
+returns_ 1 chown -v 0 nf > out || fail=1
 printf "failed to change ownership of 'nf' to 0\n" > exp
 compare exp out || fail=1
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise du's --threshold option.
 
-# Copyright (C) 2013 Free Software Foundation, Inc.
+# Copyright (C) 2013-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -102,9 +102,11 @@ du --threshold= a > out 2>&1 && fail=1
 compare exp out || fail=1
 
 # Exercise a bad argument: no argument.
-du --threshold > out 2>&1 && fail=1
+du --threshold > out.tmp 2>&1 && fail=1
+sed 's/argument.*/argument/; s/option.*requires/option requires/' \
+  < out.tmp > out || framework_failure_
 cat <<EOF > exp
-du: option '--threshold' requires an argument
+du: option requires an argument
 Try 'du --help' for more information.
 EOF
 compare exp out || fail=1

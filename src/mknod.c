@@ -1,5 +1,5 @@
 /* mknod -- make special files
-   Copyright (C) 1990-2013 Free Software Foundation, Inc.
+   Copyright (C) 1990-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,9 +23,12 @@
 #include <selinux/selinux.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
 #include "modechange.h"
 #include "quote.h"
+#include "selinux.h"
+#include "smack.h"
 #include "xstrtol.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
@@ -61,7 +64,9 @@ Create the special file NAME of the given TYPE.\n\
   -m, --mode=MODE    set file permission bits to MODE, not a=rw - umask\n\
 "), stdout);
       fputs (_("\
-  -Z, --context=CTX  set the SELinux security context of NAME to CTX\n\
+  -Z                   set the SELinux security context to default type\n\
+      --context[=CTX]  like -Z, or if CTX is specified then set the SELinux\n\
+                         or SMACK security context to CTX\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
@@ -79,7 +84,7 @@ otherwise, as decimal.  TYPE may be:\n\
   p      create a FIFO\n\
 "), stdout);
       printf (USAGE_BUILTIN_WARNING, PROGRAM_NAME);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -90,9 +95,10 @@ main (int argc, char **argv)
   mode_t newmode;
   char const *specified_mode = NULL;
   int optc;
-  int expected_operands;
+  size_t expected_operands;
   mode_t node_type;
-  security_context_t scontext = NULL;
+  char const *scontext = NULL;
+  bool set_security_context = false;
 
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
@@ -102,7 +108,7 @@ main (int argc, char **argv)
 
   atexit (close_stdout);
 
-  while ((optc = getopt_long (argc, argv, "m:Z:", longopts, NULL)) != -1)
+  while ((optc = getopt_long (argc, argv, "m:Z", longopts, NULL)) != -1)
     {
       switch (optc)
         {
@@ -110,7 +116,24 @@ main (int argc, char **argv)
           specified_mode = optarg;
           break;
         case 'Z':
-          scontext = optarg;
+          if (is_smack_enabled ())
+            {
+              /* We don't yet support -Z to restore context with SMACK.  */
+              scontext = optarg;
+            }
+          else if (is_selinux_enabled () > 0)
+            {
+              if (optarg)
+                scontext = optarg;
+              else
+                set_security_context = true;
+            }
+          else if (optarg)
+            {
+              error (0, 0,
+                     _("warning: ignoring --context; "
+                       "it requires an SELinux/SMACK-enabled kernel"));
+            }
           break;
         case_GETOPT_HELP_CHAR;
         case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
@@ -122,14 +145,17 @@ main (int argc, char **argv)
   newmode = MODE_RW_UGO;
   if (specified_mode)
     {
+      mode_t umask_value;
       struct mode_change *change = mode_compile (specified_mode);
       if (!change)
-        error (EXIT_FAILURE, 0, _("invalid mode"));
-      newmode = mode_adjust (newmode, false, umask (0), change, NULL);
+        die (EXIT_FAILURE, 0, _("invalid mode"));
+      umask_value = umask (0);
+      umask (umask_value);
+      newmode = mode_adjust (newmode, false, umask_value, change, NULL);
       free (change);
       if (newmode & ~S_IRWXUGO)
-        error (EXIT_FAILURE, 0,
-               _("mode must specify only file permission bits"));
+        die (EXIT_FAILURE, 0,
+             _("mode must specify only file permission bits"));
     }
 
   /* If the number of arguments is 0 or 1,
@@ -161,10 +187,19 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (scontext && setfscreatecon (scontext) < 0)
-    error (EXIT_FAILURE, errno,
-           _("failed to set default file creation context to %s"),
-           quote (scontext));
+  if (scontext)
+    {
+      int ret = 0;
+      if (is_smack_enabled ())
+        ret = smack_set_label_for_self (scontext);
+      else
+        ret = setfscreatecon (se_const (scontext));
+
+      if (ret < 0)
+        die (EXIT_FAILURE, errno,
+             _("failed to set default file creation context to %s"),
+             quote (scontext));
+    }
 
   /* Only check the first character, to allow mnemonic usage like
      'mknod /dev/rst0 character 18 0'. */
@@ -173,7 +208,7 @@ main (int argc, char **argv)
     {
     case 'b':			/* 'block' or 'buffered' */
 #ifndef S_IFBLK
-      error (EXIT_FAILURE, 0, _("block special files not supported"));
+      die (EXIT_FAILURE, 0, _("block special files not supported"));
 #else
       node_type = S_IFBLK;
 #endif
@@ -182,7 +217,7 @@ main (int argc, char **argv)
     case 'c':			/* 'character' */
     case 'u':			/* 'unbuffered' */
 #ifndef S_IFCHR
-      error (EXIT_FAILURE, 0, _("character special files not supported"));
+      die (EXIT_FAILURE, 0, _("character special files not supported"));
 #else
       node_type = S_IFCHR;
 #endif
@@ -197,28 +232,34 @@ main (int argc, char **argv)
 
         if (xstrtoumax (s_major, NULL, 0, &i_major, NULL) != LONGINT_OK
             || i_major != (major_t) i_major)
-          error (EXIT_FAILURE, 0,
-                 _("invalid major device number %s"), quote (s_major));
+          die (EXIT_FAILURE, 0,
+               _("invalid major device number %s"), quote (s_major));
 
         if (xstrtoumax (s_minor, NULL, 0, &i_minor, NULL) != LONGINT_OK
             || i_minor != (minor_t) i_minor)
-          error (EXIT_FAILURE, 0,
-                 _("invalid minor device number %s"), quote (s_minor));
+          die (EXIT_FAILURE, 0,
+               _("invalid minor device number %s"), quote (s_minor));
 
         device = makedev (i_major, i_minor);
 #ifdef NODEV
         if (device == NODEV)
-          error (EXIT_FAILURE, 0, _("invalid device %s %s"), s_major, s_minor);
+          die (EXIT_FAILURE, 0, _("invalid device %s %s"),
+               s_major, s_minor);
 #endif
 
+        if (set_security_context)
+          defaultcon (argv[optind], node_type);
+
         if (mknod (argv[optind], newmode | node_type, device) != 0)
-          error (EXIT_FAILURE, errno, "%s", quote (argv[optind]));
+          die (EXIT_FAILURE, errno, "%s", quotef (argv[optind]));
       }
       break;
 
     case 'p':			/* 'pipe' */
+      if (set_security_context)
+        defaultcon (argv[optind], S_IFIFO);
       if (mkfifo (argv[optind], newmode) != 0)
-        error (EXIT_FAILURE, errno, "%s", quote (argv[optind]));
+        die (EXIT_FAILURE, errno, "%s", quotef (argv[optind]));
       break;
 
     default:
@@ -226,5 +267,9 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  exit (EXIT_SUCCESS);
+  if (specified_mode && lchmod (argv[optind], newmode) != 0)
+    die (EXIT_FAILURE, errno, _("cannot set permissions of %s"),
+         quoteaf (argv[optind]));
+
+  return EXIT_SUCCESS;
 }

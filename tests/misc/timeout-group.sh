@@ -1,7 +1,7 @@
 #!/bin/sh
 # test program group handling
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ timeout
+require_trap_signame_
+require_kill_group_
 
 # construct a program group hierarchy as follows:
 #  timeout-group - foreground group
@@ -30,8 +32,8 @@ print_ver_ timeout
 
 setsid true || skip_ "setsid required to control groups"
 
-cat > timeout.cmd <<\EOF
-#!/bin/sh
+printf '%s\n' '#!'"$SHELL" > timeout.cmd || framework_failure_
+cat >> timeout.cmd <<\EOF
 trap 'touch int.received; exit' INT
 touch timeout.running
 count=$1
@@ -42,8 +44,8 @@ done
 EOF
 chmod a+x timeout.cmd
 
-cat > group.sh <<\EOF
-#!/bin/sh
+cat > group.sh <<EOF
+#!$SHELL
 trap '' INT
 timeout --foreground 25 ./timeout.cmd 20&
 wait
@@ -57,15 +59,16 @@ check_timeout_cmd_running()
     { sleep $delay; return 1; }
 }
 
+# Terminate any background processes
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
 # Start above script in its own group.
 # We could use timeout for this, but that assumes an implementation.
-setsid ./group.sh &
+setsid ./group.sh & pid=$!
 # Wait 6.3s for timeout.cmd to start
 retry_delay_ check_timeout_cmd_running .1 6 || fail=1
 # Simulate a Ctrl-C to the group to test timely exit
-# Note dash doesn't support signalling groups (a leading -)
-env kill -INT -- -$!
+kill -INT -- -$pid
 wait
 test -e int.received || fail=1
 
@@ -82,8 +85,7 @@ start=$(date +%s)
 # Note the first timeout must send a signal that
 # the second is handling for it to be propagated to the command.
 # SIGINT, SIGTERM, SIGALRM etc. are implicit.
-timeout -sALRM 30 timeout -sINT 25 ./timeout.cmd 20&
-pid=$!
+timeout -sALRM 30 timeout -sINT 25 ./timeout.cmd 20 & pid=$!
 # Wait 6.3s for timeout.cmd to start
 retry_delay_ check_timeout_cmd_running .1 6 || fail=1
 kill -ALRM $pid # trigger the alarm of the first timeout command

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test "rm -r --verbose".
 
-# Copyright (C) 1997-2013 Free Software Foundation, Inc.
+# Copyright (C) 1997-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@ mkdir a a/a || framework_failure_
 > b || framework_failure_
 
 cat <<\EOF > exp || framework_failure_
-removed directory: 'a/a'
-removed directory: 'a'
+removed directory 'a/a'
+removed directory 'a'
 removed 'b'
 EOF
 

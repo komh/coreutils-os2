@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that --follow=name does not imply --retry
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,8 +24,7 @@ tail: cannot open 'no-such' for reading: No such file or directory
 tail: no files remaining
 EOF
 
-timeout 10 tail --follow=name no-such > out 2> err
-test $? = 1 || fail=1
+returns_ 1 timeout 10 tail --follow=name no-such > out 2> err || fail=1
 
 # Remove an inconsequential inotify warning so
 # we can compare against the above error

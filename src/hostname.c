@@ -1,5 +1,5 @@
 /* hostname - set or print the name of current host system
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include "system.h"
 #include "long-options.h"
+#include "die.h"
 #include "error.h"
 #include "quote.h"
 #include "xgethostname.h"
@@ -62,7 +63,7 @@ Print or set the hostname of the current system.\n\
              program_name, program_name);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -91,10 +92,11 @@ main (int argc, char **argv)
       /* Set hostname to operand.  */
       char const *name = argv[optind];
       if (sethostname (name, strlen (name)) != 0)
-        error (EXIT_FAILURE, errno, _("cannot set name to %s"), quote (name));
+        die (EXIT_FAILURE, errno, _("cannot set name to %s"),
+             quote (name));
 #else
-      error (EXIT_FAILURE, 0,
-             _("cannot set hostname; this system lacks the functionality"));
+      die (EXIT_FAILURE, 0,
+           _("cannot set hostname; this system lacks the functionality"));
 #endif
     }
 
@@ -102,7 +104,7 @@ main (int argc, char **argv)
     {
       hostname = xgethostname ();
       if (hostname == NULL)
-        error (EXIT_FAILURE, errno, _("cannot determine hostname"));
+        die (EXIT_FAILURE, errno, _("cannot determine hostname"));
       printf ("%s\n", hostname);
     }
 
@@ -112,5 +114,5 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure truncate fails for a directory.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,6 @@
 print_ver_ truncate
 
 # truncate on dir not allowed
-truncate -s+0 . && fail=1
+returns_ 1 truncate -s+0 . || fail=1
 
 Exit $fail

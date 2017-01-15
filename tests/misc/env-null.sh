@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify behavior of env -0 and printenv -0.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,9 +38,8 @@ env -i PATH="$PATH" printenv --null > out2 || fail=1
 compare out1 out2 || fail=1
 
 # env -0 does not work if a command is specified.
-env -0 echo hi > out
-test $? = 125 || fail=1
-test -s out && fail=1
+returns_ 125 env -0 echo hi > out || fail=1
+compare /dev/null out || fail=1
 
 # Test env -0 on a one-variable environment.
 printf 'a=b\nc=\0' > exp || framework_failure_
@@ -51,11 +50,9 @@ compare exp out || fail=1
 printf 'b\nc=\0' > exp || framework_failure_
 env "$(printf 'a=b\nc=')" printenv -0 a > out || fail=1
 compare exp out || fail=1
-env -u a printenv -0 a > out
-test $? = 1 || fail=1
-test -s out && fail=1
-env -u b "$(printf 'a=b\nc=')" printenv -0 b a > out
-test $? = 1 || fail=1
+returns_ 1 env -u a printenv -0 a > out || fail=1
+compare /dev/null out || fail=1
+returns_ 1 env -u b "$(printf 'a=b\nc=')" printenv -0 b a > out || fail=1
 compare exp out || fail=1
 
 Exit $fail

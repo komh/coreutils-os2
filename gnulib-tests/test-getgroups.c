@@ -1,5 +1,5 @@
 /* Tests of getgroups.
-   Copyright (C) 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -74,5 +74,6 @@ main (int argc, char **argv _GL_UNUSED)
       for (i = 0; i < result; i++)
         printf ("%d\n", (int) groups[i]);
     }
+  free (groups);
   return 0;
 }

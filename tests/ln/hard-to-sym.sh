@@ -1,7 +1,7 @@
 #!/bin/sh
 # Tests for ln -L/-P.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,24 +29,30 @@ ln -s -L -P symlink2 symlink3 || fail=1
 
 # ===================================================
 # ensure that -L follows symlinks, and overrides -P
-ln -P -L symlink3 hard-to-a || fail=1
-ls=$(ls -lG hard-to-a)x
-case "$ls" in
-  *'hard-to-ax') ;;
-  *'hard-to-a -> '*x) fail=1 ;;
-  *) framework_failure_ ;;
-esac
+if ln -P -L symlink3 hard-to-a; then
+  ls=$(ls -lG hard-to-a)x
+  case "$ls" in
+    *'hard-to-ax') ;;
+    *'hard-to-a -> '*x) fail=1 ;;
+    *) framework_failure_ ;;
+  esac
+else
+  fail=1
+fi
 
 # ===================================================
 # ensure that -P links (or at least duplicates) symlinks, and overrides -L
-ln -L -P symlink3 hard-to-3 || fail=1
-ls=$(ls -lG hard-to-3)x
-case "$ls" in
-  *'hard-to-3 -> symlink2x') ;;
-  *'hard-to-3x') fail=1 ;;
-  *'hard-to-3 -> '*x) fail=1 ;;
-  *) framework_failure_ ;;
-esac
+if ln -L -P symlink3 hard-to-3; then
+  ls=$(ls -lG hard-to-3)x
+  case "$ls" in
+    *'hard-to-3 -> symlink2x') ;;
+    *'hard-to-3x') fail=1 ;;
+    *'hard-to-3 -> '*x) fail=1 ;;
+    *) framework_failure_ ;;
+  esac
+else
+  fail=1
+fi
 
 # ===================================================
 # Create a hard link to a dangling symlink.
@@ -64,12 +70,12 @@ mkdir d || framework_failure_
 ln -s d link-to-dir || framework_failure_
 ln -L link-to-dir hard-to-dir-link 2>err && fail=1
 case $(cat err) in
-  *": 'link-to-dir': hard link not allowed for directory"*) ;;
+  *": link-to-dir: hard link not allowed for directory"*) ;;
   *) fail=1 ;;
 esac
 ln -P link-to-dir/ hard-to-dir-link 2>err && fail=1
 case $(cat err) in
-  *": 'link-to-dir/': hard link not allowed for directory"*) ;;
+  *": link-to-dir/: hard link not allowed for directory"*) ;;
   *) fail=1 ;;
 esac
 ln -P link-to-dir hard-to-dir-link || fail=1

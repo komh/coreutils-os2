@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise du's new ability to handle bind-mount-induced dir cycles.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,12 +27,11 @@ mount --bind a a/b \
   || skip_ "This test requires mount with a working --bind option."
 
 echo a > exp || framework_failure_
-echo "du: mount point 'a/b' already traversed" > exp-err || framework_failure_
 
-du a > out 2> err && fail=1
+du a > out 2> err || fail=1
 sed 's/^[0-9][0-9]*	//' out > k && mv k out
 
-compare exp-err err || fail=1
+compare /dev/null err || fail=1
 compare exp out || fail=1
 
 Exit $fail

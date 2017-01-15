@@ -1,5 +1,5 @@
 /* Create a temporary file or directory, safely.
-   Copyright (C) 2007-2013 Free Software Foundation, Inc.
+   Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 #include "system.h"
 
 #include "close-stream.h"
+#include "die.h"
 #include "error.h"
 #include "filenamecat.h"
 #include "quote.h"
-#include "stdio--.h"
 #include "tempname.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
@@ -43,7 +43,6 @@ static const char *default_template = "tmp.XXXXXXXXXX";
 enum
 {
   SUFFIX_OPTION = CHAR_MAX + 1,
-  TMPDIR_OPTION
 };
 
 static struct option const longopts[] =
@@ -52,7 +51,7 @@ static struct option const longopts[] =
   {"quiet", no_argument, NULL, 'q'},
   {"dry-run", no_argument, NULL, 'u'},
   {"suffix", required_argument, NULL, SUFFIX_OPTION},
-  {"tmpdir", optional_argument, NULL, TMPDIR_OPTION},
+  {"tmpdir", optional_argument, NULL, 'p'},
   {GETOPT_HELP_OPTION_DECL},
   {GETOPT_VERSION_OPTION_DECL},
   {NULL, 0, NULL, 0}
@@ -81,27 +80,24 @@ Files are created u+rw, and directories u+rwx, minus umask restrictions.\n\
   -q, --quiet         suppress diagnostics about file/dir-creation failure\n\
 "), stdout);
       fputs (_("\
-      --suffix=SUFF   append SUFF to TEMPLATE.  SUFF must not contain slash.\n\
-                        This option is implied if TEMPLATE does not end in X.\n\
+      --suffix=SUFF   append SUFF to TEMPLATE; SUFF must not contain a slash.\n\
+                        This option is implied if TEMPLATE does not end in X\n\
 "), stdout);
       fputs (_("\
-      --tmpdir[=DIR]  interpret TEMPLATE relative to DIR.  If DIR is not\n\
+  -p DIR, --tmpdir[=DIR]  interpret TEMPLATE relative to DIR; if DIR is not\n\
                         specified, use $TMPDIR if set, else /tmp.  With\n\
-                        this option, TEMPLATE must not be an absolute name.\n\
-                        Unlike with -t, TEMPLATE may contain slashes, but\n\
+                        this option, TEMPLATE must not be an absolute name;\n\
+                        unlike with -t, TEMPLATE may contain slashes, but\n\
                         mktemp creates only the final component\n\
 "), stdout);
-      fputs ("\n", stdout);
       fputs (_("\
-  -p DIR              use DIR as a prefix; implies -t [deprecated]\n\
   -t                  interpret TEMPLATE as a single file name component,\n\
                         relative to a directory: $TMPDIR, if set; else the\n\
                         directory specified via -p; else /tmp [deprecated]\n\
 "), stdout);
-      fputs ("\n", stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
 
   exit (status);
@@ -151,7 +147,7 @@ main (int argc, char **argv)
 {
   char const *dest_dir;
   char const *dest_dir_arg = NULL;
-  bool suppress_stderr = false;
+  bool suppress_file_err = false;
   int c;
   unsigned int n_args;
   char *template;
@@ -185,7 +181,7 @@ main (int argc, char **argv)
           use_dest_dir = true;
           break;
         case 'q':
-          suppress_stderr = true;
+          suppress_file_err = true;
           break;
         case 't':
           use_dest_dir = true;
@@ -193,11 +189,6 @@ main (int argc, char **argv)
           break;
         case 'u':
           dry_run = true;
-          break;
-
-        case TMPDIR_OPTION:
-          use_dest_dir = true;
-          dest_dir_arg = optarg;
           break;
 
         case SUFFIX_OPTION:
@@ -212,15 +203,6 @@ main (int argc, char **argv)
         default:
           usage (EXIT_FAILURE);
         }
-    }
-
-  if (suppress_stderr)
-    {
-      /* From here on, redirect stderr to /dev/null.
-         A diagnostic from getopt_long, above, would still go to stderr.  */
-      if (!freopen ("/dev/null", "wb", stderr))
-        error (EXIT_FAILURE, errno,
-               _("failed to redirect stderr to /dev/null"));
     }
 
   n_args = argc - optind;
@@ -245,9 +227,9 @@ main (int argc, char **argv)
       size_t len = strlen (template);
       if (!len || template[len - 1] != 'X')
         {
-          error (EXIT_FAILURE, 0,
-                 _("with --suffix, template %s must end in X"),
-                 quote (template));
+          die (EXIT_FAILURE, 0,
+               _("with --suffix, template %s must end in X"),
+               quote (template));
         }
       suffix_len = strlen (suffix);
       dest_name = xcharalloc (len + suffix_len + 1);
@@ -270,27 +252,30 @@ main (int argc, char **argv)
   /* At this point, template is malloc'd, and suffix points into template.  */
   if (suffix_len && last_component (suffix) != suffix)
     {
-      error (EXIT_FAILURE, 0,
-             _("invalid suffix %s, contains directory separator"),
-             quote (suffix));
+      die (EXIT_FAILURE, 0,
+           _("invalid suffix %s, contains directory separator"),
+           quote (suffix));
     }
   x_count = count_consecutive_X_s (template, suffix - template);
   if (x_count < 3)
-    error (EXIT_FAILURE, 0, _("too few X's in template %s"), quote (template));
+    die (EXIT_FAILURE, 0, _("too few X's in template %s"), quote (template));
 
   if (use_dest_dir)
     {
       if (deprecated_t_option)
         {
           char *env = getenv ("TMPDIR");
-          dest_dir = (env && *env
-                      ? env
-                      : (dest_dir_arg ? dest_dir_arg : "/tmp"));
+          if (env && *env)
+            dest_dir = env;
+          else if (dest_dir_arg && *dest_dir_arg)
+            dest_dir = dest_dir_arg;
+          else
+            dest_dir = "/tmp";
 
           if (last_component (template) != template)
-            error (EXIT_FAILURE, 0,
-                   _("invalid template, %s, contains directory separator"),
-                   quote (template));
+            die (EXIT_FAILURE, 0,
+                 _("invalid template, %s, contains directory separator"),
+                 quote (template));
         }
       else
         {
@@ -302,10 +287,10 @@ main (int argc, char **argv)
               dest_dir = (env && *env ? env : "/tmp");
             }
           if (IS_ABSOLUTE_FILE_NAME (template))
-            error (EXIT_FAILURE, 0,
-                   _("invalid template, %s; with --tmpdir,"
-                     " it may not be absolute"),
-                   quote (template));
+            die (EXIT_FAILURE, 0,
+                 _("invalid template, %s; with --tmpdir,"
+                   " it may not be absolute"),
+                 quote (template));
         }
 
       dest_name = file_name_concat (dest_dir, template, NULL);
@@ -323,8 +308,9 @@ main (int argc, char **argv)
       int err = mkdtemp_len (dest_name, suffix_len, x_count, dry_run);
       if (err != 0)
         {
-          error (0, errno, _("failed to create directory via template %s"),
-                 quote (template));
+          if (!suppress_file_err)
+            error (0, errno, _("failed to create directory via template %s"),
+                   quote (template));
           status = EXIT_FAILURE;
         }
     }
@@ -333,8 +319,9 @@ main (int argc, char **argv)
       int fd = mkstemp_len (dest_name, suffix_len, x_count, dry_run);
       if (fd < 0 || (!dry_run && close (fd) != 0))
         {
-          error (0, errno, _("failed to create file via template %s"),
-                 quote (template));
+          if (!suppress_file_err)
+            error (0, errno, _("failed to create file via template %s"),
+                   quote (template));
           status = EXIT_FAILURE;
         }
     }
@@ -348,7 +335,9 @@ main (int argc, char **argv)
         {
           int saved_errno = errno;
           remove (dest_name);
-          error (EXIT_FAILURE, saved_errno, _("write error"));
+          if (!suppress_file_err)
+            error (0, saved_errno, _("write error"));
+          status = EXIT_FAILURE;
         }
     }
 
@@ -357,5 +346,5 @@ main (int argc, char **argv)
   free (template);
 #endif
 
-  exit (status);
+  return status;
 }

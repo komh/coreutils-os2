@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test pr.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ use strict;
 @ENV{qw(LANGUAGE LANG LC_ALL)} = ('C') x 3;
 
 my $prog = 'pr';
+my $normalize_strerror = "s/': .*/'/";
 
 my @tv = (
 
@@ -385,9 +386,9 @@ my @tv = (
 ['col-long', '-W3 -t -1 --columns=2',     "a\nb\nc\n", "a c\nb\n", 0],
 # Make sure these fail.
 ['col-0', '-0', '', '', 1,
- "$prog: invalid number of columns: '0'\n"],
+ "$prog: invalid number of columns: '0'\n", $normalize_strerror],
 ['col-inval', '-'.'9'x100, '', '', 1,
- "$prog: invalid number of columns: '". ('9'x100) ."'\n"],
+ "$prog: invalid number of columns: '". ('9'x100) ."'\n", $normalize_strerror],
 
 # Before coreutils-5.3.1, --pages=1:-1 would be treated like
 # --pages=1:18446744073709551615.
@@ -427,7 +428,7 @@ my $common_option_prefix = '--date-format="-- Date/Time --" -h x';
 my @Tests;
 foreach my $t (@tv)
   {
-    my ($test_name, $flags, $in, $exp, $ret, $err_msg) = @$t;
+    my ($test_name, $flags, $in, $exp, $ret, $err_msg, $err_sub) = @$t;
     my $new_ent = [$test_name, $common_option_prefix, $flags];
     if (!ref $in)
       {
@@ -454,7 +455,7 @@ foreach my $t (@tv)
           }
       }
     $ret
-      and push @$new_ent, {EXIT=>$ret}, {ERR=>$err_msg};
+      and push @$new_ent, {EXIT=>$ret}, {ERR=>$err_msg}, {ERR_SUBST=>$err_sub};
     push @Tests, $new_ent;
   }
 
@@ -465,6 +466,13 @@ push @Tests,
     {IN=>{2=>"m\tn\to\n"}},
     {IN=>{3=>"x\ty\tz\n"}},
      {OUT=>join("\t", qw(a b c m n o x y z)) . "\n"} ];
+
+# This resulted in reading invalid memory before coreutils-8.26
+push @Tests,
+   ['asan1', "-m -S'\t\t\t' -t",
+    {IN=>{1=>"a\n"}},
+    {IN=>{2=>"a\n"}},
+     {OUT=>"a\t\t\t\t  \t\t\ta\n"} ];
 
 @Tests = triple_test \@Tests;
 

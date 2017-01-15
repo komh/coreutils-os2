@@ -1,7 +1,7 @@
 #!/bin/sh
 # Show fts fails on old-fashioned systems.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +30,11 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ du
+
+# ecryptfs for example uses some of the file name space
+# for encrypting filenames, so we must check dynamically.
+name_max=$(stat -f -c %l .)
+test "$name_max" -ge '200' || skip_ "NAME_MAX=$name_max is not sufficient"
 
 proc_file=/proc/self/fd
 if test ! -d $proc_file; then

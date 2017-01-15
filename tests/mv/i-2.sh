@@ -2,7 +2,7 @@
 # Test both cp and mv for their behavior with -if and -fi
 # The standards (POSIX and SuS) dictate annoyingly inconsistent behavior.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ cp -if e f < y > out 2>&1 || fail=1
 
 # Make sure out contains the prompt.
 case "$(cat out)" in
-  "cp: try to overwrite 'f', overriding mode 0000 (---------)?"*) ;;
+  "cp: replace 'f', overriding mode 0000 (---------)?"*) ;;
   *) fail=1 ;;
 esac
 

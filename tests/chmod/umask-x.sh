@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test that chmod -x file reports an error if the result is executable.
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,6 @@ print_ver_ chmod
 
 touch file
 chmod 755 file
-(umask 77 && chmod -x file) 2>/dev/null && fail=1
+(umask 77 && returns_ 1 chmod -x file) 2>/dev/null || fail=1
 
 Exit $fail

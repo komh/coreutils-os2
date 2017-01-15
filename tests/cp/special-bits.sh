@@ -2,7 +2,7 @@
 # make sure 'cp -p' preserves special bits
 # This works only when run as root.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,8 @@ set _ $(ls -l b); shift; p1=$1
 set _ $(ls -l b2); shift; p2=$1
 test $p1 = $p2 || fail=1
 
-setuidgid $NON_ROOT_USERNAME env PATH="$PATH" cp -p c c2 || fail=1
+chroot --skip-chdir --user=$NON_ROOT_USERNAME / env PATH="$PATH" cp -p c c2 \
+  || fail=1
 set _ $(ls -l c); shift; p1=$1
 set _ $(ls -l c2); shift; p2=$1
 test $p1 = $p2 && fail=1

@@ -1,5 +1,5 @@
 /* factor -- print prime factors of n.
-   Copyright (C) 1986-2013 Free Software Foundation, Inc.
+   Copyright (C) 1986-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 
     Using GMP is optional.  Define HAVE_GMP to make this code include GMP
     factoring code.  The GMP factoring code is based on GMP's demos/factorize.c
-    (last synched 2012-09-07).  The GMP-based factoring code will stay in GMP
+    (last synced 2012-09-07).  The GMP-based factoring code will stay in GMP
     factoring code even if numbers get small enough for using the two-word
     code.
 
@@ -50,8 +50,8 @@
     (2) Check the nature of any non-factored part using Miller-Rabin for
         detecting composites, and Lucas for detecting primes.
     (3) Factor any remaining composite part using the Pollard-Brent rho
-        algorithm or the SQUFOF algorithm, checking status of found factors
-        again using Miller-Rabin and Lucas.
+        algorithm or if USE_SQUFOF is defined to 1, try that first.
+        Status of found factors are checked again using Miller-Rabin and Lucas.
 
     We prefer using Hensel norm in the divisions, not the more familiar
     Euclidian norm, since the former leads to much faster code.  In the
@@ -84,6 +84,23 @@
       the -w option.
 */
 
+/* Whether to recursively factor to prove primality,
+   or run faster probabilistic tests.  */
+#ifndef PROVE_PRIMALITY
+# define PROVE_PRIMALITY 1
+#endif
+
+/* Faster for certain ranges but less general.  */
+#ifndef USE_SQUFOF
+# define USE_SQUFOF 0
+#endif
+
+/* Output SQUFOF statistics.  */
+#ifndef STAT_SQUFOF
+# define STAT_SQUFOF 0
+#endif
+
+
 #include <config.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -97,7 +114,9 @@
 #include <assert.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
+#include "full-write.h"
 #include "quote.h"
 #include "readtokens.h"
 #include "xstrtol.h"
@@ -112,10 +131,6 @@
 
 /* Token delimiters when reading from a file.  */
 #define DELIM "\n\t "
-
-#ifndef STAT_SQUFOF
-# define STAT_SQUFOF 0
-#endif
 
 #ifndef USE_LONGLONG_H
 /* With the way we use longlong.h, it's only safe to use
@@ -206,10 +221,6 @@ const unsigned char factor_clz_tab[129] =
    warns that each of the two tested macros is unused on Fedora 18.
    FIXME: this is just an ugly band-aid.  Fix it properly.  */
 #endif
-
-enum alg_type { ALG_POLLARD_RHO = 1, ALG_SQUFOF = 2 };
-
-static enum alg_type alg;
 
 /* 2*3*5*7*11...*101 is 128 bits, and has 26 prime factors */
 #define MAX_NFACTS 26
@@ -689,35 +700,11 @@ verify (W <= WIDE_UINT_BITS);
    This flag is used only in the GMP code.  */
 static bool dev_debug = false;
 
-/* Like error(0, 0, ...), but without an implicit newline.
-   Also a noop unless the global DEV_DEBUG is set.
-   TODO: Replace with variadic macro in system.h or
-   move to a separate module.  */
-static inline void
-devmsg (char const *fmt, ...)
-{
-  if (dev_debug)
-    {
-      va_list ap;
-      va_start (ap, fmt);
-      vfprintf (stderr, fmt, ap);
-      va_end (ap);
-    }
-}
-
 /* Prove primality or run probabilistic tests.  */
-static bool flag_prove_primality = true;
+static bool flag_prove_primality = PROVE_PRIMALITY;
 
 /* Number of Miller-Rabin tests to run when not proving primality. */
 #define MR_REPS 25
-
-#ifdef __GNUC__
-# define LIKELY(cond)    __builtin_expect ((cond), 1)
-# define UNLIKELY(cond)  __builtin_expect ((cond), 0)
-#else
-# define LIKELY(cond)    (cond)
-# define UNLIKELY(cond)  (cond)
-#endif
 
 static void
 factor_insert_refind (struct factors *factors, uintmax_t p, unsigned int i,
@@ -791,7 +778,7 @@ factor_using_division (uintmax_t *t1p, uintmax_t t1, uintmax_t t0,
     {
       for (;;)
         {
-          uintmax_t q1, q0, hi, lo ATTRIBUTE_UNUSED;
+          uintmax_t q1, q0, hi, lo _GL_UNUSED;
 
           q0 = t0 * primes_dtab[i].binv;
           umul_ppmm (hi, lo, q0, p);
@@ -933,7 +920,7 @@ static const unsigned char  binvert_table[128] =
     _q0 = (u0) * _di;                                                   \
     if ((u1) >= (d))                                                    \
       {                                                                 \
-        uintmax_t _p1, _p0 ATTRIBUTE_UNUSED;                            \
+        uintmax_t _p1, _p0 _GL_UNUSED;                            \
         umul_ppmm (_p1, _p0, _q0, d);                                   \
         (q1) = ((u1) - _p1) * _di;                                      \
         (q0) = _q0;                                                     \
@@ -948,7 +935,7 @@ static const unsigned char  binvert_table[128] =
 /* x B (mod n). */
 #define redcify(r_prim, r, n)                                           \
   do {                                                                  \
-    uintmax_t _redcify_q ATTRIBUTE_UNUSED;                              \
+    uintmax_t _redcify_q _GL_UNUSED;                              \
     udiv_qrnnd (_redcify_q, r_prim, r, 0, n);                           \
   } while (0)
 
@@ -981,7 +968,7 @@ static const unsigned char  binvert_table[128] =
 static inline uintmax_t
 mulredc (uintmax_t a, uintmax_t b, uintmax_t m, uintmax_t mi)
 {
-  uintmax_t rh, rl, q, th, tl ATTRIBUTE_UNUSED, xh;
+  uintmax_t rh, rl, q, th, tl _GL_UNUSED, xh;
 
   umul_ppmm (rh, rl, a, b);
   q = rl * mi;
@@ -1001,7 +988,7 @@ mulredc2 (uintmax_t *r1p,
           uintmax_t a1, uintmax_t a0, uintmax_t b1, uintmax_t b0,
           uintmax_t m1, uintmax_t m0, uintmax_t mi)
 {
-  uintmax_t r1, r0, q, p1, p0 ATTRIBUTE_UNUSED, t1, t0, s1, s0;
+  uintmax_t r1, r0, q, p1, p0 _GL_UNUSED, t1, t0, s1, s0;
   mi = -mi;
   assert ( (a1 >> (W_TYPE_SIZE - 1)) == 0);
   assert ( (b1 >> (W_TYPE_SIZE - 1)) == 0);
@@ -1271,7 +1258,7 @@ prime_p (uintmax_t n)
           a_prim = s0 % n;
         else
           {
-            uintmax_t dummy ATTRIBUTE_UNUSED;
+            uintmax_t dummy _GL_UNUSED;
             udiv_qrnnd (dummy, a_prim, s1, s0, n);
           }
       }
@@ -1756,6 +1743,7 @@ mp_factor_using_pollard_rho (mpz_t n, unsigned long int a,
 }
 #endif
 
+#if USE_SQUFOF
 /* FIXME: Maybe better to use an iteration converging to 1/sqrt(n)?  If
    algorithm is replaced, consider also returning the remainder. */
 static uintmax_t _GL_ATTRIBUTE_CONST
@@ -1803,7 +1791,7 @@ isqrt2 (uintmax_t nh, uintmax_t nl)
   /* Do we need more than one iteration? */
   for (;;)
     {
-      uintmax_t r ATTRIBUTE_UNUSED;
+      uintmax_t r _GL_UNUSED;
       uintmax_t q, y;
       udiv_qrnnd (q, r, nh, nl, x);
       y = (x + q) / 2;
@@ -1827,10 +1815,10 @@ isqrt2 (uintmax_t nh, uintmax_t nl)
 }
 
 /* MAGIC[N] has a bit i set iff i is a quadratic residue mod N. */
-#define MAGIC64 ((uint64_t) 0x0202021202030213ULL)
-#define MAGIC63 ((uint64_t) 0x0402483012450293ULL)
-#define MAGIC65 ((uint64_t) 0x218a019866014613ULL)
-#define MAGIC11 0x23b
+# define MAGIC64 0x0202021202030213ULL
+# define MAGIC63 0x0402483012450293ULL
+# define MAGIC65 0x218a019866014613ULL
+# define MAGIC11 0x23b
 
 /* Return the square root if the input is a square, otherwise 0. */
 static uintmax_t _GL_ATTRIBUTE_CONST
@@ -1875,7 +1863,7 @@ static const unsigned short invtab[0x81] =
 
 /* Compute q = [u/d], r = u mod d.  Avoids slow hardware division for the case
    that q < 0x40; here it instead uses a table of (Euclidian) inverses.  */
-#define div_smallq(q, r, u, d)                                          \
+# define div_smallq(q, r, u, d)                                          \
   do {                                                                  \
     if ((u) / 0x40 < (d))                                               \
       {                                                                 \
@@ -1943,7 +1931,8 @@ static const unsigned short invtab[0x81] =
    0.9295  7        =    7 = 3
    0.9934  11       =   11 = 3
 */
-#define QUEUE_SIZE 50
+# define QUEUE_SIZE 50
+#endif
 
 #if STAT_SQUFOF
 # define Q_FREQ_SIZE 50
@@ -1952,6 +1941,7 @@ static unsigned int q_freq[Q_FREQ_SIZE + 1];
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+#if USE_SQUFOF
 /* Return true on success.  Expected to fail only for numbers
    >= 2^{2*W_TYPE_SIZE - 2}, or close to that limit. */
 static bool
@@ -2071,11 +2061,12 @@ factor_using_squfof (uintmax_t n1, uintmax_t n0, struct factors *factors)
           div_smallq (q, rem, S+P, Q);
           P1 = S - rem; /* P1 = q*Q - P */
 
-#if STAT_SQUFOF
-          assert (q > 0);
+          IF_LINT (assert (q > 0 && Q > 0));
+
+# if STAT_SQUFOF
           q_freq[0]++;
           q_freq[MIN (q, Q_FREQ_SIZE)]++;
-#endif
+# endif
 
           if (Q <= L1)
             {
@@ -2089,7 +2080,7 @@ factor_using_squfof (uintmax_t n1, uintmax_t n0, struct factors *factors)
               if (g <= L)
                 {
                   if (qpos >= QUEUE_SIZE)
-                    error (EXIT_FAILURE, 0, _("squfof queue overflow"));
+                    die (EXIT_FAILURE, 0, _("squfof queue overflow"));
                   queue[qpos].Q = g;
                   queue[qpos].P = P % g;
                   qpos++;
@@ -2159,10 +2150,10 @@ factor_using_squfof (uintmax_t n1, uintmax_t n0, struct factors *factors)
                       div_smallq (q, rem, S+P, Q);
                       P1 = S - rem;     /* P1 = q*Q - P */
 
-#if STAT_SQUFOF
+# if STAT_SQUFOF
                       q_freq[0]++;
                       q_freq[MIN (q, Q_FREQ_SIZE)]++;
-#endif
+# endif
                       if (P == P1)
                         break;
                       t = Q1 + q * (P - P1);
@@ -2206,9 +2197,10 @@ factor_using_squfof (uintmax_t n1, uintmax_t n0, struct factors *factors)
     }
   return false;
 }
+#endif
 
 /* Compute the prime factors of the 128-bit number (T1,T0), and put the
-   results in FACTORS.  Use the algorithm selected by the global ALG.  */
+   results in FACTORS.  */
 static void
 factor (uintmax_t t1, uintmax_t t0, struct factors *factors)
 {
@@ -2227,9 +2219,10 @@ factor (uintmax_t t1, uintmax_t t0, struct factors *factors)
     factor_insert_large (factors, t1, t0);
   else
     {
-      if (alg == ALG_SQUFOF)
-        if (factor_using_squfof (t1, t0, factors))
-          return;
+#if USE_SQUFOF
+      if (factor_using_squfof (t1, t0, factors))
+        return;
+#endif
 
       if (t1 == 0)
         factor_using_pollard_rho (t0, 1, factors);
@@ -2338,13 +2331,106 @@ strto2uintmax (uintmax_t *hip, uintmax_t *lop, const char *s)
   return err;
 }
 
+/* Structure and routines for buffering and outputting full lines,
+   to support parallel operation efficiently.  */
+static struct lbuf_
+{
+  char *buf;
+  char *end;
+} lbuf;
+
+/* 512 is chosen to give good performance,
+   and also is the max guaranteed size that
+   consumers can read atomically through pipes.
+   Also it's big enough to cater for max line length
+   even with 128 bit uintmax_t.  */
+#define FACTOR_PIPE_BUF 512
+
+static void
+lbuf_alloc (void)
+{
+  if (lbuf.buf)
+    return;
+
+  /* Double to ensure enough space for
+     previous numbers + next number.  */
+  lbuf.buf = xmalloc (FACTOR_PIPE_BUF * 2);
+  lbuf.end = lbuf.buf;
+}
+
+/* Write complete LBUF to standard output.  */
+static void
+lbuf_flush (void)
+{
+  size_t size = lbuf.end - lbuf.buf;
+  if (full_write (STDOUT_FILENO, lbuf.buf, size) != size)
+    die (EXIT_FAILURE, errno, "%s", _("write error"));
+  lbuf.end = lbuf.buf;
+}
+
+/* Add a character C to LBUF and if it's a newline
+   and enough bytes are already buffered,
+   then write atomically to standard output.  */
+static void
+lbuf_putc (char c)
+{
+  *lbuf.end++ = c;
+
+  if (c == '\n')
+    {
+      size_t buffered = lbuf.end - lbuf.buf;
+
+      /* Provide immediate output for interactive input.  */
+      static int line_buffered = -1;
+      if (line_buffered == -1)
+        line_buffered = isatty (STDIN_FILENO);
+      if (line_buffered)
+        lbuf_flush ();
+      else if (buffered >= FACTOR_PIPE_BUF)
+        {
+          /* Write output in <= PIPE_BUF chunks
+             so consumers can read atomically.  */
+          char const *tend = lbuf.end;
+
+          /* Since a umaxint_t's factors must fit in 512
+             we're guaranteed to find a newline here.  */
+          char *tlend = lbuf.buf + FACTOR_PIPE_BUF;
+          while (*--tlend != '\n');
+          tlend++;
+
+          lbuf.end = tlend;
+          lbuf_flush ();
+
+          /* Buffer the remainder.  */
+          memcpy (lbuf.buf, tlend, tend - tlend);
+          lbuf.end = lbuf.buf + (tend - tlend);
+        }
+    }
+}
+
+/* Buffer an int to the internal LBUF.  */
+static void
+lbuf_putint (uintmax_t i, size_t min_width)
+{
+  char buf[INT_BUFSIZE_BOUND (uintmax_t)];
+  char const *umaxstr = umaxtostr (i, buf);
+  size_t width = sizeof (buf) - (umaxstr - buf) - 1;
+  size_t z = width;
+
+  for (; z < min_width; z++)
+    *lbuf.end++ = '0';
+
+  memcpy (lbuf.end, umaxstr, width);
+  lbuf.end += width;
+}
+
 static void
 print_uintmaxes (uintmax_t t1, uintmax_t t0)
 {
   uintmax_t q, r;
 
   if (t1 == 0)
-    printf ("%"PRIuMAX, t0);
+    lbuf_putint (t0, 0);
   else
     {
       /* Use very plain code here since it seems hard to write fast code
@@ -2353,7 +2439,7 @@ print_uintmaxes (uintmax_t t1, uintmax_t t0)
       r = t1 % 1000000000;
       udiv_qrnnd (t0, r, r, t0, 1000000000);
       print_uintmaxes (q, t0);
-      printf ("%09u", (int) r);
+      lbuf_putint (r, 9);
     }
 }
 
@@ -2364,24 +2450,24 @@ print_factors_single (uintmax_t t1, uintmax_t t0)
   struct factors factors;
 
   print_uintmaxes (t1, t0);
-  putchar (':');
+  lbuf_putc (':');
 
   factor (t1, t0, &factors);
 
   for (unsigned int j = 0; j < factors.nfactors; j++)
     for (unsigned int k = 0; k < factors.e[j]; k++)
       {
-        char buf[INT_BUFSIZE_BOUND (uintmax_t)];
-        putchar (' ');
-        fputs (umaxtostr (factors.p[j], buf), stdout);
+        lbuf_putc (' ');
+        print_uintmaxes (0, factors.p[j]);
       }
 
   if (factors.plarge[1])
     {
-      putchar (' ');
+      lbuf_putc (' ');
       print_uintmaxes (factors.plarge[1], factors.plarge[0]);
     }
-  putchar ('\n');
+
+  lbuf_putc ('\n');
 }
 
 /* Emit the factors of the indicated number.  If we have the option of using
@@ -2437,6 +2523,7 @@ print_factors (const char *input)
   mp_factor_clear (&factors);
   mpz_clear (t);
   putchar ('\n');
+  fflush (stdout);
   return true;
 #else
   error (0, 0, _("%s is too large"), quote (input));
@@ -2463,7 +2550,7 @@ are specified on the command line, read them from standard input.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -2498,9 +2585,9 @@ main (int argc, char **argv)
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 
+  lbuf_alloc ();
   atexit (close_stdout);
-
-  alg = ALG_POLLARD_RHO;        /* Default to Pollard rho */
+  atexit (lbuf_flush);
 
   int c;
   while ((c = getopt_long (argc, argv, "", long_options, NULL)) != -1)
@@ -2509,14 +2596,6 @@ main (int argc, char **argv)
         {
         case DEV_DEBUG_OPTION:
           dev_debug = true;
-          break;
-
-        case 's':
-          alg = ALG_SQUFOF;
-          break;
-
-        case 'w':
-          flag_prove_primality = false;
           break;
 
         case_GETOPT_HELP_CHAR;
@@ -2529,8 +2608,7 @@ main (int argc, char **argv)
     }
 
 #if STAT_SQUFOF
-  if (alg == ALG_SQUFOF)
-    memset (q_freq, 0, sizeof (q_freq));
+  memset (q_freq, 0, sizeof (q_freq));
 #endif
 
   bool ok;
@@ -2545,7 +2623,7 @@ main (int argc, char **argv)
     }
 
 #if STAT_SQUFOF
-  if (alg == ALG_SQUFOF && q_freq[0] > 0)
+  if (q_freq[0] > 0)
     {
       double acc_f;
       printf ("q  freq.  cum. freq.(total: %d)\n", q_freq[0]);
@@ -2559,5 +2637,5 @@ main (int argc, char **argv)
     }
 #endif
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

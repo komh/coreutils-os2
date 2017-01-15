@@ -2,7 +2,7 @@
 # Make sure that 'tail -n0 -f' and 'tail -c0 -f' sleep
 # rather than doing what amounted to a busy-wait.
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,12 +29,19 @@ require_proc_pid_status_
 touch empty || framework_failure_
 echo anything > nonempty || framework_failure_
 
+# First verify that -[nc]0 without -f, exit without reading
+touch unreadable || framework_failure_
+chmod 0 unreadable || framework_failure_
+tail -c0 unreadable || fail=1
+tail -n0 unreadable || fail=1
 
-for inotify in ---disable-inotify ''; do
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
+for mode in '' '---disable-inotify'; do
   for file in empty nonempty; do
     for c_or_n in c n; do
-      tail --sleep=4 -${c_or_n} 0 -f $inotify $file &
-      pid=$!
+      tail --sleep=4 -${c_or_n} 0 -f $mode $file & pid=$!
       tail_sleeping()
       {
         local delay="$1"; sleep $delay
@@ -47,7 +54,7 @@ for inotify in ---disable-inotify ''; do
       # Wait up to 1.5s for tail to sleep
       retry_delay_ tail_sleeping .1 4 ||
         { echo $0: process in unexpected state: $state >&2; fail=1; }
-      kill $pid
+      cleanup_
     done
   done
 done

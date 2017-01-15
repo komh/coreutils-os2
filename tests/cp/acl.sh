@@ -2,7 +2,7 @@
 # copy files/directories across file system boundaries
 # and make sure acls are preserved appropriately
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ cp getfacl setfacl
+print_ver_ cp
 
 require_acl_
 
@@ -53,7 +53,7 @@ test "$acl1" = "$acl2" || fail=1
 echo > a/file || framework_failure_ # add some data
 test -s a/file || framework_failure_
 cp -p --attributes-only a/file b/ || fail=1
-test -s b/file && fail=1
+compare /dev/null b/file || fail=1
 acl2=$(cd b && getfacl file) || framework_failure_
 test "$acl1" = "$acl2" || fail=1
 

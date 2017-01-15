@@ -2,7 +2,7 @@
 # Verify that mkdir's '-m MODE' option works properly
 # with various umask settings.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ mkdir
 skip_if_setgid_
+require_no_default_acl_ .
 
 working_umask_or_skip_
 
@@ -59,7 +60,7 @@ for p in empty -p; do
 
     # If we're not using -p, then create the parent manually,
     # and adjust expectations accordingly.
-    test x$p = x && \
+    test x$p = x &&
       {
         mkdir -m =,u=rwx parent || fail=1
         parent_perms=drwx------

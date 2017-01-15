@@ -1,5 +1,5 @@
 /* GNU's pinky.
-   Copyright (C) 1992-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "system.h"
 
 #include "canon-host.h"
+#include "die.h"
 #include "error.h"
 #include "hard-locale.h"
 #include "readutmp.h"
@@ -36,8 +37,6 @@
   proper_name ("Joseph Arceneaux"), \
   proper_name ("David MacKenzie"), \
   proper_name ("Kaveh Ghazi")
-
-char *ttyname (int);
 
 /* If true, display the hours:minutes since each user has touched
    the keyboard, or blank if within the last minute, or days followed
@@ -445,8 +444,7 @@ scan_entries (size_t n, const STRUCT_UTMP *utmp_buf,
               int i;
 
               for (i = 0; i < argc_names; i++)
-                if (strncmp (UT_USER (utmp_buf), argv_names[i], UT_USER_SIZE)
-                    == 0)
+                if (STREQ_LEN (UT_USER (utmp_buf), argv_names[i], UT_USER_SIZE))
                   {
                     print_entry (utmp_buf);
                     break;
@@ -466,12 +464,14 @@ short_pinky (const char *filename,
              const int argc_names, char *const argv_names[])
 {
   size_t n_users;
-  STRUCT_UTMP *utmp_buf;
+  STRUCT_UTMP *utmp_buf = NULL;
 
   if (read_utmp (filename, &n_users, &utmp_buf, 0) != 0)
-    error (EXIT_FAILURE, errno, "%s", filename);
+    die (EXIT_FAILURE, errno, "%s", quotef (filename));
 
   scan_entries (n_users, utmp_buf, argc_names, argv_names);
+
+  IF_LINT (free (utmp_buf));
 }
 
 static void
@@ -513,7 +513,7 @@ usage (int status)
 A lightweight 'finger' program;  print user information.\n\
 The utmp file will be %s.\n\
 "), UTMP_FILE);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -602,5 +602,5 @@ main (int argc, char **argv)
   else
     long_pinky (n_users, argv + optind);
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

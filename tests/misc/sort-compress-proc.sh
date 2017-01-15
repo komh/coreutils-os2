@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test use of compression subprocesses by sort
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,11 @@
 print_ver_ sort
 expensive_
 
+# Terminate any background processes
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
+SORT_FAILURE=2
+
 seq -w 2000 > exp || fail=1
 tac exp > in || fail=1
 insize=$(stat -c %s - <in) || fail=1
@@ -27,8 +32,9 @@ insize=$(stat -c %s - <in) || fail=1
 # This compressor's behavior is adjustable via environment variables.
 export PRE_COMPRESS=
 export POST_COMPRESS=
-cat <<\EOF >compress || framework_failure_
-#!/bin/sh
+
+printf '%s\n' '#!'"$SHELL" >compress || framework_failure_
+cat <<\EOF >>compress || framework_failure_
 eval "$PRE_COMPRESS"
 tr 41 14 || exit
 eval "$POST_COMPRESS"
@@ -52,7 +58,8 @@ do
       exec >/dev/null 2>&1 <&1 || exit
       expr $size "<" '"$insize"' / 2 || { sleep 1; exit 1; }
     }
-  ' sort --compress-program=./compress -S 1k --batch-size=2 in > out && fail=1
+  ' sort --compress-program=./compress -S 1k --batch-size=2 in > out
+  test $? -eq $SORT_FAILURE || fail=1
 done
 
 # "Pre-exec child" test
@@ -60,7 +67,7 @@ done
 # Ignore a random child process created before 'sort' was exec'ed.
 # This bug was also present in coreutils 8.7.
 #
-( (sleep 1; exec false) &
+( (sleep 1; exec false) & pid=$!
   PRE_COMPRESS='test -f ok || sleep 2'
   POST_COMPRESS='touch ok'
   exec sort --compress-program=./compress -S 1k in >out

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2008-2013 Free Software Foundation, Inc.
+ * Copyright (C) 2005, 2008-2016 Free Software Foundation, Inc.
  * Written by Simon Josefsson
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,10 +36,10 @@ main (void)
       size_t i;
       printf ("expected:\n");
       for (i = 0; i < SHA1_DIGEST_SIZE; i++)
-        printf ("%02x ", out1[i] & 0xFF);
+        printf ("%02x ", out1[i] & 0xFFu);
       printf ("\ncomputed:\n");
       for (i = 0; i < SHA1_DIGEST_SIZE; i++)
-        printf ("%02x ", buf[i] & 0xFF);
+        printf ("%02x ", buf[i] & 0xFFu);
       printf ("\n");
       return 1;
     }

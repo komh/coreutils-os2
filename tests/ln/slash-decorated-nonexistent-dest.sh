@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that touch f; ln -T f no-such-file/ does not mistakenly succeed
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ touch f || framework_failure_
 
 
 # Before coreutils-7.6, this would succeed on Solaris 10
-ln -T f no-such-file/ && fail=1
+returns_ 1 ln -T f no-such-file/ || fail=1
 test -e no-such-file && fail=1
 
 Exit $fail

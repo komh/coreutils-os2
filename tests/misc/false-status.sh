@@ -1,7 +1,8 @@
 #!/bin/sh
 # ensure that false exits nonzero even with --help or --version
+# and ensure that true exits nonzero when it can't write --help or --version
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,9 +18,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ false
+print_ver_ false true
 
-false --version > /dev/null && fail=1
-false --help > /dev/null && fail=1
+returns_ 1 env false --version > /dev/null || fail=1
+returns_ 1 env false --help > /dev/null || fail=1
+
+if test -w /dev/full && test -c /dev/full; then
+  returns_ 1 env true --version > /dev/full || fail=1
+  returns_ 1 env true --help > /dev/full || fail=1
+fi
 
 Exit $fail

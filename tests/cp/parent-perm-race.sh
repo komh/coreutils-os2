@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure cp -pR --parents isn't too generous with parent permissions.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,9 @@ umask 002
 mkdir mode ownership d || framework_failure_
 chmod g+s d 2>/dev/null # The cp test is valid either way.
 
+# Terminate any background cp process.
+pid=
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
 for attr in mode ownership
 do
@@ -33,22 +36,16 @@ do
 
   # Copy a fifo's contents.  That way, we can examine d/$attr's
   # state while cp is running.
-  cp --preserve=$attr -R --copy-contents --parents $attr d &
-  cp_pid=$!
+  timeout 10 cp --preserve=$attr -R --copy-contents --parents $attr d & pid=$!
 
-  (
-    # Now 'cp' is reading the fifo.
-    # Check the permissions of the temporary destination
-    # directory that 'cp' has made.
-    ls -ld d/$attr >d/$attr.ls
+  # Check the permissions of the destination directory that 'cp' has made.
+  # 'ls' won't start until after 'cp' has made the destination directory
+  # $d/attr and has started to read the source file $attr/fifo.
+  timeout 10 sh -c "ls -ld d/$attr >$attr/fifo" || fail=1
 
-    # Close the fifo so that "cp" can continue.  But output first,
-    # before exiting, otherwise some shells would optimize away the file
-    # descriptor that holds the fifo open.
-    echo foo
-  ) >$attr/fifo
+  wait $pid || fail=1
 
-  ls_output=$(cat d/$attr.ls) || fail=1
+  ls_output=$(cat d/$attr/fifo) || fail=1
   case $attr,$ls_output in
   ownership,d???--[-S]--[-S]* | \
   mode,d????-??-?* | \
@@ -57,8 +54,6 @@ do
   *)
     fail=1;;
   esac
-
-  wait $cp_pid || fail=1
 done
 
 Exit $fail

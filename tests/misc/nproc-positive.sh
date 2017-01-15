@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that nproc prints a number > 0
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ for i in 0 ' 1' 1000; do
 done
 
 for i in -1 N; do
-    nproc --ignore=$i && fail=1
+    returns_ 1 nproc --ignore=$i || fail=1
 done
 
 procs=$(OMP_NUM_THREADS=42 nproc --ignore=40)

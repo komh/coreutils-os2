@@ -1,7 +1,7 @@
 #!/bin/sh
 # demonstrate that stat - works and stat -f - does not.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ printf -- '-\n' > exp || framework_failure_
 touch f || framework_failure_
 
 stat --format=%n - < f > out || fail=1
-stat -f - < f && fail=1
+returns_ 1 stat -f - < f || fail=1
 
 compare exp out || fail=1
 

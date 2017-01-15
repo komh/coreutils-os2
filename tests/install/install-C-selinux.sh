@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure "install -C" compares SELinux context.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ ginstall
 require_selinux_
-
+skip_if_nondefault_group_
 
 echo test > a || framework_failure_
 chcon -u system_u a || skip_ "chcon doesn't work"

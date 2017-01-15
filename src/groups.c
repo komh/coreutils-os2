@@ -1,5 +1,5 @@
 /* groups -- print the groups a user is in
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -25,8 +25,9 @@
 #include <getopt.h>
 
 #include "system.h"
-#include "error.h"
+#include "die.h"
 #include "group-list.h"
+#include "quote.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "groups"
@@ -58,7 +59,7 @@ the current process (which may differ if the groups database has changed).\n"),
              stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -102,39 +103,40 @@ main (int argc, char **argv)
       errno = 0;
       ruid = getuid ();
       if (ruid == NO_UID && errno)
-        error (EXIT_FAILURE, errno, _("cannot get real UID"));
+        die (EXIT_FAILURE, errno, _("cannot get real UID"));
 
       errno = 0;
       egid = getegid ();
       if (egid == NO_GID && errno)
-        error (EXIT_FAILURE, errno, _("cannot get effective GID"));
+        die (EXIT_FAILURE, errno, _("cannot get effective GID"));
 
       errno = 0;
       rgid = getgid ();
       if (rgid == NO_GID && errno)
-        error (EXIT_FAILURE, errno, _("cannot get real GID"));
+        die (EXIT_FAILURE, errno, _("cannot get real GID"));
 
-      if (!print_group_list (NULL, ruid, rgid, egid, true))
+      if (!print_group_list (NULL, ruid, rgid, egid, true, ' '))
         ok = false;
       putchar ('\n');
     }
   else
     {
-      /* At least one argument.  Divulge the details of the specified users. */
+      /* At least one argument.  Divulge the details of the specified users.  */
       while (optind < argc)
         {
           struct passwd *pwd = getpwnam (argv[optind]);
           if (pwd == NULL)
-            error (EXIT_FAILURE, 0, _("%s: no such user"), argv[optind]);
+            die (EXIT_FAILURE, 0, _("%s: no such user"),
+                 quote (argv[optind]));
           ruid = pwd->pw_uid;
           rgid = egid = pwd->pw_gid;
 
           printf ("%s : ", argv[optind]);
-          if (!print_group_list (argv[optind++], ruid, rgid, egid, true))
+          if (!print_group_list (argv[optind++], ruid, rgid, egid, true, ' '))
             ok = false;
           putchar ('\n');
         }
     }
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

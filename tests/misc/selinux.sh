@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test SELinux-related options.
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,12 @@ done
 
 # ensure that ls -l output includes the ".".
 c=$(ls -l f|cut -c11); test "$c" = . || fail=1
+
+# Copy with an invalid context and ensure it fails
+# Note this may succeed when root and selinux is in permissive mode
+if test "$(getenforce)" = Enforcing; then
+  returns_ 1 cp --context='invalid-selinux-context' f f.cp || fail=1
+fi
 
 # Copy each to a new directory and ensure that context is preserved.
 cp -r --preserve=all d f p s1 || fail=1

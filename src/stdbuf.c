@@ -1,5 +1,5 @@
 /* stdbuf -- setup the standard streams for a command
-   Copyright (C) 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <assert.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
 #include "filenamecat.h"
 #include "quote.h"
@@ -34,7 +35,7 @@
 #define PROGRAM_NAME "stdbuf"
 #define LIB_NAME "libstdbuf.so" /* FIXME: don't hardcode  */
 
-#define AUTHORS proper_name_utf8 ("Padraig Brady", "P\303\241draig Brady")
+#define AUTHORS proper_name ("Padraig Brady")
 
 static char *program_path;
 
@@ -66,7 +67,7 @@ parse_size (char const *str, size_t *size)
 {
   uintmax_t tmp_size;
   enum strtol_error e = xstrtoumax (str, NULL, 10, &tmp_size, "EGkKMPTYZ0");
-  if (e == LONGINT_OK && tmp_size > SIZE_MAX)
+  if (e == LONGINT_OK && SIZE_MAX < tmp_size)
     e = LONGINT_OVERFLOW;
 
   if (e == LONGINT_OK)
@@ -76,7 +77,7 @@ parse_size (char const *str, size_t *size)
       return 0;
     }
 
-  errno = (e == LONGINT_OVERFLOW ? EOVERFLOW : 0);
+  errno = (e == LONGINT_OVERFLOW ? EOVERFLOW : errno);
   return -1;
 }
 
@@ -115,11 +116,11 @@ size set to MODE bytes.\n\
 "), stdout);
       fputs (_("\n\
 NOTE: If COMMAND adjusts the buffering of its standard streams ('tee' does\n\
-for e.g.) then that will override corresponding settings changed by 'stdbuf'.\n\
+for example) then that will override corresponding changes by 'stdbuf'.\n\
 Also some filters (like 'dd' and 'cat' etc.) don't use streams for I/O,\n\
 and are thus unaffected by 'stdbuf' settings.\n\
 "), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -187,7 +188,12 @@ static void
 set_LD_PRELOAD (void)
 {
   int ret;
-  char *old_libs = getenv ("LD_PRELOAD");
+#ifdef __APPLE__
+  char const *preload_env = "DYLD_INSERT_LIBRARIES";
+#else
+  char const *preload_env = "LD_PRELOAD";
+#endif
+  char *old_libs = getenv (preload_env);
   char *LD_PRELOAD;
 
   /* Note this would auto add the appropriate search path for "libstdbuf.so":
@@ -195,7 +201,17 @@ set_LD_PRELOAD (void)
      However we want the lookup done for the exec'd command not stdbuf.
 
      Since we don't link against libstdbuf.so add it to PKGLIBEXECDIR
-     rather than to LIBDIR.  */
+     rather than to LIBDIR.
+
+     Note we could add "" as the penultimate item in the following list
+     to enable searching for libstdbuf.so in the default system lib paths.
+     However that would not indicate an error if libstdbuf.so was not found.
+     Also while this could support auto selecting the right arch in a multilib
+     environment, what we really want is to auto select based on the arch of the
+     command being run, rather than that of stdbuf itself.  This is currently
+     not supported due to the unusual need for controlling the stdio buffering
+     of programs that are a different architecture to the default on the
+     system (and that of stdbuf itself).  */
   char const *const search_path[] = {
     program_path,
     PKGLIBEXECDIR,
@@ -223,15 +239,15 @@ set_LD_PRELOAD (void)
 
       ++path;
       if ( ! *path)
-        error (EXIT_CANCELED, 0, _("failed to find %s"), quote (LIB_NAME));
+        die (EXIT_CANCELED, 0, _("failed to find %s"), quote (LIB_NAME));
     }
 
   /* FIXME: Do we need to support libstdbuf.dll, c:, '\' separators etc?  */
 
   if (old_libs)
-    ret = asprintf (&LD_PRELOAD, "LD_PRELOAD=%s:%s", old_libs, libstdbuf);
+    ret = asprintf (&LD_PRELOAD, "%s=%s:%s", preload_env, old_libs, libstdbuf);
   else
-    ret = asprintf (&LD_PRELOAD, "LD_PRELOAD=%s", libstdbuf);
+    ret = asprintf (&LD_PRELOAD, "%s=%s", preload_env, libstdbuf);
 
   if (ret < 0)
     xalloc_die ();
@@ -239,21 +255,27 @@ set_LD_PRELOAD (void)
   free (libstdbuf);
 
   ret = putenv (LD_PRELOAD);
+#ifdef __APPLE__
+  if (ret == 0)
+    ret = setenv ("DYLD_FORCE_FLAT_NAMESPACE", "y", 1);
+#endif
 
   if (ret != 0)
     {
-      error (EXIT_CANCELED, errno,
-             _("failed to update the environment with %s"),
-             quote (LD_PRELOAD));
+      die (EXIT_CANCELED, errno,
+           _("failed to update the environment with %s"),
+           quote (LD_PRELOAD));
     }
 }
 
-/* Populate environ with _STDBUF_I=$MODE _STDBUF_O=$MODE _STDBUF_E=$MODE  */
+/* Populate environ with _STDBUF_I=$MODE _STDBUF_O=$MODE _STDBUF_E=$MODE.
+   Return TRUE if any environment variables set.   */
 
-static void
+static bool
 set_libstdbuf_options (void)
 {
-  unsigned int i;
+  bool env_set = false;
+  size_t i;
 
   for (i = 0; i < ARRAY_CARDINALITY (stdbuf); i++)
     {
@@ -274,12 +296,16 @@ set_libstdbuf_options (void)
 
           if (putenv (var) != 0)
             {
-              error (EXIT_CANCELED, errno,
-                     _("failed to update the environment with %s"),
-                     quote (var));
+              die (EXIT_CANCELED, errno,
+                   _("failed to update the environment with %s"),
+                   quote (var));
             }
+
+          env_set = true;
         }
     }
+
+  return env_set;
 }
 
 int
@@ -323,7 +349,7 @@ main (int argc, char **argv)
 
           if (!STREQ (optarg, "L")
               && parse_size (optarg, &stdbuf[opt_fileno].size) == -1)
-            error (EXIT_CANCELED, errno, _("invalid mode %s"), quote (optarg));
+            die (EXIT_CANCELED, errno, _("invalid mode %s"), quote (optarg));
 
           break;
 
@@ -346,23 +372,23 @@ main (int argc, char **argv)
       usage (EXIT_CANCELED);
     }
 
-  /* FIXME: Should we mandate at least one option?  */
-
-  set_libstdbuf_options ();
+  if (! set_libstdbuf_options ())
+    {
+      error (0, 0, _("you must specify a buffering mode option"));
+      usage (EXIT_CANCELED);
+    }
 
   /* Try to preload libstdbuf first from the same path as
      stdbuf is running from.  */
   set_program_path (program_name);
   if (!program_path)
-    program_path = xstrdup (PKGLIBDIR);  /* Need to init to non NULL.  */
+    program_path = xstrdup (PKGLIBDIR);  /* Need to init to non-NULL.  */
   set_LD_PRELOAD ();
   free (program_path);
 
   execvp (*argv, argv);
 
-  {
-    int exit_status = (errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE);
-    error (0, errno, _("failed to run command %s"), quote (argv[0]));
-    exit (exit_status);
-  }
+  int exit_status = errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE;
+  error (0, errno, _("failed to run command %s"), quote (argv[0]));
+  return exit_status;
 }

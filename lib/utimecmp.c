@@ -1,6 +1,6 @@
 /* utimecmp.c -- compare file time stamps
 
-   Copyright (C) 2004-2007, 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2004-2007, 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -132,7 +132,6 @@ utimecmp (char const *dst_name,
      time_t might be unsigned.  */
 
   verify (TYPE_IS_INTEGER (time_t));
-  verify (TYPE_TWOS_COMPLEMENT (int));
 
   /* Destination and source time stamps.  */
   time_t dst_s = dst_stat->st_mtime;
@@ -289,7 +288,7 @@ utimecmp (char const *dst_name,
                  to interrogate the file system to deduce the exact time
                  stamp resolution; return the answer directly.  */
               {
-                time_t s = src_s & ~ (res == 2 * BILLION);
+                time_t s = src_s & ~ (res == 2 * BILLION ? 1 : 0);
                 if (src_s < dst_s || (src_s == dst_s && src_ns <= dst_ns))
                   return 1;
                 if (dst_s < s
@@ -368,7 +367,7 @@ utimecmp (char const *dst_name,
         }
 
       /* Truncate the source's time stamp according to the resolution.  */
-      src_s &= ~ (res == 2 * BILLION);
+      src_s &= ~ (res == 2 * BILLION ? 1 : 0);
       src_ns -= src_ns % res;
     }
 

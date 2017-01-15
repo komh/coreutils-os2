@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test 'sort' exits early on inaccessible inputs or output
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,18 +20,18 @@
 print_ver_ sort
 skip_if_root_
 
+SORT_FAILURE=2
+
 # Check output is writable before starting to sort
 touch input
 chmod a-w input
-timeout 10 sort -o input && fail=1
-test $? = 124 && fail=1
+returns_ $SORT_FAILURE timeout 10 sort -o input || fail=1
 
 # Check all inputs are readable before starting to sort
 # Also ensure the output isn't created in this case
 touch output
 chmod a-r output
-timeout 10 sort -o typo - output && fail=1
-test $? = 124 && fail=1
+returns_ $SORT_FAILURE timeout 10 sort -o typo - output || fail=1
 test -e typo && fail=1
 
 Exit $fail

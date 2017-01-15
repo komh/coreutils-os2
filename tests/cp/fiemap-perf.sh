@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that a sparse file is copied efficiently, by default
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ timeout 10 truncate -s1T f ||
 
 # Disable this test on old BTRFS (e.g. Fedora 14)
 # which reports (unwritten) extents for holes.
-filefrag f || skip_ 'the 'filefrag' utility is missing'
+filefrag f || skip_ "the 'filefrag' utility is missing"
 filefrag f | grep -F ': 0 extents found' > /dev/null ||
   skip_ 'this file system reports extents for holes'
 

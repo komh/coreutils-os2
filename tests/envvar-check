@@ -1,7 +1,7 @@
 # -*- sh -*-
 # Check environment variables for sane values while testing.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,12 +28,14 @@ vars='
   _STDBUF_E
   _STDBUF_I
   _STDBUF_O
+  BASH_ENV
   BLOCKSIZE
   BLOCK_SIZE
   CDPATH
   COLUMNS
   DF_BLOCK_SIZE
   DU_BLOCK_SIZE
+  ENV
   LANGUAGE
   LS_BLOCK_SIZE
   LS_COLORS
@@ -43,6 +45,7 @@ vars='
   SIMPLE_BACKUP_SUFFIX
   TABSIZE
   TERM
+  COLORTERM
   TIME_STYLE
   TMPDIR
   VERSION_CONTROL

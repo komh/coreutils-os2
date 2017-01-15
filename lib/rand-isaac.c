@@ -1,6 +1,6 @@
 /* Bob Jenkins's cryptographic random number generators, ISAAC and ISAAC64.
 
-   Copyright (C) 1999-2013 Free Software Foundation, Inc.
+   Copyright (C) 1999-2016 Free Software Foundation, Inc.
    Copyright (C) 1997, 1998, 1999 Colin Plumb.
 
    This program is free software: you can redistribute it and/or modify
@@ -35,6 +35,18 @@
 #include "rand-isaac.h"
 
 #include <limits.h>
+#include <string.h>
+
+/* If the platform supports unaligned access,
+   then don't have -fsanitize=undefined warn about it.  */
+#undef ATTRIBUTE_NO_WARN_SANITIZE_UNDEFINED
+#if !(_STRING_ARCH_unaligned || _STRING_INLINE_unaligned) \
+    || __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 9)
+# define ATTRIBUTE_NO_WARN_SANITIZE_UNDEFINED /* empty */
+#else
+# define ATTRIBUTE_NO_WARN_SANITIZE_UNDEFINED \
+  __attribute__ ((__no_sanitize_undefined__))
+#endif
 
 /* The minimum of two sizes A and B.  */
 static inline size_t
@@ -58,20 +70,30 @@ just (isaac_word a)
   return a & desired_bits;
 }
 
-/* The index operation.  On typical machines whose words are exactly
-   the right size, this is optimized to a mask, an addition, and an
-   indirect load.  Atypical machines need more work.  */
+/* The index operation.  */
 static inline isaac_word
 ind (isaac_word const *m, isaac_word x)
 {
-  return (sizeof *m * CHAR_BIT == ISAAC_BITS
-          ? (* (isaac_word *) ((char *) m
-                               + (x & ((ISAAC_WORDS - 1) * sizeof *m))))
-          : m[(x / (ISAAC_BITS / CHAR_BIT)) & (ISAAC_WORDS - 1)]);
+  if (sizeof *m * CHAR_BIT == ISAAC_BITS)
+    {
+      /* The typical case, where words are exactly the right size.
+         Optimize this to a mask, an addition, and an indirect
+         load.  */
+      void const *void_m = m;
+      char const *base_p = void_m;
+      void const *word_p = base_p + (x & ((ISAAC_WORDS - 1) * sizeof *m));
+      isaac_word const *p = word_p;
+      return *p;
+    }
+  else
+    {
+      /* Atypical machines need more work.  */
+      return m[(x / (ISAAC_BITS / CHAR_BIT)) & (ISAAC_WORDS - 1)];
+    }
 }
 
 /* Use and update *S to generate random data to fill RESULT.  */
-void
+void ATTRIBUTE_NO_WARN_SANITIZE_UNDEFINED
 isaac_refill (struct isaac_state *s, isaac_word result[ISAAC_WORDS])
 {
   /* Caches of S->a and S->b.  */
@@ -86,7 +108,7 @@ isaac_refill (struct isaac_state *s, isaac_word result[ISAAC_WORDS])
 
   /* The central step.  S->m is the whole state array, while M is a
      pointer to the current word.  OFF is the offset from M to the
-     word ISAAC_WORDS/2 words away in the SM array, i.e. +/-
+     word ISAAC_WORDS/2 words away in the SM array, i.e., +/-
      ISAAC_WORDS/2.  A and B are state variables, and R the result.
      This updates A, B, M[I], and R[I].  */
   #define ISAAC_STEP(i, off, mix)                             \

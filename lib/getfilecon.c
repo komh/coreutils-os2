@@ -1,5 +1,5 @@
 /* wrap getfilecon, lgetfilecon, and fgetfilecon
-   Copyright (C) 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ map_to_failure (int ret, security_context_t *con)
   if (ret == 10 && strcmp (*con, "unlabeled") == 0)
     {
       freecon (*con);
+      *con = NULL;
       errno = ENODATA;
       return -1;
     }

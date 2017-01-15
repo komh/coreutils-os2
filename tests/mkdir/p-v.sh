@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test mkdir -pv.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ print_ver_ mkdir
 
 mkdir -pv foo/a/b/c/d >out || fail=1
 
-compare - out <<\EOF
+compare - out <<\EOF || fail=1
 mkdir: created directory 'foo'
 mkdir: created directory 'foo/a'
 mkdir: created directory 'foo/a/b'

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test cp --sparse=always through fiemap copy
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,7 +64,8 @@ fi
 f()
 {
   sed 's/ [a-z,][a-z,]*$//' $@ \
-    | $AWK '/^ *[0-9]/ {printf "%d %d ", $2, (NF<5 ? $NF : $5) } END {print ""}'
+    | $AWK '/^ *[0-9]/ {printf "%d %d ", $2, (NF>=6 ? $6 : (NF<5 ? $NF : $5)) }
+            END {print ""}'
 }
 
 for i in $(seq 1 2 21); do

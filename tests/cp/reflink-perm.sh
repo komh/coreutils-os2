@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test cp --reflink copies permissions
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 print_ver_ cp
 
 
-: > time_check
-: > file
+> time_check
+> file
 ts='2009-08-28 19:00'
 touch -d "$ts" file || framework_failure_
 test time_check -nt file || skip_ "The system clock is wrong"
@@ -38,8 +38,8 @@ test copy -nt file && fail=1
 # Ensure that --attributes-only overrides --reflink completely
 echo > file2 # file with data
 cp --reflink=auto --preserve --attributes-only file2 empty_copy || fail=1
-test -s empty_copy && fail=1
+compare /dev/null empty_copy || fail=1
 cp --reflink=always --preserve --attributes-only file2 empty_copy || fail=1
-test -s empty_copy && fail=1
+compare /dev/null empty_copy || fail=1
 
 Exit $fail

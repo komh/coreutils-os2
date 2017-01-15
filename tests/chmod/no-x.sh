@@ -2,7 +2,7 @@
 # Make sure chmod gives the right diagnostic for a readable,
 # but inaccessible directory.
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,10 +48,9 @@ compare exp out || fail=1
 
 cd a
 # This will fail with ''chmod: fts_read failed: Permission denied''
-chmod a-x . b 2> /dev/null && fail=1
 # chmod must exit with status 1.
 # Due to a bug in coreutils-5.93's fts.c, chmod would provoke
 # an abort (exit with status 134) on recent glibc-based systems.
-test $? = 1 || fail=1
+returns_ 1 chmod a-x . b 2> /dev/null || fail=1
 
 Exit $fail

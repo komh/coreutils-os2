@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that csplit uses a bounded amount of memory
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,14 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ csplit
 
-require_ulimit_
+# Determine basic amount of memory needed.
+{ echo y; echo n; } > f || framework_failure_
+vm=$(get_min_ulimit_v_ csplit -z f %n%1) \
+  || skip_ "this shell lacks ulimit support"
 
 (
- ulimit -v 20000
- { yes | head -n2500000; echo n; } | csplit -z - %n%1
+ ulimit -v $(($vm + 1000)) \
+   && { yes | head -n2500000; echo n; } | csplit -z - %n%1
 ) || fail=1
 
 Exit $fail

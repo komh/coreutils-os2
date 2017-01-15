@@ -1,5 +1,5 @@
 /* Test of error-checking xprintf() function with POSIX compatible formatting.
-   Copyright (C) 2007-2013 Free Software Foundation, Inc.
+   Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "progname.h"
 #include "macros.h"
 
 #include "test-printf-posix.h"
@@ -32,8 +31,6 @@
 int
 main (int argc _GL_UNUSED, char *argv[])
 {
-  set_program_name (argv[0]);
-
   test_function (xprintf);
   return 0;
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that runcon does not reorder its arguments.
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ echo "$diag" > exp || framework_failure_
 # On such a system it fails with the above diagnostic, which is fine.
 # Before the no-reorder change, it would have failed with a diagnostic
 # about -j being an invalid option.
-runcon $(id -Z) true -j 2> out && : > exp
+runcon $(id -Z) true -j 2> out && > exp
 
 # When run on a system with no /selinux/context (i.e., in a chroot),
 # it chcon fails with this: "runcon: invalid context: \

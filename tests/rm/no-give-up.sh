@@ -2,7 +2,7 @@
 # With rm from coreutils-5.2.1 and earlier, 'rm -r' would mistakenly
 # give up too early under some conditions.
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@ chmod go=x . || framework_failure_
 
 
 # This must fail, since '.' is not writable by $NON_ROOT_USERNAME.
-setuidgid $NON_ROOT_USERNAME env PATH="$PATH" rm -rf d 2>/dev/null && fail=1
+returns_ 1 chroot --skip-chdir --user=$NON_ROOT_USERNAME / env PATH="$PATH" \
+  rm -rf d 2>/dev/null || fail=1
 
 # d must remain.
 test -d d || fail=1

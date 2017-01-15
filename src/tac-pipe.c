@@ -1,6 +1,6 @@
 /* tac from a pipe.
 
-   Copyright (C) 1997-2013 Free Software Foundation, Inc.
+   Copyright (C) 1997-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 
 /* FIXME */
 #include <assert.h>
+
+#include "die.h"
 
 /* FIXME: this is small for testing */
 #define BUFFER_SIZE (8)
@@ -71,7 +73,7 @@ buf_init_from_stdin (Buf *x, char eol_byte)
         }
       bytes_read = full_read (STDIN_FILENO, buf, BUFFER_SIZE);
       if (bytes_read != buffer_size && errno != 0)
-        error (EXIT_FAILURE, errno, _("read error"));
+        die (EXIT_FAILURE, errno, _("read error"));
 
       {
         struct B_pair bp;

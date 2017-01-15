@@ -4,7 +4,7 @@
 # Do the same for all programs that can read stdin,
 # require no arguments and that write to standard output.
 
-# Copyright (C) 2003-2013 Free Software Foundation, Inc.
+# Copyright (C) 2003-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ $@
 {
   my $fail = 0;
   my @stdin_reading_commands = qw(
+    base32
     base64
     cat
     cksum
@@ -62,10 +63,12 @@ $@
     wc
   );
   my $stderr = 'tty-eof.err';
-  foreach my $cmd ((@stdin_reading_commands), 'cut -f2')
+  foreach my $cmd ((@stdin_reading_commands), 'cut -f2',
+                   'numfmt --invalid=ignore')
     {
       my $exp = new Expect;
       $exp->log_user(0);
+      $ENV{built_programs} =~ /\b$cmd\b/ || next;
       $exp->spawn("$cmd 2> $stderr")
         or (warn "$ME: cannot run '$cmd': $!\n"), $fail=1, next;
       # No input for cut -f2.

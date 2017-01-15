@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that du and wc handle --files0-from=DIR
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ for prog in du wc; do
   printf "$prog: dir:\n" > exp || fail=1
   # The diagnostic string is usually "Is a directory" (ENOTDIR),
   # but accept a different string or errno value.
-  sed 's/dir:.*/dir:/' err > k; mv k err
+  sed "s/dir:.*/dir:/" err > k; mv k err
   compare exp err || fail=1
 done
 

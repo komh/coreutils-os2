@@ -1,5 +1,5 @@
 /* Test of malloc function.
-   Copyright (C) 2010-2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,8 +22,10 @@ int
 main ()
 {
   /* Check that malloc (0) is not a NULL pointer.  */
-  if (malloc (0) == NULL)
+  char *p = malloc (0);
+  if (p == NULL)
     return 1;
 
+  free (p);
   return 0;
 }

@@ -2,7 +2,7 @@
 # Exercise an abort-inducing flaw in inotify-enabled tail -F.
 # Like inotify-hash-abuse, but without a hard-coded "9".
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,20 +20,27 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
-touch f || framework_failure_
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
-debug='---disable-inotify -s .001'
-debug=
-tail $debug -F f & pid=$!
-cleanup_() { kill $pid; }
+# Speedup the non inotify case
+fastpoll='-s.1 --max-unchanged-stats=1'
 
-for i in $(seq 200); do
-  kill -0 $pid || break;
-  mv f g
-  touch f
+for mode in '' '---disable-inotify'; do
+  touch f || framework_failure_
+
+  tail $mode $fastpoll -F f & pid=$!
+
+  for i in $(seq 200); do
+    kill -0 $pid || break;
+    mv f g
+    touch f
+  done
+
+  # Ensure tail hasn't aborted
+  kill -0 $pid || fail=1
+
+  cleanup_
 done
-
-# Kill the working tail, or fail if it has already aborted
-kill $pid || fail=1
 
 Exit $fail

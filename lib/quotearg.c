@@ -1,6 +1,6 @@
 /* quotearg.c - quote arguments for output
 
-   Copyright (C) 1998-2002, 2004-2013 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -77,6 +77,8 @@ char const *const quoting_style_args[] =
   "literal",
   "shell",
   "shell-always",
+  "shell-escape",
+  "shell-escape-always",
   "c",
   "c-maybe",
   "escape",
@@ -91,6 +93,8 @@ enum quoting_style const quoting_style_vals[] =
   literal_quoting_style,
   shell_quoting_style,
   shell_always_quoting_style,
+  shell_escape_quoting_style,
+  shell_escape_always_quoting_style,
   c_quoting_style,
   c_maybe_quoting_style,
   escape_quoting_style,
@@ -116,7 +120,7 @@ clone_quoting_options (struct quoting_options *o)
 
 /* Get the value of O's quoting style.  If O is null, use the default.  */
 enum quoting_style
-get_quoting_style (struct quoting_options *o)
+get_quoting_style (struct quoting_options const *o)
 {
   return (o ? o : &default_quoting_options)->style;
 }
@@ -178,7 +182,7 @@ set_custom_quoting (struct quoting_options *o,
 static struct quoting_options /* NOT PURE!! */
 quoting_options_from_style (enum quoting_style style)
 {
-  struct quoting_options o = { 0, 0, { 0 }, NULL, NULL };
+  struct quoting_options o = { literal_quoting_style, 0, { 0 }, NULL, NULL };
   if (style == custom_quoting_style)
     abort ();
   o.style = style;
@@ -248,11 +252,15 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
 {
   size_t i;
   size_t len = 0;
+  size_t orig_buffersize = 0;
   char const *quote_string = 0;
   size_t quote_string_len = 0;
   bool backslash_escapes = false;
   bool unibyte_locale = MB_CUR_MAX == 1;
   bool elide_outer_quotes = (flags & QA_ELIDE_OUTER_QUOTES) != 0;
+  bool pending_shell_escape_end = false;
+  bool encountered_single_quote = false;
+  bool all_c_and_shell_quote_compat = true;
 
 #define STORE(c) \
     do \
@@ -262,6 +270,38 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
         len++; \
       } \
     while (0)
+
+#define START_ESC() \
+    do \
+      { \
+        if (elide_outer_quotes) \
+          goto force_outer_quoting_style; \
+        escaping = true; \
+        if (quoting_style == shell_always_quoting_style \
+            && ! pending_shell_escape_end) \
+          { \
+            STORE ('\''); \
+            STORE ('$'); \
+            STORE ('\''); \
+            pending_shell_escape_end = true; \
+          } \
+        STORE ('\\'); \
+      } \
+    while (0)
+
+#define END_ESC() \
+    do \
+      { \
+        if (pending_shell_escape_end && ! escaping) \
+          { \
+            STORE ('\''); \
+            STORE ('\''); \
+            pending_shell_escape_end = false; \
+          } \
+      } \
+    while (0)
+
+ process_input:
 
   switch (quoting_style)
     {
@@ -321,11 +361,18 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
       }
       break;
 
+    case shell_escape_quoting_style:
+      backslash_escapes = true;
+      /* Fall through.  */
     case shell_quoting_style:
-      quoting_style = shell_always_quoting_style;
       elide_outer_quotes = true;
       /* Fall through.  */
+    case shell_escape_always_quoting_style:
+      if (!elide_outer_quotes)
+        backslash_escapes = true;
+      /* Fall through.  */
     case shell_always_quoting_style:
+      quoting_style = shell_always_quoting_style;
       if (!elide_outer_quotes)
         STORE ('\'');
       quote_string = "'";
@@ -345,10 +392,18 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
       unsigned char c;
       unsigned char esc;
       bool is_right_quote = false;
+      bool escaping = false;
+      bool c_and_shell_quote_compat = false;
 
       if (backslash_escapes
+          && quoting_style != shell_always_quoting_style
           && quote_string_len
-          && i + quote_string_len <= argsize
+          && (i + quote_string_len
+              <= (argsize == SIZE_MAX && 1 < quote_string_len
+                  /* Use strlen only if we must: when argsize is SIZE_MAX,
+                     and when the quote string is more than 1 byte long.
+                     If we do call strlen, save the result.  */
+                  ? (argsize = strlen (arg)) : argsize))
           && memcmp (arg + i, quote_string, quote_string_len) == 0)
         {
           if (elide_outer_quotes)
@@ -362,15 +417,15 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
         case '\0':
           if (backslash_escapes)
             {
-              if (elide_outer_quotes)
-                goto force_outer_quoting_style;
-              STORE ('\\');
+              START_ESC ();
               /* If quote_string were to begin with digits, we'd need to
                  test for the end of the arg as well.  However, it's
                  hard to imagine any locale that would use digits in
                  quotes, and set_custom_quoting is documented not to
-                 accept them.  */
-              if (i + 1 < argsize && '0' <= arg[i + 1] && arg[i + 1] <= '9')
+                 accept them.  Use only a single \0 with shell-escape
+                 as currently digits are not printed within $'...'  */
+              if (quoting_style != shell_always_quoting_style
+                  && i + 1 < argsize && '0' <= arg[i + 1] && arg[i + 1] <= '9')
                 {
                   STORE ('0');
                   STORE ('0');
@@ -431,6 +486,14 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
         case '\t': esc = 't'; goto c_and_shell_escape;
         case '\v': esc = 'v'; goto c_escape;
         case '\\': esc = c;
+          /* Never need to escape '\' in shell case.  */
+          if (quoting_style == shell_always_quoting_style)
+            {
+              if (elide_outer_quotes)
+                goto force_outer_quoting_style;
+              goto store_c;
+            }
+
           /* No need to escape the escape if we are trying to elide
              outer quotes and nothing else is problematic.  */
           if (backslash_escapes && elide_outer_quotes && quote_string_len)
@@ -458,6 +521,8 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
             break;
           /* Fall through.  */
         case ' ':
+          c_and_shell_quote_compat = true;
+          /* Fall through.  */
         case '!': /* special in bash */
         case '"': case '$': case '&':
         case '(': case ')': case '*': case ';':
@@ -476,13 +541,26 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
           break;
 
         case '\'':
+          encountered_single_quote = true;
+          c_and_shell_quote_compat = true;
           if (quoting_style == shell_always_quoting_style)
             {
               if (elide_outer_quotes)
                 goto force_outer_quoting_style;
+
+              if (buffersize && ! orig_buffersize)
+                {
+                  /* Just scan string to see if supports a more concise
+                     representation, rather than writing a longer string
+                     but returning the length of the more concise form.  */
+                  orig_buffersize = buffersize;
+                  buffersize = 0;
+                }
+
               STORE ('\'');
               STORE ('\\');
               STORE ('\'');
+              pending_shell_escape_end = false;
             }
           break;
 
@@ -508,6 +586,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
              them.  Also, a digit or a special letter would cause
              trouble if it appeared in quote_these_too, but that's also
              documented as not accepting them.  */
+          c_and_shell_quote_compat = true;
           break;
 
         default:
@@ -586,6 +665,8 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
                 while (! mbsinit (&mbstate));
               }
 
+            c_and_shell_quote_compat = printable;
+
             if (1 < m || (backslash_escapes && ! printable))
               {
                 /* Output a multibyte sequence, or an escaped
@@ -596,9 +677,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
                   {
                     if (backslash_escapes && ! printable)
                       {
-                        if (elide_outer_quotes)
-                          goto force_outer_quoting_style;
-                        STORE ('\\');
+                        START_ESC ();
                         STORE ('0' + (c >> 6));
                         STORE ('0' + ((c >> 3) & 7));
                         c = '0' + (c & 7);
@@ -610,6 +689,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
                       }
                     if (ilim <= i + 1)
                       break;
+                    END_ESC ();
                     STORE (c);
                     c = arg[++i];
                   }
@@ -619,24 +699,48 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
           }
         }
 
-      if (! ((backslash_escapes || elide_outer_quotes)
+      if (! (((backslash_escapes && quoting_style != shell_always_quoting_style)
+              || elide_outer_quotes)
              && quote_these_too
-             && quote_these_too[c / INT_BITS] & (1 << (c % INT_BITS)))
+             && quote_these_too[c / INT_BITS] >> (c % INT_BITS) & 1)
           && !is_right_quote)
         goto store_c;
 
     store_escape:
-      if (elide_outer_quotes)
-        goto force_outer_quoting_style;
-      STORE ('\\');
+      START_ESC ();
 
     store_c:
+      END_ESC ();
       STORE (c);
+
+      if (! c_and_shell_quote_compat)
+        all_c_and_shell_quote_compat = false;
     }
 
   if (len == 0 && quoting_style == shell_always_quoting_style
       && elide_outer_quotes)
     goto force_outer_quoting_style;
+
+  /* Single shell quotes (') are commonly enough used as an apostrophe,
+     that we attempt to minimize the quoting in this case.  Note itʼs
+     better to use the apostrophe modifier "\u02BC" if possible, as that
+     renders better and works with the word match regex \W+ etc.  */
+  if (quoting_style == shell_always_quoting_style && ! elide_outer_quotes
+      && encountered_single_quote)
+    {
+      if (all_c_and_shell_quote_compat)
+        return quotearg_buffer_restyled (buffer, orig_buffersize, arg, argsize,
+                                         c_quoting_style,
+                                         flags, quote_these_too,
+                                         left_quote, right_quote);
+      else if (! buffersize && orig_buffersize)
+        {
+          /* Disable read-only scan, and reprocess to write quoted string.  */
+          buffersize = orig_buffersize;
+          len = 0;
+          goto process_input;
+        }
+    }
 
   if (quote_string && !elide_outer_quotes)
     for (; *quote_string; quote_string++)
@@ -649,6 +753,8 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
  force_outer_quoting_style:
   /* Don't reuse quote_these_too, since the addition of outer quotes
      sufficiently quotes the specified characters.  */
+  if (quoting_style == shell_always_quoting_style && backslash_escapes)
+    quoting_style = shell_escape_always_quoting_style;
   return quotearg_buffer_restyled (buffer, buffersize, arg, argsize,
                                    quoting_style,
                                    flags & ~QA_ELIDE_OUTER_QUOTES, NULL,
@@ -893,6 +999,15 @@ char *
 quotearg_colon_mem (char const *arg, size_t argsize)
 {
   return quotearg_char_mem (arg, argsize, ':');
+}
+
+char *
+quotearg_n_style_colon (int n, enum quoting_style s, char const *arg)
+{
+  struct quoting_options options;
+  options = quoting_options_from_style (s);
+  set_char_quoting (&options, ':', 1);
+  return quotearg_n_options (n, arg, SIZE_MAX, &options);
 }
 
 char *

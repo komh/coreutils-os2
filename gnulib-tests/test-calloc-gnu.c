@@ -1,5 +1,5 @@
 /* Test of calloc function.
-   Copyright (C) 2010-2013 Free Software Foundation, Inc.
+   Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,13 +22,19 @@ int
 main ()
 {
   /* Check that calloc (0, 0) is not a NULL pointer.  */
-  if (calloc (0, 0) == NULL)
+  void *p = calloc (0, 0);
+  if (p == NULL)
     return 1;
+  free (p);
 
   /* Check that calloc fails when requested to allocate a block of memory
      larger than SIZE_MAX bytes.  */
-  if (calloc ((size_t) -1 / 8 + 1, 8) != NULL)
-    return 1;
+  p = calloc ((size_t) -1 / 8 + 1, 8);
+  if (p != NULL)
+    {
+      free (p);
+      return 1;
+    }
 
   return 0;
 }

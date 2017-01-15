@@ -67,10 +67,6 @@ lib/strftime.c: Since %N is the only format that we need but that
   would expand /%(-_)?\d*N/ to the desired string and then pass the
   resulting string to glibc's strftime.
 
-unexpand: [http://www.opengroup.org/onlinepubs/007908799/xcu/unexpand.html]
-  printf 'x\t \t y\n'|unexpand -t 8,9 should print its input, unmodified.
-  printf 'x\t \t y\n'|unexpand -t 5,8 should print "x\ty\n"
-
 sort: Investigate better sorting algorithms; see Knuth vol. 3.
 
   We tried list merge sort, but it was about 50% slower than the
@@ -130,10 +126,6 @@ Add a distcheck-time test to ensure that every distributed
 file is either read-only(indicating generated) or is
 version-controlled and up to date.
 
-remove '%s' notation (now that they're all gone, add a maint.mk sc_
-    rule to ensure no new ones are added):
-  grep -E "\`%.{,4}s'" src/*.c
-
 remove all uses of the 'register' keyword: Done.  add a maint.mk rule
   for this, too.
 
@@ -154,7 +146,7 @@ pr's use of nstrftime can make it malloc a very large (up to SIZE_MAX) buffer
 
 -----
 
-Copyright (C) 2002-2013 Free Software Foundation, Inc.
+Copyright (C) 2002-2016 Free Software Foundation, Inc.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

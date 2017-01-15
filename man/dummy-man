@@ -30,6 +30,7 @@ while test $# -gt 0; do
     # in the makefile.
     --include=*);;
     --include) shift;;
+    --info-page=*);;
     -*) fatal_ "invalid or unrecognized help2man option '$1'";;
     --) shift; break;;
      *) break;;
@@ -47,11 +48,10 @@ inadequate on this system.  Creating a stub man page instead.
 END
 
 progname=`basename_ "$1"`
-year=`LC_ALL=C date +%Y`
 bs='\'
 
 cat >"$output" <<END
-.TH "$progname" 1 "$year" "$source" "User Commands"
+.TH "$progname" 1 "$source" "User Commands"
 .SH NAME
 $progname $bs- a $source program
 .SH DESCRIPTION
@@ -68,5 +68,5 @@ The full documentation for
 is maintained as a Texinfo manual, which should be accessible
 on your system via the command
 .IP
-.B info coreutils $bs(aq$progname invocation$bs(aq
+.B info $bs(aq(coreutils) $progname invocation$bs(aq
 END

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that touch -h works.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ touch
+print_ver_ touch test
 
 ln -s nowhere dangling || framework_failure_
 touch file || framework_failure_
@@ -26,10 +26,10 @@ ln -s file link || framework_failure_
 
 # These first tests should work on every platform.
 # -h does not create files, but it warns.  Use -c to silence warning.
-touch -h no-file 2> err && fail=1
-test -s err || fail=1
+returns_ 1 touch -h no-file 2> err || fail=1
+compare /dev/null err && fail=1
 touch -h -c no-file 2> err || fail=1
-test -s err && fail=1
+compare /dev/null err || fail=1
 
 # -h works on regular files
 touch -h file || fail=1
@@ -49,7 +49,7 @@ grep '^#define HAVE_LUTIMES 1' "$CONFIG_HEADER" > /dev/null ||
 touch -h dangling 2> err
 case $? in
   0) test -f nowhere && fail=1
-     test -s err && fail=1;;
+     compare /dev/null err || fail=1;;
   1) grep 'Function not implemented' err \
        && skip_ 'this system lacks the utimensat function'
      fail=1;;
@@ -69,15 +69,13 @@ esac
 # Test interactions with -.
 touch -h - > file || fail=1
 
-test="$abs_top_builddir/src/test"
-
 # If >&- works, test "touch -ch -" etc.
 # >&- apparently does not work in HP-UX 11.23.
 # This test is ineffective unless /dev/stdout also works.
 # If stdout is open, it is not a symlink.
-if "$test" -w /dev/stdout >/dev/null &&
-   "$test" ! -w /dev/stdout >&-; then
-  touch -h - >&- && fail=1
+if env test -w /dev/stdout >/dev/null &&
+   env test ! -w /dev/stdout >&-; then
+  returns_ 1 touch -h - >&- || fail=1
   touch -h -c - >&- || fail=1
 fi
 

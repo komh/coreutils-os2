@@ -1,5 +1,5 @@
 /* wc - print the number of lines, words, and bytes in files
-   Copyright (C) 1985-2013 Free Software Foundation, Inc.
+   Copyright (C) 1985-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 /* Written by Paul Rubin, phr@ocf.berkeley.edu
    and David MacKenzie, djm@gnu.ai.mit.edu. */
-
+
 #include <config.h>
 
 #include <stdio.h>
@@ -28,14 +28,14 @@
 
 #include "system.h"
 #include "argv-iter.h"
+#include "die.h"
 #include "error.h"
 #include "fadvise.h"
 #include "mbchar.h"
 #include "physmem.h"
-#include "quote.h"
-#include "quotearg.h"
 #include "readtokens0.h"
 #include "safe-read.h"
+#include "stat-size.h"
 #include "xfreopen.h"
 
 #if !defined iswspace && !HAVE_ISWSPACE
@@ -116,9 +116,14 @@ Usage: %s [OPTION]... [FILE]...\n\
               program_name, program_name);
       fputs (_("\
 Print newline, word, and byte counts for each FILE, and a total line if\n\
-more than one FILE is specified.  With no FILE, or when FILE is -,\n\
-read standard input.  A word is a non-zero-length sequence of characters\n\
-delimited by white space.\n\
+more than one FILE is specified.  A word is a non-zero-length sequence of\n\
+characters delimited by white space.\n\
+"), stdout);
+
+      emit_stdin_note ();
+
+      fputs (_("\
+\n\
 The options below may be used to select which counts are printed, always in\n\
 the following order: newline, word, character, byte, maximum line length.\n\
   -c, --bytes            print the byte counts\n\
@@ -129,12 +134,12 @@ the following order: newline, word, character, byte, maximum line length.\n\
       --files0-from=F    read input from the files specified by\n\
                            NUL-terminated names in file F;\n\
                            If F is - then read names from standard input\n\
-  -L, --max-line-length  print the length of the longest line\n\
+  -L, --max-line-length  print the maximum display width\n\
   -w, --words            print the word counts\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -178,15 +183,16 @@ write_counts (uintmax_t lines,
       printf (format_int, number_width, umaxtostr (linelength, buf));
     }
   if (file)
-    printf (" %s", file);
+    printf (" %s", strchr (file, '\n') ? quotef (file) : file);
   putchar ('\n');
 }
 
 /* Count words.  FILE_X is the name of the file (or NULL for standard
    input) that is open on descriptor FD.  *FSTATUS is its status.
+   CURRENT_POS is the current file offset if known, negative if unknown.
    Return true if successful.  */
 static bool
-wc (int fd, char const *file_x, struct fstatus *fstatus)
+wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
 {
   bool ok = true;
   char buf[BUFFER_SIZE + 1];
@@ -229,55 +235,82 @@ wc (int fd, char const *file_x, struct fstatus *fstatus)
 
   if (count_bytes && !count_chars && !print_lines && !count_complicated)
     {
-      off_t current_pos, end_pos;
-
       if (0 < fstatus->failed)
         fstatus->failed = fstat (fd, &fstatus->st);
 
-      if (! fstatus->failed && S_ISREG (fstatus->st.st_mode)
-          && (current_pos = lseek (fd, 0, SEEK_CUR)) != -1
-          && (end_pos = lseek (fd, 0, SEEK_END)) != -1)
+      /* For sized files, seek to one st_blksize before EOF rather than to EOF.
+         This works better for files in proc-like file systems where
+         the size is only approximate.  */
+      if (! fstatus->failed && usable_st_size (&fstatus->st)
+          && 0 <= fstatus->st.st_size)
         {
-          /* Be careful here.  The current position may actually be
-             beyond the end of the file.  As in the example above.  */
-          bytes = end_pos < current_pos ? 0 : end_pos - current_pos;
+          size_t end_pos = fstatus->st.st_size;
+          off_t hi_pos = end_pos - end_pos % (ST_BLKSIZE (fstatus->st) + 1);
+          if (current_pos < 0)
+            current_pos = lseek (fd, 0, SEEK_CUR);
+          if (0 <= current_pos && current_pos < hi_pos
+              && 0 <= lseek (fd, hi_pos, SEEK_CUR))
+            bytes = hi_pos - current_pos;
         }
-      else
+
+      fdadvise (fd, 0, 0, FADVISE_SEQUENTIAL);
+      while ((bytes_read = safe_read (fd, buf, BUFFER_SIZE)) > 0)
         {
-          fdadvise (fd, 0, 0, FADVISE_SEQUENTIAL);
-          while ((bytes_read = safe_read (fd, buf, BUFFER_SIZE)) > 0)
+          if (bytes_read == SAFE_READ_ERROR)
             {
-              if (bytes_read == SAFE_READ_ERROR)
-                {
-                  error (0, errno, "%s", file);
-                  ok = false;
-                  break;
-                }
-              bytes += bytes_read;
+              error (0, errno, "%s", quotef (file));
+              ok = false;
+              break;
             }
+          bytes += bytes_read;
         }
     }
   else if (!count_chars && !count_complicated)
     {
       /* Use a separate loop when counting only lines or lines and bytes --
          but not chars or words.  */
+      bool long_lines = false;
       while ((bytes_read = safe_read (fd, buf, BUFFER_SIZE)) > 0)
         {
-          char *p = buf;
-
           if (bytes_read == SAFE_READ_ERROR)
             {
-              error (0, errno, "%s", file);
+              error (0, errno, "%s", quotef (file));
               ok = false;
               break;
             }
 
-          while ((p = memchr (p, '\n', (buf + bytes_read) - p)))
-            {
-              ++p;
-              ++lines;
-            }
           bytes += bytes_read;
+
+          char *p = buf;
+          char *end = p + bytes_read;
+          uintmax_t plines = lines;
+
+          if (! long_lines)
+            {
+              /* Avoid function call overhead for shorter lines.  */
+              while (p != end)
+                lines += *p++ == '\n';
+            }
+          else
+            {
+              /* memchr is more efficient with longer lines.  */
+              while ((p = memchr (p, '\n', end - p)))
+                {
+                  ++p;
+                  ++lines;
+                }
+            }
+
+          /* If the average line length in the block is >= 15, then use
+             memchr for the next block, where system specific optimizations
+             may outweigh function call overhead.
+             FIXME: This line length was determined in 2015, on both
+             x86_64 and ppc64, but it's worth re-evaluating in future with
+             newer compilers, CPUs, or memchr() implementations etc.  */
+          if (lines - plines <= bytes_read / 15)
+            long_lines = true;
+          else
+            long_lines = false;
         }
     }
 #if MB_LEN_MAX > 1
@@ -309,7 +342,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus)
 # endif
           if (bytes_read == SAFE_READ_ERROR)
             {
-              error (0, errno, "%s", file);
+              error (0, errno, "%s", quotef (file));
               ok = false;
               break;
             }
@@ -430,7 +463,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus)
           const char *p = buf;
           if (bytes_read == SAFE_READ_ERROR)
             {
-              error (0, errno, "%s", file);
+              error (0, errno, "%s", quotef (file));
               ok = false;
               break;
             }
@@ -500,22 +533,22 @@ wc_file (char const *file, struct fstatus *fstatus)
       have_read_stdin = true;
       if (O_BINARY && ! isatty (STDIN_FILENO))
         xfreopen (NULL, "rb", stdin);
-      return wc (STDIN_FILENO, file, fstatus);
+      return wc (STDIN_FILENO, file, fstatus, -1);
     }
   else
     {
       int fd = open (file, O_RDONLY | O_BINARY);
       if (fd == -1)
         {
-          error (0, errno, "%s", file);
+          error (0, errno, "%s", quotef (file));
           return false;
         }
       else
         {
-          bool ok = wc (fd, file, fstatus);
+          bool ok = wc (fd, file, fstatus, 0);
           if (close (fd) != 0)
             {
-              error (0, errno, "%s", file);
+              error (0, errno, "%s", quotef (file));
               return false;
             }
           return ok;
@@ -530,7 +563,7 @@ wc_file (char const *file, struct fstatus *fstatus)
    that happens when we don't know how long the list of file names will be.  */
 
 static struct fstatus *
-get_input_fstatus (int nfiles, char *const *file)
+get_input_fstatus (size_t nfiles, char *const *file)
 {
   struct fstatus *fstatus = xnmalloc (nfiles ? nfiles : 1, sizeof *fstatus);
 
@@ -542,7 +575,7 @@ get_input_fstatus (int nfiles, char *const *file)
     fstatus[0].failed = 1;
   else
     {
-      int i;
+      size_t i;
 
       for (i = 0; i < nfiles; i++)
         fstatus[i].failed = (! file[i] || STREQ (file[i], "-")
@@ -558,7 +591,7 @@ get_input_fstatus (int nfiles, char *const *file)
    get_input_fstatus optimizes.  */
 
 static int _GL_ATTRIBUTE_PURE
-compute_number_width (int nfiles, struct fstatus const *fstatus)
+compute_number_width (size_t nfiles, struct fstatus const *fstatus)
 {
   int width = 1;
 
@@ -566,7 +599,7 @@ compute_number_width (int nfiles, struct fstatus const *fstatus)
     {
       int minimum_width = 1;
       uintmax_t regular_total = 0;
-      int i;
+      size_t i;
 
       for (i = 0; i < nfiles; i++)
         if (! fstatus[i].failed)
@@ -592,7 +625,7 @@ main (int argc, char **argv)
 {
   bool ok;
   int optc;
-  int nfiles;
+  size_t nfiles;
   char **files;
   char *files_from = NULL;
   struct fstatus *fstatus;
@@ -663,7 +696,7 @@ main (int argc, char **argv)
          on the command-line.  */
       if (optind < argc)
         {
-          error (0, 0, _("extra operand %s"), quote (argv[optind]));
+          error (0, 0, _("extra operand %s"), quoteaf (argv[optind]));
           fprintf (stderr, "%s\n",
                    _("file operands cannot be combined with --files0-from"));
           usage (EXIT_FAILURE);
@@ -675,8 +708,8 @@ main (int argc, char **argv)
         {
           stream = fopen (files_from, "r");
           if (stream == NULL)
-            error (EXIT_FAILURE, errno, _("cannot open %s for reading"),
-                   quote (files_from));
+            die (EXIT_FAILURE, errno, _("cannot open %s for reading"),
+                 quoteaf (files_from));
         }
 
       /* Read the file list into RAM if we can detect its size and that
@@ -689,8 +722,8 @@ main (int argc, char **argv)
           read_tokens = true;
           readtokens0_init (&tok);
           if (! readtokens0 (stream, &tok) || fclose (stream) != 0)
-            error (EXIT_FAILURE, 0, _("cannot read file names from %s"),
-                   quote (files_from));
+            die (EXIT_FAILURE, 0, _("cannot read file names from %s"),
+                 quoteaf (files_from));
           files = tok.tok;
           nfiles = tok.n_tok;
           ai = argv_iter_init_argv (files);
@@ -731,7 +764,7 @@ main (int argc, char **argv)
               goto argv_iter_done;
             case AI_ERR_READ:
               error (0, errno, _("%s: read error"),
-                     quotearg_colon (files_from));
+                     quotef (files_from));
               ok = false;
               goto argv_iter_done;
             case AI_ERR_MEM:
@@ -746,7 +779,7 @@ main (int argc, char **argv)
              printf - | wc --files0-from=- */
           error (0, 0, _("when reading file names from stdin, "
                          "no file name of %s allowed"),
-                 quote (file_name));
+                 quoteaf (file_name));
           skip_file = true;
         }
 
@@ -764,7 +797,7 @@ main (int argc, char **argv)
                  not totally appropriate, since NUL is the separator, not NL,
                  but it might be better than nothing.  */
               unsigned long int file_number = argv_iter_n_args (ai);
-              error (0, 0, "%s:%lu: %s", quotearg_colon (files_from),
+              error (0, 0, "%s:%lu: %s", quotef (files_from),
                      file_number, _("invalid zero-length file name"));
             }
           skip_file = true;
@@ -795,7 +828,7 @@ main (int argc, char **argv)
   free (fstatus);
 
   if (have_read_stdin && close (STDIN_FILENO) != 0)
-    error (EXIT_FAILURE, errno, "-");
+    die (EXIT_FAILURE, errno, "-");
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

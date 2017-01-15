@@ -3,7 +3,7 @@
 # Before coreutils-8.6, tail -F missing/file would not
 # notice any subsequent availability of the missing/file.
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +21,6 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
-debug='---disable-inotify'
-debug=
-tail $debug -F -s.1 missing/file > out 2>&1 & pid=$!
-
 check_tail_output()
 {
   local delay="$1"
@@ -32,33 +28,32 @@ check_tail_output()
     { sleep $delay; return 1; }
 }
 
-# Wait up to 6.3s for tail to start with diagnostic:
-# tail: cannot open 'missing/file' for reading: No such file or directory
-tail_re='cannot open' retry_delay_ check_tail_output .1 7 || fail=1
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
-mkdir missing || fail=1
-(cd missing && echo x > file)
+# Speedup the non inotify case
+fastpoll='-s.1 --max-unchanged-stats=1'
 
-# Wait up to 6.3s for this to appear in the output:
-# "tail: '...' has appeared;  following end of new file"
-tail_re='has appeared' retry_delay_ check_tail_output .1 7 ||
-  { echo "$0: file: unexpected delay?"; cat out; fail=1; }
+for mode in '' '---disable-inotify'; do
+  rm -rf out missing
 
-kill -HUP $pid
+  tail $mode -F $fastpoll missing/file > out 2>&1 & pid=$!
 
-cleanup()
-{
-  local delay="$1"
-  rm -rf missing ||
-    { sleep $delay; return 1; }
-}
+  # Wait up to 12.7s for tail to start with diagnostic:
+  # tail: cannot open 'missing/file' for reading: No such file or directory
+  tail_re='cannot open' retry_delay_ check_tail_output .1 7 ||
+    { cat out; fail=1; }
 
-# Try repeatedly to remove the temporary directory.
-# This is normally unnecessary, because the containing directory will
-# be removed by code from init.sh.  However, when this particular test
-# is run on an NFS-mounted volume, sometimes init.sh's cleanup code
-# fails because the directory is not yet really empty, perhaps because
-# the tail process (reading missing/file) is not yet killed.
-retry_delay_ cleanup .1 6
+  mkdir missing || framework_failure_
+  (cd missing && echo x > file) || framework_failure_
+
+  # Wait up to 12.7s for this to appear in the output:
+  # "tail: '...' has appeared;  following new file"
+  tail_re='has appeared' retry_delay_ check_tail_output .1 7 ||
+    { echo "$0: file: unexpected delay?"; cat out; fail=1; }
+
+  cleanup_
+done
+
 
 Exit $fail

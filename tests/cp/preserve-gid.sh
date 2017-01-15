@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify that cp -p preserves GID when it is possible.
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -117,8 +117,10 @@ t1() {
   u=$1; shift
   g=$1; shift
   t0 "$f" "$u" "$g" \
-      setuidgid -g "$nameless_gid1,$nameless_gid2" \
-      "$nameless_uid" env PATH="$tmp_path" "$@"
+      chroot --skip-chdir \
+             --user=+$nameless_uid:+$nameless_gid1 \
+             --groups="+$nameless_gid1,+$nameless_gid2" \
+        / env PATH="$tmp_path" "$@"
 }
 
 t1 a0 "$nameless_uid" "$nameless_gid1" cp

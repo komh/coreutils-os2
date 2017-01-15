@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure that rm -r '' fails.
 
-# Copyright (C) 1997-2013 Free Software Foundation, Inc.
+# Copyright (C) 1997-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,6 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ rm
 
-rm -r '' > /dev/null 2>&1 && fail=1
+returns_ 1 rm -r '' > /dev/null 2>&1 || fail=1
 
 Exit $fail

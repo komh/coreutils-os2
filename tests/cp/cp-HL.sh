@@ -1,7 +1,7 @@
 #!/bin/sh
 # test cp's -H and -L options
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ test -d dest-dir/src-dir || fail=1
 cat dest-dir/slink > /dev/null 2>&1 || fail=1
 
 # Expect this to fail since *this* slink is a dangling symlink.
-cat dest-dir/src-dir/slink > /dev/null 2>&1 && fail=1
+returns_ 1 cat dest-dir/src-dir/slink >/dev/null 2>&1 || fail=1
 
 # FIXME: test -L, too.
 

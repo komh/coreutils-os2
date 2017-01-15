@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that pwd options work.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ print_ver_ pwd
 
 mkdir -p a/b || framework_failure_
 ln -s a/b c || framework_failure_
-base=$(env -- pwd)
+base=$(env -- pwd -P)
 
 # Remove any logical paths from $PWD.
 cd "$base" || framework_failure_

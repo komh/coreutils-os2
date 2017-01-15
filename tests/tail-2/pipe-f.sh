@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that :|tail -f doesn't hang, per POSIX
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,9 +19,15 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
+echo oo > exp || framework_failure_
 echo foo | timeout 10 tail -f -c3 > out || fail=1
-echo oo > exp || fail=1
+compare exp out || fail=1
 
+cat <<\EOF > exp || framework_failure_
+==> standard input <==
+ar
+EOF
+echo bar | returns_ 1 timeout 10 tail -f -c3 - missing > out || fail=1
 compare exp out || fail=1
 
 Exit $fail

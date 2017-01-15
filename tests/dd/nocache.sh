@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure dd handles the 'nocache' flag
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@ print_ver_ dd
 dd iflag=nocache oflag=nocache if=/dev/null of=/dev/null || fail=1
 
 # We should get an error for trying to process a pipe
-dd count=0 | dd iflag=nocache count=0 && fail=1
+dd count=0 | returns_ 1 dd iflag=nocache count=0 || fail=1
 
 # O_DIRECT is orthogonal to drop cache so mutually exclusive
-dd iflag=nocache,direct if=/dev/null && fail=1
+returns_ 1 dd iflag=nocache,direct if=/dev/null || fail=1
 
 # The rest ensure that the documented uses cases
 # proceed without error

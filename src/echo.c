@@ -1,5 +1,5 @@
 /* echo.c, derived from code echo.c in Bash.
-   Copyright (C) 1987-2013 Free Software Foundation, Inc.
+   Copyright (C) 1987-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ If -e is in effect, the following sequences are recognized:\n\
   \\xHH    byte with hexadecimal value HH (1 to 2 digits)\n\
 "), stdout);
       printf (USAGE_BUILTIN_WARNING, PROGRAM_NAME);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -136,7 +136,7 @@ main (int argc, char **argv)
         {
           version_etc (stdout, PROGRAM_NAME, PACKAGE_NAME, Version, AUTHORS,
                        (char *) NULL);
-          exit (EXIT_SUCCESS);
+          return EXIT_SUCCESS;
         }
     }
 
@@ -204,7 +204,7 @@ just_echo:
                     {
                     case 'a': c = '\a'; break;
                     case 'b': c = '\b'; break;
-                    case 'c': exit (EXIT_SUCCESS);
+                    case 'c': return EXIT_SUCCESS;
                     case 'e': c = '\x1B'; break;
                     case 'f': c = '\f'; break;
                     case 'n': c = '\n'; break;
@@ -268,5 +268,5 @@ just_echo:
 
   if (display_return)
     putchar ('\n');
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

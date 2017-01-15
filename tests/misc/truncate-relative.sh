@@ -1,7 +1,7 @@
 #!/bin/sh
 # Validate truncate relative sizes
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,15 +21,15 @@ print_ver_ truncate
 
 
 # mixture of relative modifiers not allowed
-truncate --size="+>0" file && fail=1
+returns_ 1 truncate --size="+>0" file || fail=1
 
 # mixture of relative modifiers not allowed
-truncate --size=">+0" file && fail=1
+returns_ 1 truncate --size=">+0" file || fail=1
 
 # division by zero
-truncate --size="/0" file && fail=1
+returns_ 1 truncate --size="/0" file || fail=1
 
 # division by zero
-truncate --size="%0" file && fail=1
+returns_ 1 truncate --size="%0" file || fail=1
 
 Exit $fail

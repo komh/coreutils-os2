@@ -1,4 +1,4 @@
-'\" Copyright (C) 1998-2013 Free Software Foundation, Inc.
+'\" Copyright (C) 1998-2016 Free Software Foundation, Inc.
 '\"
 '\" This is free software.  You may redistribute copies of it under the terms
 '\" of the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.
@@ -16,7 +16,7 @@ which can be either a symbolic representation of changes to make, or
 an octal number representing the bit pattern for the new mode bits.
 .PP
 The format of a symbolic mode is [\c
-\fBugoa\fP.\|.\|.][[\fB+-=\fP][\fIperms\fP.\|.\|.].\|.\|.],
+\fBugoa\fP.\|.\|.][[\fB-+=\fP][\fIperms\fP.\|.\|.].\|.\|.],
 where
 .I "perms"
 is either zero or more letters from the set
@@ -28,7 +28,7 @@ A combination of the letters \fBugoa\fP controls which users' access
 to the file will be changed: the user who owns it (\fBu\fP), other
 users in the file's group (\fBg\fP), other users not in the file's
 group (\fBo\fP), or all users (\fBa\fP).  If none of these are given,
-the effect is as if \fBa\fP were
+the effect is as if (\fBa\fP) were
 given, but bits that are set in the umask are not affected.
 .PP
 The operator \fB+\fP causes the selected file mode bits to be added to

@@ -1,5 +1,5 @@
 /* timeout -- run a command with bounded time
-   Copyright (C) 2008-2013 Free Software Foundation, Inc.
+   Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@
 
 #define PROGRAM_NAME "timeout"
 
-#define AUTHORS proper_name_utf8 ("Padraig Brady", "P\303\241draig Brady")
+#define AUTHORS proper_name ("Padraig Brady")
 
 static int timed_out;
 static int term_signal = SIGTERM;  /* same default as kill command.  */
@@ -118,7 +118,7 @@ unblock_signal (int sig)
    as that's more useful in practice than reporting an error.
    '0' means don't timeout.  */
 static void
-settimeout (double duration)
+settimeout (double duration, bool warn)
 {
 
   /* We configure timers below so that SIGALRM is sent on expiry.
@@ -142,11 +142,12 @@ settimeout (double duration)
         return;
       else
         {
-          error (0, errno, _("warning: timer_settime"));
+          if (warn)
+            error (0, errno, _("warning: timer_settime"));
           timer_delete (timerid);
         }
     }
-  else if (errno != ENOSYS)
+  else if (warn && errno != ENOSYS)
     error (0, errno, _("warning: timer_create"));
 #endif
 
@@ -190,25 +191,29 @@ cleanup (int sig)
     {
       if (kill_after)
         {
+          int saved_errno = errno; /* settimeout may reset.  */
           /* Start a new timeout after which we'll send SIGKILL.  */
           term_signal = SIGKILL;
-          settimeout (kill_after);
+          settimeout (kill_after, false);
           kill_after = 0; /* Don't let later signals reset kill alarm.  */
+          errno = saved_errno;
         }
 
       /* Send the signal directly to the monitored child,
          in case it has itself become group leader,
          or is not running in a separate group.  */
       send_sig (monitored_pid, sig);
+
       /* The normal case is the job has remained in our
          newly created process group, so send to all processes in that.  */
       if (!foreground)
-        send_sig (0, sig);
-      if (sig != SIGKILL && sig != SIGCONT)
         {
-          send_sig (monitored_pid, SIGCONT);
-          if (!foreground)
-            send_sig (0, SIGCONT);
+          send_sig (0, sig);
+          if (sig != SIGKILL && sig != SIGCONT)
+            {
+              send_sig (monitored_pid, SIGCONT);
+              send_sig (0, SIGCONT);
+            }
         }
     }
   else /* we're the child or the child is not exec'd yet.  */
@@ -235,18 +240,18 @@ Start COMMAND, and kill it if still running after DURATION.\n\
       fputs (_("\
       --preserve-status\n\
                  exit with the same status as COMMAND, even when the\n\
-                 command times out\n\
+                   command times out\n\
       --foreground\n\
-                 When not running timeout directly from a shell prompt,\n\
-                 allow COMMAND to read from the TTY and receive TTY signals.\n\
-                 In this mode, children of COMMAND will not be timed out.\n\
+                 when not running timeout directly from a shell prompt,\n\
+                   allow COMMAND to read from the TTY and get TTY signals;\n\
+                   in this mode, children of COMMAND will not be timed out\n\
   -k, --kill-after=DURATION\n\
                  also send a KILL signal if COMMAND is still running\n\
-                 this long after the initial signal was sent.\n\
+                   this long after the initial signal was sent\n\
   -s, --signal=SIGNAL\n\
-                 specify the signal to be sent on timeout.\n\
-                 SIGNAL may be a name like 'HUP' or a number.\n\
-                 See 'kill -l' for a list of signals\n"), stdout);
+                 specify the signal to be sent on timeout;\n\
+                   SIGNAL may be a name like 'HUP' or a number;\n\
+                   see 'kill -l' for a list of signals\n"), stdout);
 
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
@@ -263,7 +268,7 @@ is specified, send the TERM signal upon timeout.  The TERM signal kills\n\
 any process that does not block or catch that signal.  It may be necessary\n\
 to use the KILL (9) signal, since this signal cannot be caught, in which\n\
 case the exit status is 128+9 rather than 124.\n"), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -309,7 +314,7 @@ parse_duration (const char* str)
   double duration;
   const char *ep;
 
-  if (!xstrtod (str, &ep, &duration, c_strtod)
+  if (! (xstrtod (str, &ep, &duration, c_strtod) || errno == ERANGE)
       /* Nonnegative interval.  */
       || ! (0 <= duration)
       /* No extra chars after the number and an optional s,m,h,d char.  */
@@ -441,8 +446,6 @@ main (int argc, char **argv)
     }
   else if (monitored_pid == 0)
     {                           /* child */
-      int exit_status;
-
       /* exec doesn't reset SIG_IGN -> SIG_DFL.  */
       signal (SIGTTIN, SIG_DFL);
       signal (SIGTTOU, SIG_DFL);
@@ -450,7 +453,7 @@ main (int argc, char **argv)
       execvp (argv[0], argv);   /* FIXME: should we use "sh -c" ... here?  */
 
       /* exit like sh, env, nohup, ...  */
-      exit_status = (errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE);
+      int exit_status = errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE;
       error (0, errno, _("failed to run command %s"), quote (argv[0]));
       return exit_status;
     }
@@ -459,7 +462,7 @@ main (int argc, char **argv)
       pid_t wait_result;
       int status;
 
-      settimeout (timeout);
+      settimeout (timeout, true);
 
       while ((wait_result = waitpid (monitored_pid, &status, 0)) < 0
              && errno == EINTR)
@@ -491,14 +494,13 @@ main (int argc, char **argv)
           else
             {
               /* shouldn't happen.  */
-              error (0, 0, _("unknown status from command (0x%X)"), status);
+              error (0, 0, _("unknown status from command (%d)"), status);
               status = EXIT_FAILURE;
             }
         }
 
       if (timed_out && !preserve_status)
-        return EXIT_TIMEDOUT;
-      else
-        return status;
+        status = EXIT_TIMEDOUT;
+      return status;
     }
 }

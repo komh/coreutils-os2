@@ -1,5 +1,5 @@
 /* pwd - print current directory
-   Copyright (C) 1994-2013 Free Software Foundation, Inc.
+   Copyright (C) 1994-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include "system.h"
+#include "die.h"
 #include "error.h"
 #include "quote.h"
 #include "root-dev-ino.h"
@@ -64,8 +65,11 @@ Print the full filename of the current working directory.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
+      fputs (_("\n\
+If no option is specified, -P is assumed.\n\
+"), stdout);
       printf (USAGE_BUILTIN_WARNING, PROGRAM_NAME);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -158,17 +162,17 @@ find_dir_entry (struct stat *dot_sb, struct file_name *file_name,
 
   dirp = opendir ("..");
   if (dirp == NULL)
-    error (EXIT_FAILURE, errno, _("cannot open directory %s"),
-           quote (nth_parent (parent_height)));
+    die (EXIT_FAILURE, errno, _("cannot open directory %s"),
+         quote (nth_parent (parent_height)));
 
   fd = dirfd (dirp);
   if ((0 <= fd ? fchdir (fd) : chdir ("..")) < 0)
-    error (EXIT_FAILURE, errno, _("failed to chdir to %s"),
-           quote (nth_parent (parent_height)));
+    die (EXIT_FAILURE, errno, _("failed to chdir to %s"),
+         quote (nth_parent (parent_height)));
 
   if ((0 <= fd ? fstat (fd, &parent_sb) : stat (".", &parent_sb)) < 0)
-    error (EXIT_FAILURE, errno, _("failed to stat %s"),
-           quote (nth_parent (parent_height)));
+    die (EXIT_FAILURE, errno, _("failed to stat %s"),
+         quote (nth_parent (parent_height)));
 
   /* If parent and child directory are on different devices, then we
      can't rely on d_ino for useful i-node numbers; use lstat instead.  */
@@ -226,14 +230,14 @@ find_dir_entry (struct stat *dot_sb, struct file_name *file_name,
     {
       /* Note that this diagnostic serves for both readdir
          and closedir failures.  */
-      error (EXIT_FAILURE, errno, _("reading directory %s"),
-             quote (nth_parent (parent_height)));
+      die (EXIT_FAILURE, errno, _("reading directory %s"),
+           quote (nth_parent (parent_height)));
     }
 
   if ( ! found)
-    error (EXIT_FAILURE, 0,
-           _("couldn't find directory entry in %s with matching i-node"),
-             quote (nth_parent (parent_height)));
+    die (EXIT_FAILURE, 0,
+         _("couldn't find directory entry in %s with matching i-node"),
+         quote (nth_parent (parent_height)));
 
   *dot_sb = parent_sb;
 }
@@ -270,11 +274,11 @@ robust_getcwd (struct file_name *file_name)
   struct stat dot_sb;
 
   if (root_dev_ino == NULL)
-    error (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
-           quote ("/"));
+    die (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
+         quoteaf ("/"));
 
   if (stat (".", &dot_sb) < 0)
-    error (EXIT_FAILURE, errno, _("failed to stat %s"), quote ("."));
+    die (EXIT_FAILURE, errno, _("failed to stat %s"), quoteaf ("."));
 
   while (1)
     {
@@ -324,7 +328,9 @@ int
 main (int argc, char **argv)
 {
   char *wd;
-  /* POSIX requires a default of -L, but most scripts expect -P.  */
+  /* POSIX requires a default of -L, but most scripts expect -P.
+     Currently shells default to -L, while stand-alone
+     pwd implementations default to -P.  */
   bool logical = (getenv ("POSIXLY_CORRECT") != NULL);
 
   initialize_main (&argc, &argv);
@@ -367,7 +373,7 @@ main (int argc, char **argv)
       if (wd)
         {
           puts (wd);
-          exit (EXIT_SUCCESS);
+          return EXIT_SUCCESS;
         }
     }
 
@@ -385,5 +391,5 @@ main (int argc, char **argv)
       file_name_free (file_name);
     }
 
-  exit (EXIT_SUCCESS);
+  return EXIT_SUCCESS;
 }

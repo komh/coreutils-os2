@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure rm -r DIR does not prompt for very long full relative names in DIR.
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,11 @@ require_perl_
 # the offending euidaccess_stat call.
 skip_if_root_
 
+# ecryptfs for example uses some of the file name space
+# for encrypting filenames, so we must check dynamically.
+name_max=$(stat -f -c %l .)
+test "$name_max" -ge '200' || skip_ "NAME_MAX=$name_max is not sufficient"
+
 mkdir x || framework_failure_
 cd x || framework_failure_
 
@@ -41,7 +46,7 @@ echo n > no || framework_failure_
 rm ---presume-input-tty -r x < no > out || fail=1
 
 # expect empty output
-test -s out && fail=1
+compare /dev/null out || fail=1
 
 # the directory must have been removed
 test -d x && fail=1

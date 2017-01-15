@@ -1,6 +1,6 @@
 /* GNU's read utmp module.
 
-   Copyright (C) 1992-2001, 2003-2006, 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2001, 2003-2006, 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ read_utmp (char const *file, size_t *n_entries, STRUCT_UTMP **utmp_buf,
      Solaris' utmpname returns 1 upon success -- which is contrary
      to what the GNU libc version does.  In addition, older GNU libc
      versions are actually void.   */
-  UTMP_NAME_FUNCTION (file);
+  UTMP_NAME_FUNCTION ((char *) file);
 
   SET_UTMP_ENT ();
 

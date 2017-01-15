@@ -4,7 +4,7 @@
 # This test is skipped on systems that lack LD_PRELOAD support; that's fine.
 # Similarly, on a system that lacks getxattr altogether, skipping it is fine.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ ls
+require_gcc_shared_
 
 # Replace each getxattr and lgetxattr call with a call to these stubs.
 # Count those and write the total number of calls to the file "x"
@@ -47,14 +48,14 @@ ssize_t lgetxattr(const char *path, const char *name, void *value, size_t size)
 EOF
 
 # Then compile/link it:
-$CC -shared -fPIC -O2 k.c -o k.so \
-  || framework_failure_ 'failed to compile with -shared -fPIC'
+gcc_shared_ k.c k.so \
+  || framework_failure_ 'failed to build shared library'
 
 # Create a few files:
 seq 20 | xargs touch || framework_failure_
 
 # Finally, run the test:
-LD_PRELOAD=./k.so ls --color=always -l . || fail=1
+LD_PRELOAD=$LD_PRELOAD:./k.so ls --color=always -l . || fail=1
 
 test -f x || skip_ "internal test failure: maybe LD_PRELOAD doesn't work?"
 

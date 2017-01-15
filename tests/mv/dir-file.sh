@@ -1,7 +1,7 @@
 #!/bin/sh
 # mv must fail when src and dest are mismatched directory/non-directory.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ mkdir -p dir/file || framework_failure_
 
 
 # These should both fail, but until fileutils-4.0q only the second one did.
-mv dir file > /dev/null 2>&1 && fail=1
-mv file dir > /dev/null 2>&1 && fail=1
+returns_ 1 mv dir file > /dev/null 2>&1 || fail=1
+returns_ 1 mv file dir > /dev/null 2>&1 || fail=1
 
 Exit $fail

@@ -1,7 +1,7 @@
-#! /bin/sh
+#!/bin/sh
 # Test "stty" with rows and columns.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,8 @@ export LC_ALL
 print_ver_ stty
 
 require_controlling_input_terminal_
+require_trap_signame_
+
 trap '' TTOU # Ignore SIGTTOU
 
 # Versions of GNU stty from shellutils-1.9.2c and earlier failed
@@ -47,6 +49,8 @@ tests='
 7 rows_1 1_1
 8 columns_80 1_80
 9 rows_30 30_80
+10 rows_0x1E 30_80
+11 rows_036 30_80
 NA LAST NA
 '
 set $tests

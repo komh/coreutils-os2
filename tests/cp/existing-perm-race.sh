@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure cp -p isn't too generous with existing file permissions.
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ require_membership_in_two_groups_
 # cp -p gives ENOTSUP on NFS on Linux 2.6.9 at least
 require_local_dir_
 
+require_no_default_acl_ .
+
 set _ $groups; shift
 g1=$1
 g2=$2
@@ -37,10 +39,12 @@ chgrp $g1 fifo &&
 chgrp $g2 fifo-copy &&
 chmod g+r fifo-copy || framework-failure
 
+# Terminate any background cp process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
 # Copy a fifo's contents.  That way, we can examine the
 # destination permissions before they're finalized.
-cp -p --copy-contents fifo fifo-copy &
-cp_pid=$!
+cp -p --copy-contents fifo fifo-copy & pid=$!
 
 (
   # Now 'cp' is reading the fifo.  Wait for the destination file to
@@ -77,7 +81,7 @@ case $mode in
   *) fail=1;;
 esac
 
-wait $cp_pid || fail=1
+wait $pid || fail=1
 
 # Check that the final mode and group are right.
 ls -l -n fifo-copy >ls.out &&

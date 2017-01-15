@@ -1,5 +1,5 @@
 /* nice -- run a program with modified niceness
-   Copyright (C) 1990-2013 Free Software Foundation, Inc.
+   Copyright (C) 1990-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 # include <sys/resource.h>
 #endif
 
+#include "die.h"
 #include "error.h"
 #include "quote.h"
 #include "xstrtol.h"
@@ -85,7 +86,7 @@ With no COMMAND, print the current niceness.  Niceness values range from\n\
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
       printf (USAGE_BUILTIN_WARNING, PROGRAM_NAME);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -169,8 +170,8 @@ main (int argc, char **argv)
       enum { MIN_ADJUSTMENT = 1 - 2 * NZERO, MAX_ADJUSTMENT = 2 * NZERO - 1 };
       long int tmp;
       if (LONGINT_OVERFLOW < xstrtol (adjustment_given, NULL, 10, &tmp, ""))
-        error (EXIT_CANCELED, 0, _("invalid adjustment %s"),
-               quote (adjustment_given));
+        die (EXIT_CANCELED, 0, _("invalid adjustment %s"),
+             quote (adjustment_given));
       adjustment = MAX (MIN_ADJUSTMENT, MIN (tmp, MAX_ADJUSTMENT));
     }
 
@@ -185,9 +186,9 @@ main (int argc, char **argv)
       errno = 0;
       current_niceness = GET_NICENESS ();
       if (current_niceness == -1 && errno != 0)
-        error (EXIT_CANCELED, errno, _("cannot get niceness"));
+        die (EXIT_CANCELED, errno, _("cannot get niceness"));
       printf ("%d\n", current_niceness);
-      exit (EXIT_SUCCESS);
+      return EXIT_SUCCESS;
     }
 
   errno = 0;
@@ -196,7 +197,7 @@ main (int argc, char **argv)
 #else
   current_niceness = GET_NICENESS ();
   if (current_niceness == -1 && errno != 0)
-    error (EXIT_CANCELED, errno, _("cannot get niceness"));
+    die (EXIT_CANCELED, errno, _("cannot get niceness"));
   ok = (setpriority (PRIO_PROCESS, 0, current_niceness + adjustment) == 0);
 #endif
   if (!ok)
@@ -209,14 +210,12 @@ main (int argc, char **argv)
          encountered a write failure, there is no need to try calling
          error() again.  */
       if (ferror (stderr))
-        exit (EXIT_CANCELED);
+        return EXIT_CANCELED;
     }
 
   execvp (argv[i], &argv[i]);
 
-  {
-    int exit_status = (errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE);
-    error (0, errno, "%s", argv[i]);
-    exit (exit_status);
-  }
+  int exit_status = errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE;
+  error (0, errno, "%s", quote (argv[i]));
+  return exit_status;
 }

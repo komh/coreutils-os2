@@ -1,7 +1,7 @@
 #!/bin/sh
 # before coreutils-8.10, seq 100000|uniq -f 10000000000 would run for days
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,6 @@
 print_ver_ uniq
 
 seq 100 > in || fail=1
-timeout 1 uniq -f 10000000000 in || fail=1
+timeout 10 uniq -f 10000000000 in || fail=1
 
 Exit $fail

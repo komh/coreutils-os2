@@ -4,7 +4,7 @@
 # mv: cannot remove 'x': Operation not permitted
 # Affects coreutils-6.0-6.9.
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,8 @@ chmod go+x . || framework_failure_
 
 # Ensure that $NON_ROOT_USERNAME can access the required version of mv.
 version=$(
-  setuidgid $NON_ROOT_USERNAME env PATH="$PATH" mv --version |
+  chroot --skip-chdir --user=$NON_ROOT_USERNAME / env PATH="$PATH" \
+    mv --version |
   sed -n '1s/.* //p'
 )
 case $version in
@@ -50,7 +51,7 @@ case $version in
   *) skip_ "cannot access just-built mv as user $NON_ROOT_USERNAME";;
 esac
 
-setuidgid $NON_ROOT_USERNAME env PATH="$PATH" \
+chroot --skip-chdir --user=$NON_ROOT_USERNAME / env PATH="$PATH" \
   mv t/root-owned "$other_partition_tmpdir" 2> out-t && fail=1
 
 # On some systems, we get 'Not owner'.  Convert it.

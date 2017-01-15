@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ sub shell_quote($)
 # that cannot be done.
 sub setuid_setup()
 {
-  my $test = shell_quote "$ENV{abs_top_builddir}/src/test";
+  my $test = 'env test';
   system (qq(touch setuid && chmod u+s setuid && $test -u setuid &&
            touch setgid && chmod g+s setgid && $test -g setgid &&
            mkdir sticky && chmod +t sticky  && $test -k sticky &&
@@ -132,12 +132,25 @@ my @Tests =
      ['q-q', '-q', $q_bell, {OUT => "q?\n"}],
      ['q-Q', '-Q', $q_bell, {OUT => "\"q\\a\"\n"}],
 
-     ['q-lit-q', '--quoting=literal -q',     $q_bell, {OUT => "q?\n"}],
-     ['q-qs-lit', '--quoting=literal',       $q_bell, {OUT => "q\a\n"}],
-     ['q-qs-sh', '--quoting=shell',          $q_bell, {OUT => "q\a\n"}],
-     ['q-qs-sh-a', '--quoting=shell-always', $q_bell, {OUT => "'q\a'\n"}],
-     ['q-qs-c', '--quoting=c',               $q_bell, {OUT => "\"q\\a\"\n"}],
-     ['q-qs-esc', '--quoting=escape',        $q_bell, {OUT => "q\\a\n"}],
+     ['q-qs-lit',    '--quoting=literal',     $q_bell, {OUT => "q\a\n"}],
+     ['q-qs-sh',     '--quoting=shell',       $q_bell, {OUT => "q\a\n"}],
+     ['q-qs-sh-a',   '--quoting=shell-always',$q_bell, {OUT => "'q\a'\n"}],
+     ['q-qs-sh-e',   '--quoting=shell-escape',$q_bell, {OUT => "'q'\$'\\a'\n"}],
+     ['q-qs-c',      '--quoting=c',           $q_bell, {OUT => "\"q\\a\"\n"}],
+     ['q-qs-esc',    '--quoting=escape',      $q_bell, {OUT => "q\\a\n"}],
+     ['q-qs-loc',    '--quoting=locale',      $q_bell, {OUT => "'q\\a'\n"}],
+     ['q-qs-cloc',   '--quoting=clocale',     $q_bell, {OUT => "\"q\\a\"\n"}],
+
+     ['q-qs-lit-q',  '--quoting=literal -q',  $q_bell, {OUT => "q?\n"}],
+     ['q-qs-sh-q',   '--quoting=shell -q',    $q_bell, {OUT => "q?\n"}],
+     ['q-qs-sh-a-q', '--quoting=shell-al -q', $q_bell, {OUT => "'q?'\n"}],
+     ['q-qs-sh-e-q', '--quoting=shell-escape -q',
+                                              $q_bell, {OUT => "'q'\$'\\a'\n"}],
+     ['q-qs-c-q',    '--quoting=c -q',        $q_bell, {OUT => "\"q\\a\"\n"}],
+     ['q-qs-esc-q',  '--quoting=escape -q',   $q_bell, {OUT => "q\\a\n"}],
+     ['q-qs-loc-q',  '--quoting=locale -q',   $q_bell, {OUT => "'q\\a'\n"}],
+     ['q-qs-cloc-q', '--quoting=clocale -q',  $q_bell, {OUT => "\"q\\a\"\n"}],
+
      ['q-qs-c-1', '--quoting=c',
       {IN => {"t\004" => ''}}, {OUT => "\"t\\004\"\n"}],
 
@@ -235,7 +248,7 @@ my @Tests =
       {POST => sub {unlink 'd/s' or die "d/s: $!\n";
                     rmdir 'd' or die "d: $!\n";
                     restore_ls_colors; }},
-      {ERR => "ls: cannot access d/s: No such file or directory\n"},
+      {ERR => "ls: cannot access 'd/s': No such file or directory\n"},
       {EXIT => 1}
      ],
      # Related to the above fix, is this case where
@@ -266,7 +279,7 @@ my @Tests =
      # The patch associated with sl-dangle[678] introduced a regression
      # that was fixed after coreutils-8.19.  This edge case triggers when
      # listing a dir containing dangling symlinks, but with orphans uncolored.
-     # I.E. the same as the previous test, but listing the directory
+     # I.e., the same as the previous test, but listing the directory
      # rather than the symlink directly.
      ['sl-dangle9', '--color=always d',
       {OUT => "$e\e[1;36ms$e\n"},
@@ -289,7 +302,7 @@ my @Tests =
      # From Stéphane Chazelas.
      ['no-a-isdir-b', 'no-dir d',
          {OUT => "d:\n"},
-         {ERR => "ls: cannot access no-dir: No such file or directory\n"},
+         {ERR => "ls: cannot access 'no-dir': No such file or directory\n"},
          $mkdir, $rmdir, {EXIT => 2}],
 
      ['recursive-2', '-R d', {OUT => "d:\ne\n\nd/e:\n"}, $mkdir2, $rmdir2],
@@ -303,9 +316,12 @@ my @Tests =
             . "\e[37;44msticky$e\n"
          },
 
+        {PRE => sub {
+         push_ls_colors('ow=34;42:tw=30;42:sg=30;43:su=37;41:st=37;44'); }},
         {POST => sub {
          unlink qw(setuid setgid);
-         foreach my $dir (qw(owr owt sticky)) {rmdir $dir} }},
+         foreach my $dir (qw(owr owt sticky)) {rmdir $dir}
+         restore_ls_colors; }},
          ],
 
      # For 5.97 and earlier, --file-type acted like --indicator-style=slash.
@@ -324,8 +340,8 @@ my @Tests =
      # at least one of which is a nonempty directory.
      ['multi-arg-U1', '-U1 d no-such',
       {OUT => "d:\nf\n"},
-      {ERR_SUBST=>'s/ch:.*/ch:/'},
-      {ERR => "$prog: cannot access no-such:\n"},
+      {ERR_SUBST=>"s/ch':.*/ch':/"},
+      {ERR => "$prog: cannot access 'no-such':\n"},
       $mkdir_reg,
       $rmdir_reg,
       {EXIT => 2},

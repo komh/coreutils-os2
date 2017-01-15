@@ -1,4 +1,4 @@
-/* Copyright (C) 1991-1999, 2004-2013 Free Software Foundation, Inc.
+/* Copyright (C) 1991-1999, 2004-2016 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    This program is free software: you can redistribute it and/or modify
@@ -93,8 +93,12 @@
    FIXME - if the kernel ever adds support for multi-thread safety for
    avoiding standard fds, then we should use opendir_safer and
    openat_safer.  */
-#undef opendir
-#undef closedir
+#ifdef GNULIB_defined_opendir
+# undef opendir
+#endif
+#ifdef GNULIB_defined_closedir
+# undef closedir
+#endif
 
 /* Get the name of the current working directory, and put it in SIZE
    bytes of BUF.  Returns NULL if the directory couldn't be determined or
@@ -135,7 +139,7 @@ __getcwd (char *buf, size_t size)
   size_t allocated = size;
   size_t used;
 
-#if HAVE_RAW_DECL_GETCWD && HAVE_MINIMALLY_WORKING_GETCWD
+#if HAVE_MINIMALLY_WORKING_GETCWD
   /* If AT_FDCWD is not defined, the algorithm below is O(N**2) and
      this is much slower than the system getcwd (at least on
      GNU/Linux).  So trust the system getcwd's results unless they

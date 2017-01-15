@@ -1,7 +1,7 @@
 #!/bin/sh
 # make sure --update works as advertised
 
-# Copyright (C) 2001-2013 Free Software Foundation, Inc.
+# Copyright (C) 2001-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ for interactive in '' -i; do
     # With coreutils-6.9 and earlier, using --update with -i would
     # mistakenly elicit a prompt.
     $cp_or_mv $interactive --update old new < /dev/null > out 2>&1 || fail=1
-    test -s out && fail=1
+    compare /dev/null out || fail=1
     case "$(cat new)" in new) ;; *) fail=1 ;; esac
     case "$(cat old)" in old) ;; *) fail=1 ;; esac
   done

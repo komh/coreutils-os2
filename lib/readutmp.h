@@ -1,6 +1,6 @@
 /* Declarations for GNU's read utmp module.
 
-   Copyright (C) 1992-2007, 2009-2013 Free Software Foundation, Inc.
+   Copyright (C) 1992-2007, 2009-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -47,6 +47,8 @@
 #  define END_UTMP_ENT endutxent
 #  ifdef HAVE_UTMPXNAME
 #   define UTMP_NAME_FUNCTION utmpxname
+#  elif defined UTXDB_ACTIVE
+#   define UTMP_NAME_FUNCTION(x) setutxdb (UTXDB_ACTIVE, x)
 #  endif
 
 #  if HAVE_STRUCT_UTMPX_UT_EXIT_E_TERMINATION

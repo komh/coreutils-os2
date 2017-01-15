@@ -1,7 +1,7 @@
 #!/bin/sh
 # On GNU, 'id' must fail for processes with zero UIDs.
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,6 @@ require_gnu_
 sush - true || skip_ "the 'sush' command does not work"
 
 # Run 'id' with zero UIDs.  It should exit with a non-zero status.
-sush - id > out && fail=1
+returns_ 1 sush - id > out || fail=1
 
 Exit $fail

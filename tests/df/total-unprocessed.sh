@@ -2,7 +2,7 @@
 # Ensure that df exits non-Zero and writes an error message when
 # --total is used but no file system has been processed.
 
-# Copyright (C) 2012-2013 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,14 +25,16 @@ cat <<\EOF > exp || framework_failure_
 df: no file systems processed
 EOF
 
-# The following simply finds no match for the combination
-# of the options --local and FS-type nfs together with the
-# argument ".". It must exit non-Zero nonetheless.
-df --local -t nfs --total '.' 2>out && fail=1
-compare exp out || fail=1
+# Check we exit with non-Zero.
+# Note we don't check when the file system can't be determined
+# as -t filtering is not applied in that case.
+if test "$(df --output=fstype . | tail -n1)" != '-'; then
+  df -t _non_existent_fstype_ --total . 2>out && fail=1
+  compare exp out || fail=1
+fi
 
 cat <<\EOF > exp || framework_failure_
-df: '_does_not_exist_': No such file or directory
+df: _does_not_exist_: No such file or directory
 EOF
 
 # Ensure that df writes the error message also in the following case.

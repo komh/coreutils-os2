@@ -1,7 +1,7 @@
 #!/bin/sh
 # demonstrate that stat handles trailing slashes correctly
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ EOF
 
 # This failed on Solaris 9 for coreutils 8.0.
 stat --format=%n link1 > out || fail=1
-stat --format=%n link1/ >> out && fail=1
+returns_ 1 stat --format=%n link1/ >> out || fail=1
 
 stat --format=%F link2 >> out || fail=1
 stat -L --format=%F link2 >> out || fail=1

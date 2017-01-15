@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Test "seq".
 
-# Copyright (C) 1999-2013 Free Software Foundation, Inc.
+# Copyright (C) 1999-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ use strict;
 
 my $prog = 'seq';
 my $try_help = "Try '$prog --help' for more information.\n";
+my $err_inc_zero = "seq: invalid Zero increment value: '0'\n".$try_help;
+my $err_nan_arg = "seq: invalid 'not-a-number' argument: 'nan'\n".$try_help;
 
 my $locale = $ENV{LOCALE_FR_UTF8};
 ! defined $locale || $locale eq 'none'
@@ -143,11 +145,39 @@ my @Tests =
    ['not-fast-1', qw(1 3 1), {OUT => [qw(1)]}],
    ['not-fast-2', qw(1 1 4.2), {OUT => [qw(1 2 3 4)]}],
    ['not-fast-3', qw(1 1 0)],
+   # In 8.20..8.22 a start or end of -0 was broken
+   ['not-fast-4', qw(-0 10), {OUT => [qw(-0 1 2 3 4 5 6 7 8 9 10)]}],
+   ['not-fast-5', qw(1 -0)],
 
    # Ensure the correct parameters are passed to the fast path
    ['fast-1', qw(4), {OUT => [qw(1 2 3 4)]}],
    ['fast-2', qw(1 4), {OUT => [qw(1 2 3 4)]}],
    ['fast-3', qw(1 1 4), {OUT => [qw(1 2 3 4)]}],
+
+   # Ensure an INCREMENT of Zero is rejected.
+   ['inc-zero-1',	qw(1 0 10), {EXIT => 1}, {ERR => $err_inc_zero}],
+   ['inc-zero-2',	qw(0 -0 0), {EXIT => 1}, {ERR => $err_inc_zero},
+    {ERR_SUBST => 's/-0/0/'}],
+   ['inc-zero-3',	qw(1 0.0 10), {EXIT => 1},{ERR => $err_inc_zero},
+    {ERR_SUBST => 's/0.0/0/'}],
+   ['inc-zero-4',	qw(1 -0.0e-10 10), {EXIT => 1},{ERR => $err_inc_zero},
+    {ERR_SUBST => 's/-0\.0e-10/0/'}],
+
+   # Ensure NaN arguments rejected.
+   ['nan-first-1', qw(nan),       {EXIT => 1}, {ERR => $err_nan_arg}],
+   ['nan-first-2', qw(NaN 2),     {EXIT => 1}, {ERR => $err_nan_arg},
+    {ERR_SUBST => 's/NaN/nan/'}],
+   ['nan-first-3', qw(nan 1 2),   {EXIT => 1}, {ERR => $err_nan_arg}],
+   ['nan-first-4', qw(-- -nan),   {EXIT => 1}, {ERR => $err_nan_arg},
+    {ERR_SUBST => 's/-nan/nan/'}],
+   ['nan-inc-1',   qw(1 nan 2),   {EXIT => 1}, {ERR => $err_nan_arg}],
+   ['nan-inc-2',   qw(1 -NaN 2),  {EXIT => 1}, {ERR => $err_nan_arg},
+    {ERR_SUBST => 's/-NaN/nan/'}],
+   ['nan-last-1',  qw(1 1 nan),   {EXIT => 1}, {ERR => $err_nan_arg}],
+   ['nan-last-2',  qw(1 NaN),     {EXIT => 1}, {ERR => $err_nan_arg},
+    {ERR_SUBST => 's/NaN/nan/'}],
+   ['nan-last-3',  qw(0 -1 -NaN), {EXIT => 1}, {ERR => $err_nan_arg},
+    {ERR_SUBST => 's/-NaN/nan/'}],
   );
 
 # Append a newline to each entry in the OUT array.

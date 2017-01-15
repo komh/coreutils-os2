@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that an invalid --time-style=ARG is diagnosed the way we want.
 
-# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+# Copyright (C) 2011-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +19,7 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ ls
 
-ls -l --time-style=XX > out 2> err
-test $? = 2 || fail=1
+returns_ 2 ls -l --time-style=XX > out 2> err || fail=1
 
 cat <<\EOF > exp || fail=1
 ls: invalid argument 'XX' for 'time style'

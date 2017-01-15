@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that cat outputs processed data immediately.
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@ print_ver_ cat
 # write separately.
 mkfifo_or_skip_ fifo
 
+# Terminate any background cp process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
 echo 1 > exp
 
@@ -33,9 +35,10 @@ cat_buf_1()
 {
   local delay="$1"
 
-  dd count=1 if=fifo > out &
+  > out || framework_failure_
+  dd count=1 if=fifo > out & pid=$!
   (echo 1; sleep $delay; echo 2) | cat -v > fifo
-  wait # for dd to complete
+  wait $pid
   compare exp out
 }
 

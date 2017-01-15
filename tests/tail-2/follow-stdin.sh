@@ -1,7 +1,7 @@
 #!/bin/sh
 # tail -f - would fail with the initial inotify implementation
 
-# Copyright (C) 2009-2013 Free Software Foundation, Inc.
+# Copyright (C) 2009-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,18 +19,48 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
-echo line > exp || framework_failure_
+check_tail_output()
+{
+  local delay="$1"
+  grep "$tail_re" out ||
+    { sleep $delay; return 1; }
+}
+
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
+# Speedup the non inotify case
+fastpoll='-s.1 --max-unchanged-stats=1'
+
 echo line > in || framework_failure_
+echo line > exp || framework_failure_
 
-timeout 1 tail -f < in > out 2> err
+for mode in '' '---disable-inotify'; do
+  > out || framework_failure_
 
-# tail from coreutils-7.5 would fail
-test $? = 124 || fail=1
+  tail $mode -f $fastpoll < in > out 2> err & pid=$!
 
-# Ensure there was no error output.
-test -s err && fail=1
+  # Wait up to 12.7s for output to appear:
+  tail_re='line' retry_delay_ check_tail_output .1 7 ||
+    { echo "$0: a: unexpected delay?"; cat out; fail=1; }
 
-# Ensure there was
-compare exp out || fail=1
+  # Ensure there was no error output.
+  compare /dev/null err || fail=1
+
+  cleanup_
+done
+
+
+# Before coreutils-8.26 this would induce an UMR under UBSAN
+returns_ 1 timeout 10 tail -f - <&- 2>errt || fail=1
+cat <<\EOF >exp || framework_failure_
+tail: cannot fstat 'standard input'
+tail: error reading 'standard input'
+tail: no files remaining
+tail: -
+EOF
+sed 's/\(tail:.*\):.*/\1/' errt > err || framework_failure_
+compare exp err || fail=1
+
 
 Exit $fail

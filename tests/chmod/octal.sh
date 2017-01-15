@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that chmod diagnoses a certain type of invalid mode string
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@ print_ver_ chmod
 
 # Before coreutils-5.92, this would mistakenly succeed,
 # and act like 'chmod 0 .'.
-chmod 0-followed-by-anything . 2> /dev/null && fail=1
-chmod 7-followed-by-anything . 2> /dev/null && fail=1
-chmod 8                      . 2> /dev/null && fail=1
+for mode in '0-anything' '7-anything' '8'; do
+  returns_ 1 chmod "$mode" . 2>/dev/null || fail=1
+done
 
 Exit $fail

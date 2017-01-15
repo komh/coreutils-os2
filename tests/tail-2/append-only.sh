@@ -2,7 +2,7 @@
 # Ensure that tail -f works on an append-only file
 # Requires root access to do chattr +a, as well as an ext[23] or xfs file system
 
-# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+# Copyright (C) 2006-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@
 print_ver_ tail
 require_root_
 
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
+
 chattr_a_works=1
 touch f
 chattr +a f 2>/dev/null || chattr_a_works=0
@@ -32,10 +35,10 @@ if test $chattr_a_works = 0; then
 fi
 
 
-for inotify in ---disable-inotify ''; do
-  sleep 1 &
-  pid=$!
-  tail --pid=$pid -f $inotify f || fail=1
+for mode in '' '---disable-inotify'; do
+  sleep 1 & pid=$!
+  tail --pid=$pid -f $mode f || fail=1
+  cleanup_
 done
 
 chattr -a f 2>/dev/null

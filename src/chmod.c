@@ -1,5 +1,5 @@
 /* chmod -- change permission modes of files
-   Copyright (C) 1989-2013 Free Software Foundation, Inc.
+   Copyright (C) 1989-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 
 #include "system.h"
 #include "dev-ino.h"
+#include "die.h"
 #include "error.h"
 #include "filemode.h"
 #include "ignore-value.h"
 #include "modechange.h"
 #include "quote.h"
-#include "quotearg.h"
 #include "root-dev-ino.h"
 #include "xfts.h"
 
@@ -111,7 +111,8 @@ static struct option const long_options[] =
    The old mode was OLD_MODE, but it was changed to NEW_MODE.  */
 
 static bool
-mode_changed (char const *file, mode_t old_mode, mode_t new_mode)
+mode_changed (int dir_fd, char const *file, char const *file_full_name,
+              mode_t old_mode, mode_t new_mode)
 {
   if (new_mode & (S_ISUID | S_ISGID | S_ISVTX))
     {
@@ -120,10 +121,11 @@ mode_changed (char const *file, mode_t old_mode, mode_t new_mode)
 
       struct stat new_stats;
 
-      if (stat (file, &new_stats) != 0)
+      if (fstatat (dir_fd, file, &new_stats, 0) != 0)
         {
           if (! force_silent)
-            error (0, errno, _("getting new attributes of %s"), quote (file));
+            error (0, errno, _("getting new attributes of %s"),
+                   quoteaf (file_full_name));
           return false;
         }
 
@@ -147,7 +149,7 @@ describe_change (const char *file, mode_t old_mode, mode_t mode,
   if (changed == CH_NOT_APPLIED)
     {
       printf (_("neither symbolic link %s nor referent has been changed\n"),
-              quote (file));
+              quoteaf (file));
       return;
     }
 
@@ -167,13 +169,13 @@ describe_change (const char *file, mode_t old_mode, mode_t mode,
       break;
     case CH_NO_CHANGE_REQUESTED:
       fmt = _("mode of %s retained as %04lo (%s)\n");
-      printf (fmt, quote (file),
+      printf (fmt, quoteaf (file),
               (unsigned long int) (mode & CHMOD_MODE_BITS), &perms[1]);
       return;
     default:
       abort ();
     }
-  printf (fmt, quote (file),
+  printf (fmt, quoteaf (file),
           (unsigned long int) (old_mode & CHMOD_MODE_BITS), &old_perms[1],
           (unsigned long int) (mode & CHMOD_MODE_BITS), &perms[1]);
 }
@@ -214,27 +216,27 @@ process_file (FTS *fts, FTSENT *ent)
         }
       if (! force_silent)
         error (0, ent->fts_errno, _("cannot access %s"),
-               quote (file_full_name));
+               quoteaf (file_full_name));
       ok = false;
       break;
 
     case FTS_ERR:
       if (! force_silent)
-        error (0, ent->fts_errno, "%s", quote (file_full_name));
+        error (0, ent->fts_errno, "%s", quotef (file_full_name));
       ok = false;
       break;
 
     case FTS_DNR:
       if (! force_silent)
         error (0, ent->fts_errno, _("cannot read directory %s"),
-               quote (file_full_name));
+               quoteaf (file_full_name));
       ok = false;
       break;
 
     case FTS_SLNONE:
       if (! force_silent)
         error (0, 0, _("cannot operate on dangling symlink %s"),
-               quote (file_full_name));
+               quoteaf (file_full_name));
       ok = false;
       break;
 
@@ -274,7 +276,7 @@ process_file (FTS *fts, FTSENT *ent)
             {
               if (! force_silent)
                 error (0, errno, _("changing permissions of %s"),
-                       quote (file_full_name));
+                       quoteaf (file_full_name));
               ok = false;
             }
         }
@@ -283,7 +285,8 @@ process_file (FTS *fts, FTSENT *ent)
   if (verbosity != V_off)
     {
       bool changed = (chmod_succeeded
-                      && mode_changed (file, old_mode, new_mode));
+                      && mode_changed (fts->fts_cwd_fd, file, file_full_name,
+                                       old_mode, new_mode));
 
       if (changed || verbosity == V_high)
         {
@@ -309,7 +312,7 @@ process_file (FTS *fts, FTSENT *ent)
           new_perms[10] = naively_expected_perms[10] = '\0';
           error (0, 0,
                  _("%s: new permissions are %s, not %s"),
-                 quotearg_colon (file_full_name),
+                 quotef (file_full_name),
                  new_perms + 1, naively_expected_perms + 1);
           ok = false;
         }
@@ -400,7 +403,7 @@ With --reference, change the mode of each FILE to that of RFILE.\n\
 \n\
 Each MODE is of the form '[ugoa]*([-+=]([rwxXst]*|[ugo]))+|[-+=][0-7]+'.\n\
 "), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -533,8 +536,8 @@ main (int argc, char **argv)
     {
       change = mode_create_from_ref (reference_file);
       if (!change)
-        error (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
-               quote (reference_file));
+        die (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
+             quoteaf (reference_file));
     }
   else
     {
@@ -552,8 +555,8 @@ main (int argc, char **argv)
       static struct dev_ino dev_ino_buf;
       root_dev_ino = get_root_dev_ino (&dev_ino_buf);
       if (root_dev_ino == NULL)
-        error (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
-               quote ("/"));
+        die (EXIT_FAILURE, errno, _("failed to get attributes of %s"),
+             quoteaf ("/"));
     }
   else
     {
@@ -563,5 +566,5 @@ main (int argc, char **argv)
   ok = process_files (argv + optind,
                       FTS_COMFOLLOW | FTS_PHYSICAL | FTS_DEFER_STAT);
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

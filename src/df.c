@@ -1,5 +1,5 @@
 /* df - summarize free disk space
-   Copyright (C) 1991-2013 Free Software Foundation, Inc.
+   Copyright (C) 1991-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* Written by David MacKenzie <djm@gnu.ai.mit.edu>.
-   --human-readable and --megabyte options added by lm@sgi.com.
+   --human-readable option added by lm@sgi.com.
    --si and large file support added by eggert@twinsun.com.  */
 
 #include <config.h>
@@ -26,6 +26,7 @@
 
 #include "system.h"
 #include "canonicalize.h"
+#include "die.h"
 #include "error.h"
 #include "fsusage.h"
 #include "human.h"
@@ -34,23 +35,26 @@
 #include "mountlist.h"
 #include "quote.h"
 #include "find-mount-point.h"
+#include "hash.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "df"
 
 #define AUTHORS \
-  proper_name_utf8 ("Torbjorn Granlund", "Torbj\303\266rn Granlund"), \
+  proper_name ("Torbjorn Granlund"), \
   proper_name ("David MacKenzie"), \
   proper_name ("Paul Eggert")
 
-/* Filled with device numbers of examined file systems to avoid
-   duplicities in output.  */
 struct devlist
 {
   dev_t dev_num;
   struct mount_entry *me;
   struct devlist *next;
 };
+
+/* Filled with device numbers of examined file systems to avoid
+   duplicates in output.  */
+static Hash_table *devlist_table;
 
 /* If true, show even file systems with zero size or
    uninteresting types.  */
@@ -143,7 +147,9 @@ typedef enum
   IUSED_FIELD,  /* inodes used */
   IAVAIL_FIELD, /* inodes available */
   IPCENT_FIELD, /* inodes used in percent */
-  TARGET_FIELD  /* mount point */
+  TARGET_FIELD, /* mount point */
+  FILE_FIELD,   /* specified file name */
+  INVALID_FIELD /* validation marker */
 } display_field_t;
 
 /* Flag if a field contains a block, an inode or another value.  */
@@ -199,11 +205,15 @@ static struct field_data_t field_data[] = {
     "ipcent", INODE_FLD, N_("IUse%"),       4, MBS_ALIGN_RIGHT, false },
 
   [TARGET_FIELD] = { TARGET_FIELD,
-    "target", OTHER_FLD, N_("Mounted on"),  0, MBS_ALIGN_LEFT,  false }
+    "target", OTHER_FLD, N_("Mounted on"),  0, MBS_ALIGN_LEFT,  false },
+
+  [FILE_FIELD] = { FILE_FIELD,
+    "file",   OTHER_FLD, N_("File"),        0, MBS_ALIGN_LEFT,  false }
 };
 
 static char const *all_args_string =
-  "source,fstype,itotal,iused,iavail,ipcent,size,used,avail,pcent,target";
+  "source,fstype,itotal,iused,iavail,ipcent,size,"
+  "used,avail,pcent,file,target";
 
 /* Storage for the definition of output columns.  */
 static struct field_data_t **columns;
@@ -237,8 +247,7 @@ enum
   NO_SYNC_OPTION = CHAR_MAX + 1,
   SYNC_OPTION,
   TOTAL_OPTION,
-  OUTPUT_OPTION,
-  MEGABYTES_OPTION  /* FIXME: remove long opt in Aug 2013 */
+  OUTPUT_OPTION
 };
 
 static struct option const long_options[] =
@@ -249,7 +258,6 @@ static struct option const long_options[] =
   {"human-readable", no_argument, NULL, 'h'},
   {"si", no_argument, NULL, 'H'},
   {"local", no_argument, NULL, 'l'},
-  {"megabytes", no_argument, NULL, MEGABYTES_OPTION}, /* obsolescent,  */
   {"output", optional_argument, NULL, OUTPUT_OPTION},
   {"portability", no_argument, NULL, 'P'},
   {"print-type", no_argument, NULL, 'T'},
@@ -287,7 +295,7 @@ static void
 alloc_table_row (void)
 {
   nrows++;
-  table = xnrealloc (table, nrows, sizeof (char *));
+  table = xnrealloc (table, nrows, sizeof (char **));
   table[nrows - 1] = xnmalloc (ncolumns, sizeof (char *));
 }
 
@@ -369,7 +377,7 @@ decode_output_arg (char const *arg)
         *comma++ = 0;
 
       /* process S.  */
-      display_field_t field = -1;
+      display_field_t field = INVALID_FIELD;
       for (unsigned int i = 0; i < ARRAY_CARDINALITY (field_data); i++)
         {
           if (STREQ (field_data[i].arg, s))
@@ -378,17 +386,17 @@ decode_output_arg (char const *arg)
               break;
             }
         }
-      if (field == -1)
+      if (field == INVALID_FIELD)
         {
-          error (0, 0, _("option --output: field '%s' unknown"), s);
+          error (0, 0, _("option --output: field %s unknown"), quote (s));
           usage (EXIT_FAILURE);
         }
 
       if (field_data[field].used)
         {
           /* Prevent the fields from being used more than once.  */
-          error (0, 0, _("option --output: field '%s' used more than once"),
-                 field_data[field].arg);
+          error (0, 0, _("option --output: field %s used more than once"),
+                 quote (field_data[field].arg));
           usage (EXIT_FAILURE);
         }
 
@@ -403,6 +411,7 @@ decode_output_arg (char const *arg)
         case IAVAIL_FIELD:
         case IPCENT_FIELD:
         case TARGET_FIELD:
+        case FILE_FIELD:
           alloc_field (field, NULL);
           break;
 
@@ -539,7 +548,7 @@ get_header (void)
           char *num = human_readable (output_block_size, buf, opts, 1, 1);
 
           /* Reset the header back to the default in OUTPUT_MODE.  */
-          header = N_("blocks");
+          header = _("blocks");
 
           /* TRANSLATORS: this is the "1K-blocks" header in "df" output.  */
           if (asprintf (&cell, _("%s-%s"), num, header) == -1)
@@ -598,76 +607,179 @@ excluded_fstype (const char *fstype)
   return false;
 }
 
-/* Filter mount list by skipping duplicate entries.
-   In the case of duplicities - based on to the device number - the mount entry
-   with a '/' in its me_devname (i.e. not pseudo name like tmpfs) wins.
-   If both have a real devname (e.g. bind mounts), then that with the shorter
-   me_mountdir wins.  */
+static size_t
+devlist_hash (void const *x, size_t table_size)
+{
+  struct devlist const *p = x;
+  return (uintmax_t) p->dev_num % table_size;
+}
+
+static bool
+devlist_compare (void const *x, void const *y)
+{
+  struct devlist const *a = x;
+  struct devlist const *b = y;
+  return a->dev_num == b->dev_num;
+}
+
+static struct devlist *
+devlist_for_dev (dev_t dev)
+{
+  if (devlist_table == NULL)
+    return NULL;
+  struct devlist dev_entry;
+  dev_entry.dev_num = dev;
+  return hash_lookup (devlist_table, &dev_entry);
+}
 
 static void
-filter_mount_list (void)
+devlist_free (void *p)
+{
+  free (p);
+}
+
+/* Filter mount list by skipping duplicate entries.
+   In the case of duplicates - based on the device number - the mount entry
+   with a '/' in its me_devname (i.e., not pseudo name like tmpfs) wins.
+   If both have a real devname (e.g. bind mounts), then that with the shorter
+   me_mountdir wins.  With DEVICES_ONLY == true (set with df -a), only update
+   the global devlist_table, rather than filtering the global mount_list.  */
+
+static void
+filter_mount_list (bool devices_only)
 {
   struct mount_entry *me;
 
-  /* Store of already-processed device numbers.  */
-  struct devlist *devlist_head = NULL;
+  /* Temporary list to keep entries ordered.  */
+  struct devlist *device_list = NULL;
+  int mount_list_size = 0;
 
-  /* Sort all 'wanted' entries into the list devlist_head.  */
   for (me = mount_list; me; me = me->me_next)
+    mount_list_size++;
+
+  devlist_table = hash_initialize (mount_list_size, NULL,
+                                 devlist_hash,
+                                 devlist_compare,
+                                 devlist_free);
+  if (devlist_table == NULL)
+    xalloc_die ();
+
+  /* Sort all 'wanted' entries into the list device_list.  */
+  for (me = mount_list; me;)
     {
       struct stat buf;
-      struct devlist *devlist;
+      struct mount_entry *discard_me = NULL;
 
-      if (-1 == stat (me->me_mountdir, &buf))
+      /* Avoid stating remote file systems as that may hang.
+         On Linux we probably have me_dev populated from /proc/self/mountinfo,
+         however we still stat() in case another device was mounted later.  */
+      if ((me->me_remote && show_local_fs)
+          || -1 == stat (me->me_mountdir, &buf))
         {
-          ;  /* Stat failed - add ME to be able to complain about it later.  */
+          /* If remote, and showing just local, add ME for filtering later.
+             If stat failed; add ME to be able to complain about it later.  */
+          buf.st_dev = me->me_dev;
         }
       else
         {
-          /* If the device name is a real path name ...  */
-          if (strchr (me->me_devname, '/'))
-            {
-              /* ... try to find its device number in the devlist.  */
-              for (devlist = devlist_head; devlist; devlist = devlist->next)
-                if (devlist->dev_num == buf.st_dev)
-                  break;
+          /* If we've already seen this device...  */
+          struct devlist *seen_dev = devlist_for_dev (buf.st_dev);
 
-              if (devlist)
+          if (seen_dev)
+            {
+              bool target_nearer_root = strlen (seen_dev->me->me_mountdir)
+                                        > strlen (me->me_mountdir);
+              /* With bind mounts, prefer items nearer the root of the source */
+              bool source_below_root = seen_dev->me->me_mntroot != NULL
+                                       && me->me_mntroot != NULL
+                                       && (strlen (seen_dev->me->me_mntroot)
+                                           < strlen (me->me_mntroot));
+              if (! print_grand_total
+                  && me->me_remote && seen_dev->me->me_remote
+                  && ! STREQ (seen_dev->me->me_devname, me->me_devname))
                 {
-                  /* Let the shorter mountdir win.  */
-                  if (   !strchr (devlist->me->me_devname, '/')
-                      || ( strlen (devlist->me->me_mountdir)
-                         > strlen (me->me_mountdir)))
-                    {
-                       /* FIXME: free ME - the others are also not free()d.  */
-                      devlist->me = me;
-                    }
-                  continue; /* ... with the loop over the mount_list.  */
+                  /* Don't discard remote entries with different locations,
+                     as these are more likely to be explicitly mounted.
+                     However avoid this when producing a total to give
+                     a more accurate value in that case.  */
                 }
+              else if ((strchr (me->me_devname, '/')
+                       /* let "real" devices with '/' in the name win.  */
+                        && ! strchr (seen_dev->me->me_devname, '/'))
+                       /* let points towards the root of the device win.  */
+                       || (target_nearer_root && ! source_below_root)
+                       /* let an entry overmounted on a new device win...  */
+                       || (! STREQ (seen_dev->me->me_devname, me->me_devname)
+                           /* ... but only when matching an existing mnt point,
+                              to avoid problematic replacement when given
+                              inaccurate mount lists, seen with some chroot
+                              environments for example.  */
+                           && STREQ (me->me_mountdir,
+                                     seen_dev->me->me_mountdir)))
+                {
+                  /* Discard mount entry for existing device.  */
+                  discard_me = seen_dev->me;
+                  seen_dev->me = me;
+                }
+              else
+                {
+                  /* Discard mount entry currently being processed.  */
+                  discard_me = me;
+                }
+
             }
         }
 
-      /* Add the device number to the global list devlist.  */
-      devlist = xmalloc (sizeof *devlist);
-      devlist->me = me;
-      devlist->dev_num = buf.st_dev;
-      devlist->next = devlist_head;
-      devlist_head = devlist;
+      if (discard_me)
+        {
+          me = me->me_next;
+          if (! devices_only)
+            free_mount_entry (discard_me);
+        }
+      else
+        {
+          /* Add the device number to the device_table.  */
+          struct devlist *devlist = xmalloc (sizeof *devlist);
+          devlist->me = me;
+          devlist->dev_num = buf.st_dev;
+          devlist->next = device_list;
+          device_list = devlist;
+          if (hash_insert (devlist_table, devlist) == NULL)
+            xalloc_die ();
+
+          me = me->me_next;
+        }
     }
 
   /* Finally rebuild the mount_list from the devlist.  */
-  mount_list = NULL;
-  while (devlist_head)
-    {
-      /* Add the mount entry.  */
-      me = devlist_head->me;
-      me->me_next = mount_list;
-      mount_list = me;
-      /* Free devlist entry and advance.  */
-      struct devlist *devlist = devlist_head->next;
-      free (devlist_head);
-      devlist_head = devlist;
-    }
+  if (! devices_only) {
+    mount_list = NULL;
+    while (device_list)
+      {
+        /* Add the mount entry.  */
+        me = device_list->me;
+        me->me_next = mount_list;
+        mount_list = me;
+        device_list = device_list->next;
+      }
+
+      hash_free (devlist_table);
+      devlist_table = NULL;
+  }
+}
+
+
+/* Search a mount entry list for device id DEV.
+   Return the corresponding mount entry if found or NULL if not.  */
+
+static struct mount_entry const * _GL_ATTRIBUTE_PURE
+me_for_dev (dev_t dev)
+{
+  struct devlist *dl = devlist_for_dev (dev);
+  if (dl)
+        return dl->me;
+
+  return NULL;
 }
 
 /* Return true if N is a known integer value.  On many file systems,
@@ -824,7 +936,7 @@ add_to_grand_total (struct field_values_t *bv, struct field_values_t *iv)
    when df is invoked with no non-option argument.  See below for details.  */
 
 static void
-get_dev (char const *disk, char const *mount_point,
+get_dev (char const *disk, char const *mount_point, char const* file,
          char const *stat_file, char const *fstype,
          bool me_dummy, bool me_remote,
          const struct fs_usage *force_fsu,
@@ -839,6 +951,11 @@ get_dev (char const *disk, char const *mount_point,
   if (!selected_fstype (fstype) || excluded_fstype (fstype))
     return;
 
+  /* Ignore relative MOUNT_POINTs, which are present for example
+     in /proc/mounts on Linux with network namespaces.  */
+  if (!force_fsu && mount_point && ! IS_ABSOLUTE_FILE_NAME (mount_point))
+    return;
+
   /* If MOUNT_POINT is NULL, then the file system is not mounted, and this
      program reports on the file system that the special file is on.
      It would be better to report on the unmounted file system,
@@ -851,9 +968,45 @@ get_dev (char const *disk, char const *mount_point,
     fsu = *force_fsu;
   else if (get_fs_usage (stat_file, disk, &fsu))
     {
-      error (0, errno, "%s", quote (stat_file));
-      exit_status = EXIT_FAILURE;
-      return;
+      /* If we can't access a system provided entry due
+         to it not being present (now), or due to permissions,
+         just output placeholder values rather than failing.  */
+      if (process_all && (errno == EACCES || errno == ENOENT))
+        {
+          if (! show_all_fs)
+            return;
+
+          fstype = "-";
+          fsu.fsu_bavail_top_bit_set = false;
+          fsu.fsu_blocksize = fsu.fsu_blocks = fsu.fsu_bfree =
+          fsu.fsu_bavail = fsu.fsu_files = fsu.fsu_ffree = UINTMAX_MAX;
+        }
+      else
+        {
+          error (0, errno, "%s", quotef (stat_file));
+          exit_status = EXIT_FAILURE;
+          return;
+        }
+    }
+  else if (process_all && show_all_fs)
+    {
+      /* Ensure we don't output incorrect stats for over-mounted directories.
+         Discard stats when the device name doesn't match.  Though don't
+         discard when used and current mount entries are both remote due
+         to the possibility of aliased host names or exports.  */
+      struct stat sb;
+      if (stat (stat_file, &sb) == 0)
+        {
+          struct mount_entry const * dev_me = me_for_dev (sb.st_dev);
+          if (dev_me && ! STREQ (dev_me->me_devname, disk)
+              && (! dev_me->me_remote || ! me_remote))
+            {
+              fstype = "-";
+              fsu.fsu_bavail_top_bit_set = false;
+              fsu.fsu_blocksize = fsu.fsu_blocks = fsu.fsu_bfree =
+              fsu.fsu_bavail = fsu.fsu_files = fsu.fsu_ffree = UINTMAX_MAX;
+            }
+        }
     }
 
   if (fsu.fsu_blocks == 0 && !show_all_fs && !show_listed_fs)
@@ -866,6 +1019,9 @@ get_dev (char const *disk, char const *mount_point,
 
   if (! disk)
     disk = "-";			/* unknown */
+
+  if (! file)
+    file = "-";			/* unspecified */
 
   char *dev_name = xstrdup (disk);
   char *resolved_dev;
@@ -914,6 +1070,7 @@ get_dev (char const *disk, char const *mount_point,
           v = NULL;
           break;
         default:
+          v = NULL; /* Avoid warnings where assert() is not __noreturn__.  */
           assert (!"bad field_type");
         }
 
@@ -998,6 +1155,10 @@ get_dev (char const *disk, char const *mount_point,
             break;
           }
 
+        case FILE_FIELD:
+          cell = xstrdup (file);
+          break;
+
         case TARGET_FIELD:
 #ifdef HIDE_AUTOMOUNT_PREFIX
           /* Don't print the first directory name in MOUNT_POINT if it's an
@@ -1025,6 +1186,33 @@ get_dev (char const *disk, char const *mount_point,
   free (dev_name);
 }
 
+/* Scan the mount list returning the _last_ device found for MOUNT.
+   NULL is returned if MOUNT not found.  The result is malloced.  */
+static char *
+last_device_for_mount (char const* mount)
+{
+  struct mount_entry const *me;
+  struct mount_entry const *le = NULL;
+
+  for (me = mount_list; me; me = me->me_next)
+    {
+      if (STREQ (me->me_mountdir, mount))
+        le = me;
+    }
+
+  if (le)
+    {
+      char *devname = le->me_devname;
+      char *canon_dev = canonicalize_file_name (devname);
+      if (canon_dev && IS_ABSOLUTE_FILE_NAME (canon_dev))
+        return canon_dev;
+      free (canon_dev);
+      return xstrdup (le->me_devname);
+    }
+  else
+    return NULL;
+}
+
 /* If DISK corresponds to a mount point, show its usage
    and return true.  Otherwise, return false.  */
 static bool
@@ -1032,16 +1220,73 @@ get_disk (char const *disk)
 {
   struct mount_entry const *me;
   struct mount_entry const *best_match = NULL;
+  bool best_match_accessible = false;
+  bool eclipsed_device = false;
+  char const *file = disk;
 
+  char *resolved = canonicalize_file_name (disk);
+  if (resolved && IS_ABSOLUTE_FILE_NAME (resolved))
+    disk = resolved;
+
+  size_t best_match_len = SIZE_MAX;
   for (me = mount_list; me; me = me->me_next)
-    if (STREQ (disk, me->me_devname))
-      best_match = me;
+    {
+      /* TODO: Should cache canon_dev in the mount_entry struct.  */
+      char *devname = me->me_devname;
+      char *canon_dev = canonicalize_file_name (me->me_devname);
+      if (canon_dev && IS_ABSOLUTE_FILE_NAME (canon_dev))
+        devname = canon_dev;
+
+      if (STREQ (disk, devname))
+        {
+          char *last_device = last_device_for_mount (me->me_mountdir);
+          eclipsed_device = last_device && ! STREQ (last_device, devname);
+          size_t len = strlen (me->me_mountdir);
+
+          if (! eclipsed_device
+              && (! best_match_accessible || len < best_match_len))
+            {
+              struct stat disk_stats;
+              bool this_match_accessible = false;
+
+              if (stat (me->me_mountdir, &disk_stats) == 0)
+                best_match_accessible = this_match_accessible = true;
+
+              if (this_match_accessible
+                  || (! best_match_accessible && len < best_match_len))
+                {
+                  best_match = me;
+                  if (len == 1) /* Traditional root.  */
+                    {
+                      free (last_device);
+                      free (canon_dev);
+                      break;
+                    }
+                  else
+                    best_match_len = len;
+                }
+            }
+
+          free (last_device);
+        }
+
+      free (canon_dev);
+    }
+
+  free (resolved);
 
   if (best_match)
     {
-      get_dev (best_match->me_devname, best_match->me_mountdir, NULL,
+      get_dev (best_match->me_devname, best_match->me_mountdir, file, NULL,
                best_match->me_type, best_match->me_dummy,
                best_match->me_remote, NULL, false);
+      return true;
+    }
+  else if (eclipsed_device)
+    {
+      error (0, 0, _("cannot access %s: over-mounted by another device"),
+             quoteaf (file));
+      exit_status = EXIT_FAILURE;
       return true;
     }
 
@@ -1068,17 +1313,19 @@ get_point (const char *point, const struct stat *statp)
       size_t best_match_len = 0;
 
       for (me = mount_list; me; me = me->me_next)
-      if (!STREQ (me->me_type, "lofs")
-          && (!best_match || best_match->me_dummy || !me->me_dummy))
         {
-          size_t len = strlen (me->me_mountdir);
-          if (best_match_len <= len && len <= resolved_len
-              && (len == 1 /* root file system */
-                  || ((len == resolved_len || resolved[len] == '/')
-                      && STREQ_LEN (me->me_mountdir, resolved, len))))
+          if (!STREQ (me->me_type, "lofs")
+              && (!best_match || best_match->me_dummy || !me->me_dummy))
             {
-              best_match = me;
-              best_match_len = len;
+              size_t len = strlen (me->me_mountdir);
+              if (best_match_len <= len && len <= resolved_len
+                  && (len == 1 /* root file system */
+                      || ((len == resolved_len || resolved[len] == '/')
+                          && STREQ_LEN (me->me_mountdir, resolved, len))))
+                {
+                  best_match = me;
+                  best_match_len = len;
+                }
             }
         }
     }
@@ -1102,7 +1349,7 @@ get_point (const char *point, const struct stat *statp)
                    can't possibly be on this file system.  */
                 if (errno == EIO)
                   {
-                    error (0, errno, "%s", quote (me->me_mountdir));
+                    error (0, errno, "%s", quotef (me->me_mountdir));
                     exit_status = EXIT_FAILURE;
                   }
 
@@ -1125,7 +1372,7 @@ get_point (const char *point, const struct stat *statp)
       }
 
   if (best_match)
-    get_dev (best_match->me_devname, best_match->me_mountdir, point,
+    get_dev (best_match->me_devname, best_match->me_mountdir, point, point,
              best_match->me_type, best_match->me_dummy, best_match->me_remote,
              NULL, false);
   else
@@ -1138,7 +1385,7 @@ get_point (const char *point, const struct stat *statp)
       char *mp = find_mount_point (point, statp);
       if (mp)
         {
-          get_dev (NULL, mp, NULL, NULL, false, false, NULL, false);
+          get_dev (NULL, mp, point, NULL, NULL, false, false, NULL, false);
           free (mp);
         }
     }
@@ -1165,11 +1412,10 @@ get_all_entries (void)
 {
   struct mount_entry *me;
 
-  if (!show_all_fs)
-    filter_mount_list ();
+  filter_mount_list (show_all_fs);
 
   for (me = mount_list; me; me = me->me_next)
-    get_dev (me->me_devname, me->me_mountdir, NULL, me->me_type,
+    get_dev (me->me_devname, me->me_mountdir, NULL, NULL, me->me_type,
              me->me_dummy, me->me_remote, NULL, true);
 }
 
@@ -1214,15 +1460,15 @@ or all file systems by default.\n\
 
       emit_mandatory_arg_note ();
 
+      /* TRANSLATORS: The thousands and decimal separators are best
+         adjusted to an appropriate default for your locale.  */
       fputs (_("\
-  -a, --all             include dummy file systems\n\
-  -B, --block-size=SIZE  scale sizes by SIZE before printing them.  E.g.,\n\
-                           '-BM' prints sizes in units of 1,048,576 bytes.\n\
-                           See SIZE format below.\n\
-      --total           produce a grand total\n\
-  -h, --human-readable  print sizes in human readable format (e.g., 1K 234M 2G)\
-\n\
-  -H, --si              likewise, but use powers of 1000 not 1024\n\
+  -a, --all             include pseudo, duplicate, inaccessible file systems\n\
+  -B, --block-size=SIZE  scale sizes by SIZE before printing them; e.g.,\n\
+                           '-BM' prints sizes in units of 1,048,576 bytes;\n\
+                           see SIZE format below\n\
+  -h, --human-readable  print sizes in powers of 1024 (e.g., 1023M)\n\
+  -H, --si              print sizes in powers of 1000 (e.g., 1.1G)\n\
 "), stdout);
       fputs (_("\
   -i, --inodes          list inode information instead of block usage\n\
@@ -1236,6 +1482,12 @@ or all file systems by default.\n\
                                or print all fields if FIELD_LIST is omitted.\n\
   -P, --portability     use the POSIX output format\n\
       --sync            invoke sync before getting usage info\n\
+"), stdout);
+      fputs (_("\
+      --total           elide all entries insignificant to available space,\n\
+                          and produce a grand total\n\
+"), stdout);
+      fputs (_("\
   -t, --type=TYPE       limit listing to file systems of type TYPE\n\
   -T, --print-type      print file system type\n\
   -x, --exclude-type=TYPE   limit listing to file systems not of type TYPE\n\
@@ -1248,9 +1500,9 @@ or all file systems by default.\n\
       fputs (_("\n\
 FIELD_LIST is a comma-separated list of columns to be included.  Valid\n\
 field names are: 'source', 'fstype', 'itotal', 'iused', 'iavail', 'ipcent',\n\
-'size', 'used', 'avail', 'pcent' and 'target' (see info page).\n\
+'size', 'used', 'avail', 'pcent', 'file' and 'target' (see info page).\n\
 "), stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -1328,13 +1580,6 @@ main (int argc, char **argv)
         case 'l':
           show_local_fs = true;
           break;
-        case MEGABYTES_OPTION:
-          /* Distinguish between the long and the short option.
-             As we want to remove the long option soon,
-             give a warning when the long form is used.  */
-          error (0, 0, "%s%s", _("warning: "),
-            _("long option '--megabytes' is deprecated"
-              " and will soon be removed"));
         case 'm': /* obsolescent, exists for BSD compatibility */
           human_output_opts = 0;
           output_block_size = 1024 * 1024;
@@ -1447,8 +1692,10 @@ main (int argc, char **argv)
           }
       }
     if (match)
-      exit (EXIT_FAILURE);
+      return EXIT_FAILURE;
   }
+
+  assume (0 < optind);
 
   if (optind < argc)
     {
@@ -1466,7 +1713,7 @@ main (int argc, char **argv)
           if ((fd < 0 || fstat (fd, &stats[i - optind]))
               && stat (argv[i], &stats[i - optind]))
             {
-              error (0, errno, "%s", quote (argv[i]));
+              error (0, errno, "%s", quotef (argv[i]));
               exit_status = EXIT_FAILURE;
               argv[i] = NULL;
             }
@@ -1518,6 +1765,8 @@ main (int argc, char **argv)
       for (i = optind; i < argc; ++i)
         if (argv[i])
           get_entry (argv[i], &stats[i - optind]);
+
+      IF_LINT (free (stats));
     }
   else
     get_all_entries ();
@@ -1527,7 +1776,7 @@ main (int argc, char **argv)
       if (print_grand_total)
         get_dev ("total",
                  (field_data[SOURCE_FIELD].used ? "-" : "total"),
-                 NULL, NULL, false, false, &grand_fsu, false);
+                 NULL, NULL, NULL, false, false, &grand_fsu, false);
 
       print_table ();
     }
@@ -1536,10 +1785,10 @@ main (int argc, char **argv)
       /* Print the "no FS processed" diagnostic only if there was no preceding
          diagnostic, e.g., if all have been excluded.  */
       if (exit_status == EXIT_SUCCESS)
-        error (EXIT_FAILURE, 0, _("no file systems processed"));
+        die (EXIT_FAILURE, 0, _("no file systems processed"));
     }
 
   IF_LINT (free (columns));
 
-  exit (exit_status);
+  return exit_status;
 }

@@ -1,9 +1,9 @@
 #!/bin/sh
-# This variant of 'assert' would get a UMR reliably in 2.0.9.
+# This variant of 'assert' would get a Uninit Mem Read reliably in 2.0.9.
 # Due to a race condition in the test, the 'assert' script would get
 # the UMR on Solaris only some of the time, and not at all on Linux/GNU.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,29 +21,37 @@
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
 
-# Not "expensive" per se, but sleeping for so long is annoying.
-very_expensive_
+check_tail_output()
+{
+  local delay="$1"
+  grep "$tail_re" out ||
+    { sleep $delay; return 1; }
+}
 
-ok='ok ok ok'
+# Terminate any background tail process
+cleanup_() { kill $pid 2>/dev/null && wait $pid; }
 
-touch a
-tail --follow=name a foo > err 2>&1 &
-tail_pid=$!
-# Arrange for the tail process to die after 12 seconds.
-(sleep 12; kill $tail_pid) &
-echo $ok > f
-echo sleeping for 7 seconds...
-sleep 7
-mv f foo
+# Speedup the non inotify case
+fastpoll='-s.1 --max-unchanged-stats=1'
 
-# echo waiting....
-wait
+for mode in '' '---disable-inotify'; do
+  rm -f a foo out
+  touch a || framework_failure_
 
-case "$(cat err)" in
-  *$ok) ;;
-  *) fail=1;;
-esac
+  tail $mode $fastpoll -F a foo > out 2>&1 & pid=$!
 
-test $fail = 1 && cat err
+  # Wait up to 12.7s for tail to start.
+  echo x > a || framework_failure_
+  tail_re='^x$' retry_delay_ check_tail_output .1 7 ||
+    { cat out; fail=1; break; }
+
+  # Wait up to 12.7s for tail to notice new foo file
+  ok='ok ok ok'
+  echo "$ok" > foo || framework_failure_
+  tail_re="^$ok$" retry_delay_ check_tail_output .1 7 ||
+    { echo "$0: foo: unexpected delay?"; cat out; fail=1; break; }
+
+  cleanup_
+done
 
 Exit $fail

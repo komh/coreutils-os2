@@ -1,4 +1,4 @@
-eval '(exit $?0)' && eval 'exec perl -wS "$0" ${1+"$@"}'
+eval '(exit $?0)' && eval 'exec perl -wS "$0" "$@"'
   & eval 'exec perl -wS "$0" $argv:q'
     if 0;
 
@@ -91,7 +91,7 @@ sub prefix_assignment ($$)
 
   # Some variables are initialized by gnulib.mk, and we don't want
   # that.  Change '=' to '+='.
-  if ($lhs_and_assign_op =~ /^GPERF =$/)
+  if ($lhs_and_assign_op =~ /^(GPERF|V_GPERF.*) =$/)
     {
       # Do not change the RHS, which specifies the GPERF program.
     }
@@ -155,16 +155,6 @@ sub prefix ($)
   # Unfortunately, as a result we sometimes have lib/lib.
   s{($prefix){2}}{$1}g;
 
-  # lib_libcoreutils_a_SOURCES += \
-  #   imaxtostr.c \
-  #   inttostr.c \
-  #   offtostr.c \
-  #   uinttostr.c \
-  #   umaxtostr.c
-  # The above are not handled since they're on continued lines, so
-  # deal with them manually:
-  s{^(\s*)((?:[ui]max|u?int|off)tostr\.c(:? \\)?)$}{$1$prefix$2}gm;
-
   # $(srcdir)/ is actually $(top_srcdir)/$prefix/.
   # The trailing slash is required to avoid matching this rule:
   #   test '$(srcdir)' = . || rm -f $(top_builddir)/GNUmakefile
@@ -189,10 +179,11 @@ sub process ($)
 {
   my ($file) = @_;
   my ($bak) = "$file.bak";
-  rename ($file, $bak) or die;
+  rename ($file, $bak) or die "$ME: rename $file $bak failed: $!\n";
   my $contents = contents ($bak);
   $contents = prefix ($contents);
-  my $out = new IO::File(">$file") or die;
+  my $out = new IO::File(">$file")
+    or die "$ME: $file: failed to open for writing: $!\n";
   print $out $contents;
 }
 
@@ -242,6 +233,6 @@ sub process ($)
 ## eval: (add-hook 'write-file-hooks 'time-stamp)
 ## time-stamp-start: "my $VERSION = '"
 ## time-stamp-format: "%:y-%02m-%02d %02H:%02M"
-## time-stamp-time-zone: "UTC"
+## time-stamp-time-zone: "UTC0"
 ## time-stamp-end: "'; # UTC"
 ## End:

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that cp copies contents of non-empty "regular" file with st_size==0
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,13 +27,20 @@ test -r $f || f=empty
 cat $f > out || fail=1
 
 # With coreutils-6.9, this would create a zero-length "exp" file.
-cp $f exp || fail=1
+# Skip this test on architectures like aarch64 where the inode
+# number of the file changed during the cp run.
+cp $f exp 2>err \
+  || { fail=1;
+       grep 'replaced while being copied' err \
+         && skip_ "File $f is being replaced while being copied"; }
 
 # Don't simply compare contents; they might differ,
 # e.g., if CPU freq changes between cat and cp invocations.
 # Instead, simply compare whether they're both nonempty.
-test -s out && { rm -f out; echo nonempty > out; }
-test -s exp && { rm -f exp; echo nonempty > exp; }
+test -s out \
+  && { rm -f out; echo nonempty > out; }
+test -s exp \
+  && { rm -f exp; echo nonempty > exp; }
 
 compare exp out || fail=1
 

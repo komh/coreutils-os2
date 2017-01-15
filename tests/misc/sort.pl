@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2013 Free Software Foundation, Inc.
+# Copyright (C) 2008-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -271,11 +271,11 @@ my @Tests =
 ["18e", '-nb -k1.1,1.2', {IN=>" 901\n100\n"}, {OUT=>"100\n 901\n"}],
 
 # When ignoring leading blanks for end position, ensure blanks from
-# next field are not included in the sort. I.E. order should not change here.
+# next field are not included in the sort.  I.e., order should not change here.
 ["18f", '-k1,1b', {IN=>"a  y\na z\n"}, {OUT=>"a  y\na z\n"}],
 
 # When ignoring leading blanks for start position, ensure blanks from
-# next field are not included in the sort. I.E. order should not change here.
+# next field are not included in the sort.  I.e., order should not change here.
 # This was noticed as an issue on fedora 8 (only in multibyte locales).
 ["18g", '-k1b,1', {IN=>"a  y\na z\n"}, {OUT=>"a  y\na z\n"},
  {ENV => "LC_ALL=$mb_locale"}],
@@ -316,6 +316,10 @@ my @Tests =
 # This test failed until 1.22f.  From Zvi Har'El.
 ["22a", '-k 2,2fd -k 1,1r', {IN=>"3 b\n4 B\n"}, {OUT=>"4 B\n3 b\n"}],
 ["22b", '-k 2,2d  -k 1,1r', {IN=>"3 b\n4 b\n"}, {OUT=>"4 b\n3 b\n"}],
+
+# This fails in Fedora 20, per Göran Uddeborg in: http://bugs.gnu.org/18540
+["23", '-s -k1,1 -t/', {IN=>"a b/x\na-b-c/x\n"}, {OUT=>"a b/x\na-b-c/x\n"},
+ {ENV => "LC_ALL=$mb_locale"}],
 
 ["no-file1", 'no-file', {EXIT=>2}, {ERR=>$no_file}],
 # This test failed until 1.22f.  Sort didn't give an error.
@@ -402,6 +406,11 @@ my @Tests =
 ["output-is-input-3", '-m -o f', {OUT=>''},
  {IN=> {g=> "a\n"}}, {IN=> {h=> "b\n"}}, {IN=> {f=> "c\n"}},
  {CMP=> ["a\nb\nc\n", {'f'=> undef}]} ],
+
+# --zero-terminated
+['zero-1', '-z', {IN=>"2\0001\000"}, {OUT=>"1\0002\000"}],
+['zero-2', '-z -k2,2', {IN=>"1\n2\0002\n1\000"}, {OUT=>"2\n1\0001\n2\000"}],
+['zero-3', '-zb -k2,2', {IN=>"1\n\n2\0002\n1\0"}, {OUT=>"2\n1\0001\n\n2\0"}],
 );
 
 # Add _POSIX2_VERSION=199209 to the environment of each test

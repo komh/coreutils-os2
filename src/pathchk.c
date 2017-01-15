@@ -1,5 +1,5 @@
 /* pathchk -- check whether file names are valid or portable
-   Copyright (C) 1991-2013 Free Software Foundation, Inc.
+   Copyright (C) 1991-2016 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 #include "system.h"
 #include "error.h"
 #include "quote.h"
-#include "quotearg.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "pathchk"
@@ -96,7 +95,7 @@ Diagnose invalid or unportable file names.\n\
 "), stdout);
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
-      emit_ancillary_info ();
+      emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
 }
@@ -153,7 +152,7 @@ main (int argc, char **argv)
     ok &= validate_file_name (argv[optind],
                               check_basic_portability, check_extra_portability);
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /* If FILE contains a component with a leading "-", report an error
@@ -168,7 +167,7 @@ no_leading_hyphen (char const *file)
     if (p == file || p[-1] == '/')
       {
         error (0, 0, _("leading '-' in a component of file name %s"),
-               quote (file));
+               quoteaf (file));
         return false;
       }
 
@@ -196,7 +195,7 @@ portable_chars_only (char const *file, size_t filelen)
              _("nonportable character %s in file name %s"),
              quotearg_n_style_mem (1, locale_quoting_style, invalid,
                                    (charlen <= MB_LEN_MAX ? charlen : 1)),
-             quote_n (0, file));
+             quoteaf_n (0, file));
       return false;
     }
 
@@ -290,7 +289,7 @@ validate_file_name (char *file, bool check_basic_portability,
         file_exists = true;
       else if (errno != ENOENT || filelen == 0)
         {
-          error (0, errno, "%s", file);
+          error (0, errno, "%s", quotef (file));
           return false;
         }
     }
@@ -323,7 +322,7 @@ validate_file_name (char *file, bool check_basic_portability,
           unsigned long int len = filelen;
           unsigned long int maxlen = maxsize - 1;
           error (0, 0, _("limit %lu exceeded by length %lu of file name %s"),
-                 maxlen, len, quote (file));
+                 maxlen, len, quoteaf (file));
           return false;
         }
     }
@@ -393,7 +392,7 @@ validate_file_name (char *file, bool check_basic_portability,
 
                   default:
                     *start = '\0';
-                    error (0, errno, "%s", dir);
+                    error (0, errno, "%s", quotef (dir));
                     *start = c;
                     return false;
                   }

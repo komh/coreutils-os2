@@ -1,7 +1,7 @@
-#! /bin/sh
+#!/bin/sh
 # Test "nice".
 
-# Copyright (C) 2002-2013 Free Software Foundation, Inc.
+# Copyright (C) 2002-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,20 +73,19 @@ done
 if test x$(nice -n -1 nice 2> /dev/null) = x0 ; then
   # unprivileged user - warn about failure to change
   nice -n -1 true 2> err || fail=1
-  test -s err || fail=1
+  compare /dev/null err && fail=1
   mv err exp || framework_failure_
   nice --1 true 2> err || fail=1
   compare exp err || fail=1
   # Failure to write advisory message is fatal.  Buggy through coreutils 8.0.
   if test -w /dev/full && test -c /dev/full; then
-    nice -n -1 nice > out 2> /dev/full
-    test $? = 125 || fail=1
-    test -s out && fail=1
+    returns_ 125 nice -n -1 nice > out 2> /dev/full || fail=1
+    compare /dev/null out || fail=1
   fi
 else
   # superuser - change succeeds
   nice -n -1 nice 2> err || fail=1
-  test -s err && fail=1
+  compare /dev/null err || fail=1
   test x$(nice -n -1 nice) = x-1 || fail=1
   test x$(nice --1 nice) = x-1 || fail=1
 fi

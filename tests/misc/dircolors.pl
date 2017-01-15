@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Simple dircolors tests.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,14 @@ my @Tests =
       . "export LS_COLORS\n"}],
      ['other-wr', '-b', {IN => "owt 40;33\n"},
       {OUT => "LS_COLORS='tw=40;33:';\nexport LS_COLORS\n"}],
+     ['term-1', '-b', {IN => "TERM none\nowt 40;33\n"},
+      {OUT => "LS_COLORS='tw=40;33:';\nexport LS_COLORS\n"}],
+     ['term-2', '-b', {IN => "TERM non*\nowt 40;33\n"},
+      {OUT => "LS_COLORS='tw=40;33:';\nexport LS_COLORS\n"}],
+     ['term-3', '-b', {IN => "TERM nomatch\nowt 40;33\n"},
+      {OUT => "LS_COLORS='';\nexport LS_COLORS\n"}],
+     ['term-4', '-b', {IN => "TERM N*match\nowt 40;33\n"},
+      {OUT => "LS_COLORS='';\nexport LS_COLORS\n"}],
 
      # CAREFUL: always specify the -b option, unless explicitly testing
      # for csh syntax output.

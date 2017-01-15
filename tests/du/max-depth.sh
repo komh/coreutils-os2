@@ -1,7 +1,7 @@
 #!/bin/sh
 # exercise du's --max-depth=N option
 
-# Copyright (C) 2010-2013 Free Software Foundation, Inc.
+# Copyright (C) 2010-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
+print_ver_ du
 
 mkdir -p a/b/c/d/e || framework_failure_
 printf 'a/b/c\na/b\na\n' > exp || framework_failure_

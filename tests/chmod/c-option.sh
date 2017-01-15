@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify that chmod's --changes (-c) option works.
 
-# Copyright (C) 2000-2013 Free Software Foundation, Inc.
+# Copyright (C) 2000-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,10 +31,21 @@ chmod u=rwx $file || fail=1
 chmod -c g=rwx $file > out || fail=1
 chmod -c g=rwx $file > empty || fail=1
 
-test -s empty && fail=1
+compare /dev/null empty || fail=1
 case "$(cat out)" in
   "mode of 'f' changed from 0744 "?rwxr--r--?" to 0774 "?rwxrwxr--?) ;;
   *) cat out; fail=1 ;;
 esac
+
+# From V5.1.0 to 8.22 this would stat the wrong file and
+# give an erroneous ENOENT diagnostic
+mkdir -p a/b || framework_failure_
+# chmod g+s might fail as detailed in setgid.sh
+# but we don't care about those edge cases here
+chmod g+s a/b
+# This should never warn, but it did when special
+# bits are set on b (the common case under test)
+chmod -c -R g+w a 2>err
+compare /dev/null err || fail=1
 
 Exit $fail

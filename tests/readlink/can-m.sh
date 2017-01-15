@@ -1,7 +1,7 @@
 #!/bin/sh
 # tests for canonicalize-missing mode (readlink -m).
 
-# Copyright (C) 2004-2013 Free Software Foundation, Inc.
+# Copyright (C) 2004-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
-print_ver_ readlink
+print_ver_ readlink pwd
 
 pwd=$(pwd)
-my_pwd=$("$abs_top_builddir/src/pwd")
+my_pwd=$(env pwd -P)
 tmp=d
 
 mkdir $tmp || framework_failure_
@@ -38,7 +38,7 @@ cd "$pwd/$tmp/removed" || framework_failure_
 
 # Skip this test if the system doesn't let you remove the working directory.
 if rmdir ../removed 2>/dev/null; then
-  v=$(readlink -e .) && fail=1
+  v=$(returns_ 1 readlink -e .) || fail=1
   test -z "$v" || fail=1
 fi
 

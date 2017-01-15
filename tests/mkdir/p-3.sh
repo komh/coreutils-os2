@@ -3,7 +3,7 @@
 # causes immediate failure.  Also, ensure that we don't create
 # subsequent, relative command-line arguments in the wrong place.
 
-# Copyright (C) 2005-2013 Free Software Foundation, Inc.
+# Copyright (C) 2005-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,8 @@ mkdir no-acce2s || framework_failure_
 mkdir -p no-acce3s/d || framework_failure_
 
 p=$(pwd)
-(cd no-access && chmod 0 . && mkdir -p "$p/a/b" u/v) 2> /dev/null && fail=1
+(cd no-access && chmod 0 . && mkdir -p "$p/a/b" u/v) 2> /dev/null
+test $? -eq 1 || fail=1
 test -d "$p/a/b" || fail=1
 
 # Same as above, but with a following *absolute* name, it should succeed

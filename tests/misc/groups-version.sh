@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure groups --version output is similar to id --version
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ groups
-require_built_ groups
 
 groups --version | sed 's/^groups/id/; /^$/q' > out || fail=1
 id --version | sed '/^$/q' > exp || fail=1

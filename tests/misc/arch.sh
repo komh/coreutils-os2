@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ensure that arch output is equal to uname -m
 
-# Copyright (C) 2007-2013 Free Software Foundation, Inc.
+# Copyright (C) 2007-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ arch
-
-require_built_ arch
 
 arch > out || fail=1
 uname -m > exp || fail=1

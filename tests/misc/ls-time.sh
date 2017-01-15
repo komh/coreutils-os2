@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test some of ls's sorting options.
 
-# Copyright (C) 1998-2013 Free Software Foundation, Inc.
+# Copyright (C) 1998-2016 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ In the output below, the date of last modification for 'a' should
 have been $t3.
 EOF
   ls --full -l a
-  framework_failure_
+  skip_ "touch -m -d '$t3' didn't work"
   ;;
 esac
 

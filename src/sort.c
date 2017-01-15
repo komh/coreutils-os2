@@ -4221,7 +4221,13 @@ main (int argc, char **argv)
 
   initialize_main (&argc, &argv);
   set_program_name (argv[0]);
+
+/* On OS/2 kLIBC, strcoll() does not work on DBCS locales. Use "C" locale. */
+#ifndef __KLIBC__
   locale_ok = !! setlocale (LC_ALL, "");
+#else
+  locale_ok = false;
+#endif
   bindtextdomain (PACKAGE, LOCALEDIR);
   textdomain (PACKAGE);
 

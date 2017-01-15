@@ -22,7 +22,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils-8.23-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2014-07-21 15:15+0200\n"
 "Last-Translator: Benno Schulenberg <benno@vertaalt.nl>\n"
 "Language-Team: Esperanto <translation-team-eo@lists.sourceforge.net>\n"
@@ -982,8 +982,8 @@ msgstr "nevalida faldiga grando: %s"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1972,7 +1972,7 @@ msgid "failed to set the security context of %s"
 msgstr "malsukcesis agordi sekurecan kuntekston de %s"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "ne eblas malfermi %s por legi"
@@ -3911,11 +3911,11 @@ msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 "averto: opcioj '--apparent-size' kaj '-b' ne efikas kune kun '--inodes'"
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "nekombineblas dosieraj argumentoj kun opcio «--files0-from»"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr "kiam dosiernomoj legatas de ĉefenigujo, ne permesatas dosiernomo %s"
@@ -5090,12 +5090,12 @@ msgstr "nekongruaj kunigkampoj %lu, %lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "konfliktas la anstataŭigaj ĉenoj por vakaj kampoj"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "plursigna tabo %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "nekongruaj taboj"
 
@@ -8438,7 +8438,7 @@ msgstr "malsukcesis malfermi %s por skribado"
 msgid "invalid number of passes"
 msgstr "nevalida nombro de paŝoj: %s"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "pluraj aleatoraj fontoj indikatas"
 
@@ -8501,7 +8501,7 @@ msgstr "nevalida gamo: %s"
 msgid "invalid line count: %s"
 msgstr "nevalida nombro de linioj: %s"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "pluraj eligaj dosieroj indikatas"
 
@@ -8704,7 +8704,7 @@ msgstr "malsukcesis malfermo"
 msgid "fflush failed"
 msgstr "malsukcesis fflush()"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "malsukcesis fermo"
 
@@ -8834,72 +8834,72 @@ msgstr "nekombineblas opcioj «-%s»"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: nevalida nombro je komenco de %s"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 msgid "invalid number after '-'"
 msgstr "nevalida numero post '-'"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 msgid "invalid number after '.'"
 msgstr "nevalida numero post '.'"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "hazarda signo en kampindiko"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "pluraj kunpremaj programoj indikatas"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "nevalida numero je kampkomenco"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "kampnumero estas nulo"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "signopozicio estas nulo"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 msgid "invalid number after ','"
 msgstr "nevalida numero post ','"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "vaka tabo"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "malsukcesis legi dosiernomojn el %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: nevalida dosiernomo (longo nulas)"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "neniu enigo el %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "uzatas %s ordigaj reguloj"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 #, fuzzy
 msgid "failed to set locale; "
 msgstr "malsukcesis agordi novan rolon %s"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "uzatas simpla bajtkomparo"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "aldona argumento %s ne permesatas por '-%c'"
@@ -11309,29 +11309,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "tro da ripetitaj linioj"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "nevalida nombro de saltendaj kampoj"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "nevalida nombro de saltendaj bajtoj"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "nevalida nombro de komparendaj bajtoj"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr "nekombineblas opcio «--group» kun «-c», «-d», «-D», kaj «-u»"
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "sensencas kaj grupigi kaj montri ripetnombrojn"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "sensencas montri kaj ĉiujn ripetitajn liniojn kaj la ripetnombrojn"

@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils 8.25-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2016-03-15 01:33+0100\n"
 "Last-Translator: Gabor Kelemen <kelemeng@gnome.hu>\n"
 "Language-Team: Hungarian <translation-team-hu@lists.sourceforge.net>\n"
@@ -957,8 +957,8 @@ msgstr "érvénytelen sortörésméret"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1958,7 +1958,7 @@ msgid "failed to set the security context of %s"
 msgstr "%s biztonsági kontextusának beállítása meghiúsult"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "%s nem nyitható meg olvasásra"
@@ -4142,11 +4142,11 @@ msgstr ""
 "figyelmeztetés: a --apparent-size és -b kapcsolók hatástalanok a --inodes "
 "megadásakor"
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "a fájloperandusok nem kombinálhatók a --files0-from kapcsolóval"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -5340,12 +5340,12 @@ msgstr "inkompatibilis összekapcsolási mezők: %lu, %lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "ütköző üres-mező helyettesítési karakterlánc"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "többkarakteres tab: %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "nem kompatibilis tabok"
 
@@ -9408,7 +9408,7 @@ msgstr "%s: az írásra megnyitás meghiúsult"
 msgid "invalid number of passes"
 msgstr "érvénytelen menetszám"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "több véletlen forrás van megadva"
 
@@ -9468,7 +9468,7 @@ msgstr "érvénytelen bemeneti tartomány"
 msgid "invalid line count: %s"
 msgstr "érvénytelen sorszám: %s"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "több kimeneti fájl van megadva"
 
@@ -9771,7 +9771,7 @@ msgstr "a megnyitás meghiúsult"
 msgid "fflush failed"
 msgstr "az fflush meghiúsult"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "a lezárás meghiúsult"
 
@@ -9903,71 +9903,71 @@ msgstr "a következő kapcsolók inkompatibilisek: „-%s”"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: érvénytelen szám a(z) %s kezdetén"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 msgid "invalid number after '-'"
 msgstr "érvénytelen szám a „-” után"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 msgid "invalid number after '.'"
 msgstr "érvénytelen szám a „.” után"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "véletlen karakter a mezőspecifikációban"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "több tömörítőprogram van megadva"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "érvénytelen szám a mező kezdeténél"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "a mezőszám nulla"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "karaktereltolás nulla"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 msgid "invalid number after ','"
 msgstr "érvénytelen szám a „,” után"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "üres tab"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "nem olvashatók fájlnevek a következőből: %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: érvénytelen nulla hosszúságú fájlnév"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "nincs bemenet ebből: %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "%s rendezési szabályok használata"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 msgid "failed to set locale; "
 msgstr "a területi beállítás megadása meghiúsult; "
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "egyszerű bájt-összehasonlítás használata"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "a(z) %s extra operandus nem engedélyezett a -%c kapcsolóval"
@@ -12916,29 +12916,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "túl sok ismétlődő sor"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "a kihagyandó mezők száma érvénytelen"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "a kihagyandó bájtok száma érvénytelen"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "az összehasonlítandó bájtok száma érvénytelen"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr "a --group és a -c/-d/-D/-u kapcsolók kölcsönösen kizárják egymást"
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "a csoportosítás és az ismétlődések számának kiírása értelmetlen"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "az összes kettőzött sor és az ismétlődések kiírása értelmetlen"

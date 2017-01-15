@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils 8.26-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2016-11-27 11:49+0300\n"
 "Last-Translator: Yuri Kozlov <yuray@komyakino.ru>\n"
 "Language-Team: Russian <gnu@d07.ru>\n"
@@ -955,8 +955,8 @@ msgstr "неверный размер переноса"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1935,7 +1935,7 @@ msgid "failed to set the security context of %s"
 msgstr "не удалось установить контекст безопасности у %s"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "невозможно открыть %s для чтения"
@@ -4100,11 +4100,11 @@ msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 "предупреждение: ключи --apparent-size и -b не работают вместе с --inodes"
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "операнды-файлы нельзя сочетать с --files0-from"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -5274,12 +5274,12 @@ msgstr "поля объединения %lu, %lu несовместимы"
 msgid "conflicting empty-field replacement strings"
 msgstr "конфликтующие строки замены для пустого поля"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "многосимвольная табуляция %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "несовместимая табуляция"
 
@@ -9237,7 +9237,7 @@ msgstr "%s: не удалось открыть для чтения"
 msgid "invalid number of passes"
 msgstr "неверное число проходов"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "задано несколько источников случайных чисел"
 
@@ -9295,7 +9295,7 @@ msgstr "недопустимый входной диапазон"
 msgid "invalid line count: %s"
 msgstr "неверное число строк: %s"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "задано несколько выходных файлов"
 
@@ -9590,7 +9590,7 @@ msgstr "операция открытия завершилась неудачн�
 msgid "fflush failed"
 msgstr "операция fflush завершилась неудачно"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "закрытие завершилось неудачно"
 
@@ -9720,71 +9720,71 @@ msgstr "ключи «-%s» несовместимы"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: неверный счетчик в начале %s"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 msgid "invalid number after '-'"
 msgstr "неверное число после «-»"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 msgid "invalid number after '.'"
 msgstr "неверное число после «.»"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "лишний символ в спецификации поля"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "заданы несколько программ сжатия"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "неверное число в начале поля"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "нулевой номер поля"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "нулевой знаковый сдвиг"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 msgid "invalid number after ','"
 msgstr "неверное число после «,»"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "пустая табуляция"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "невозможно прочитать имена файлов из %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: неверное имя файла нулевой длины"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "нет ввода из %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "правила, используемые для сортировки: %s"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 msgid "failed to set locale; "
 msgstr "ошибка при задании локали; "
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "используется простое побайтовое сравнение"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "дополнительный операнд %s не допустим с -%c"
@@ -12709,29 +12709,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "слишком много повторяющихся строк"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "неверное число пропускаемых полей"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "неверное число пропускаемых байт"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "неверное число сравниваемых байт"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr "ключ --group взаимоисключаем с -c/-d/-D/-u"
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "группировка и вывод всех повторов не имеет смысла"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "вывод всех повторяющихся сток и числа повторений не имеет смысла"

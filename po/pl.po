@@ -16,7 +16,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils 8.26-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2016-11-25 00:15+0100\n"
 "Last-Translator: Rafał Maszkowski <rzm@icm.edu.pl>\n"
 "Language-Team: Polish <translation-team-pl@lists.sourceforge.net>\n"
@@ -959,8 +959,8 @@ msgstr "błędny rozmiar łamania linii"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1948,7 +1948,7 @@ msgid "failed to set the security context of %s"
 msgstr "nie udało się ustawić kontekstu bezpieczeństwa %s"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "nie można otworzyć %s do czytania"
@@ -4129,12 +4129,12 @@ msgstr ""
 "warning: opcje --apparent-size i -b nie działają jeżeli jest włączona opcja "
 "--inodes"
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr ""
 "nie można podawać argumentów plikowych i opcji --files0-from równocześnie"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr "przy czytaniu nazw na wejściu plik nie może mieć nazwy %s"
@@ -5314,12 +5314,12 @@ msgstr "niekompatybilne pola łączenia %lu, %lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "konflikt napisów zastępujących puste pola"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "wieloznakowy TAB %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "niekompatybilne TABy"
 
@@ -9300,7 +9300,7 @@ msgstr "%s: błąd przy otwieraniu do zapisu"
 msgid "invalid number of passes"
 msgstr "błędna liczba przebiegów"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "podano wiele źródeł losowych bajtów"
 
@@ -9363,7 +9363,7 @@ msgstr "błędny zakres wejściowy"
 msgid "invalid line count: %s"
 msgstr "błędna liczba linii: %s"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "podano wiele plików wyjściowych"
 
@@ -9656,7 +9656,7 @@ msgstr "błąd otwierania pliku"
 msgid "fflush failed"
 msgstr "błąd fflush"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "błąd zamykania pliku"
 
@@ -9787,71 +9787,71 @@ msgstr "opcje „-%s” nie pasują do siebie"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: błędna liczba na początku %s"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 msgid "invalid number after '-'"
 msgstr "błędna liczba po „-”"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 msgid "invalid number after '.'"
 msgstr "błędna liczba po „.”"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "nieprawidłowy znak w specyfikacji pola"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "podano wiele programów kompresujących"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "błędna liczba na początku pola"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "numer pola wynosi zero"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "numer znaku wynosi zero"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 msgid "invalid number after ','"
 msgstr "błędna liczba po „,”"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "pusty TAB"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "nie można wczytać nazw plików z %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: błędna nazwa pliku - o zerowej długości"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "brak danych z %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "użycie reguł sortowania %s"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 msgid "failed to set locale; "
 msgstr "nie udało się włączyć ustawień lokalnych; "
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "użycie prostego porównywania bajtów"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "dodatkowy argument %s nie może być użyty z opcją -%c"
@@ -12755,32 +12755,32 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "za dużo powtórzonych linii"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "błędna liczba pól do przeskoczenia"
 
 # bytes to skip? we were talking about chars? - rzm
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "błędna liczba bajtów do przeskoczenia"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "błędna liczba bajtów do porównania"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr "--group wyklucza się wzajemnie z -c/-d/-D/-u"
 
 # ? rzm
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "łączenie w grupy i wypisywanie liczby powtórzeń nie ma sensu"
 
 # ? rzm
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr ""

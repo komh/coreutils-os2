@@ -4123,7 +4123,7 @@ gen_single_binary = $(top_srcdir)/build-aux/gen-single-binary.sh
 ACLOCAL_AMFLAGS = -I m4
 
 # Just prior to distribution, ...
-# transform the automake-generated rule that runs 'rm -f rm > /dev/null 2>&1 || /bin/rm -f rm'.
+# transform the automake-generated rule that runs 'rm -f rm > /dev/null 2>&1 || /bin/rm -f rm > /dev/null 2>&1 || /bin/rm -f rm'.
 # On some systems, that command would fail with a diagnostic like
 # "rm: cannot unlink 'rm': Text file busy" when '.' appears so early
 # in the shell's search path that running 'rm' would run the 'rm'
@@ -7608,7 +7608,7 @@ uninstall-binPROGRAMS:
 	cd "$(DESTDIR)$(bindir)" && rm -f $$files
 
 clean-binPROGRAMS:
-	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS) > /dev/null 2>&1 || /bin/rm -f $(bin_PROGRAMS)
+	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS) > /dev/null 2>&1 || /bin/rm -f $(bin_PROGRAMS) > /dev/null 2>&1 || /bin/rm -f $(bin_PROGRAMS)
 
 clean-noinstPROGRAMS:
 	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)

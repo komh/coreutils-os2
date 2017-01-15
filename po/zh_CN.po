@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils 8.23-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2015-02-20 23:59+0800\n"
 "Last-Translator: Aron Xu <happyaron.xu@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -951,8 +951,8 @@ msgstr "无效的换行字符数：%s"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1905,7 +1905,7 @@ msgid "failed to set the security context of %s"
 msgstr "设置%s 的安全环境为%s 失败"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "无法打开%s 读取数据"
@@ -3937,11 +3937,11 @@ msgstr "警告：显示总用量的选项和--max-depth=%lu 互斥"
 msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "文件操作数不能于--files0-from 参数一起使用"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr "当从标准输入读取时，不允许指定文件名%s"
@@ -5065,12 +5065,12 @@ msgstr "不兼容的连接区块%lu，%lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "有冲突的空区块替换字符串"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "多字符标签%s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "不兼容的标签"
 
@@ -8750,7 +8750,7 @@ msgstr "%s：无法以写模式打开"
 msgid "invalid number of passes"
 msgstr "%s：覆盖次数无效"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "指定了多个随机源"
 
@@ -8814,7 +8814,7 @@ msgstr "无效的输入范围：%s"
 msgid "invalid line count: %s"
 msgstr "无效的行数%s"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "指定了多个输出文件"
 
@@ -9082,7 +9082,7 @@ msgstr "打开失败"
 msgid "fflush failed"
 msgstr "冲洗流失败(fflush)"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "关闭失败"
 
@@ -9211,75 +9211,75 @@ msgstr "选项\"-%s\"不兼容"
 msgid "%s: invalid count at start of %s"
 msgstr "%s：在%s 处的计数无效"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 #, fuzzy
 msgid "invalid number after '-'"
 msgstr "在\"-\"后的编号无效"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 #, fuzzy
 msgid "invalid number after '.'"
 msgstr "在\".\"后的编号无效"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "区块中有孤立字符"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "指定了多个压缩程序"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "区块起始处的编号无效"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "区块编号为零"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "字符偏移量为零"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 #, fuzzy
 msgid "invalid number after ','"
 msgstr "在\",\"后的编号无效"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "空标签"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "无法从%s 中读取文件名"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s：%lu：无效的 0 长度文件名"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "没有来自%s 的输入"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "使用%s 排序规则"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 #, fuzzy
 msgid "failed to set locale; "
 msgstr "设置新角色%s 失败"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "使用简单字节比较"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "不允许额外的操作数%s 与-%c 一起使用"
@@ -12081,29 +12081,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "重复行过多"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "要略过的区块数量无效"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "要略过的字节数量无效"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "要对照的字节数量无效"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr ""
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, fuzzy, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "同时输出重复的行和重复计数是没有意义的"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "同时输出重复的行和重复计数是没有意义的"

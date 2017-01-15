@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNU coreutils 8.14-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2011-10-09 10:15+0100\n"
 "Last-Translator: Giorgio Catanzaro <catanzag@gmail.com>\n"
 "Language-Team: Italian <tp@lists.linux.it>\n"
@@ -1010,8 +1010,8 @@ msgstr "dimensione di ritorno a capo non valida: %s"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -2018,7 +2018,7 @@ msgid "failed to set the security context of %s"
 msgstr "impostazione del contesto di sicurezza di %s in %s non riuscita"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "impossibile aprire %s per la lettura"
@@ -4182,11 +4182,11 @@ msgstr "attenzione: riassumere è in conflitto con --max-depth=%lu"
 msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "gli operandi dei file non possono essere combinati con --files0-from"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -5393,12 +5393,12 @@ msgstr "campi di unione incompatibili %lu, %lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "conflitto fra le stringhe di sostituzione per i campi vuoti"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "tabulatore multicarattere %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "tabulatori incompatibili"
 
@@ -9378,7 +9378,7 @@ msgstr "%s: apertura per la scrittura non riuscita"
 msgid "invalid number of passes"
 msgstr "%s: numero di passi non valido"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "sono state specificate sorgenti casuali multiple"
 
@@ -9446,7 +9446,7 @@ msgstr "intervallo di input %s non valido"
 msgid "invalid line count: %s"
 msgstr "numero di riga %s non valido"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "è stato specificato più di un file di output"
 
@@ -9745,7 +9745,7 @@ msgstr "open non riuscita"
 msgid "fflush failed"
 msgstr "fflush non riuscita"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "close non riuscita"
 
@@ -9877,75 +9877,75 @@ msgstr "le opzioni «-%s» sono incompatibili"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: conteggio non valido all'inizio di %s"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 #, fuzzy
 msgid "invalid number after '-'"
 msgstr "numero non valido dopo \"-\""
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 #, fuzzy
 msgid "invalid number after '.'"
 msgstr "numero non valido dopo \".\""
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "carattere estraneo nella specifica del campo"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "è stato specificato più di un programma di compressione"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "numero non valido all'inizio del campo"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "il numero del campo è zero"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "l'offset del carattere è zero"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 #, fuzzy
 msgid "invalid number after ','"
 msgstr "numero non valido dopo \",\""
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "tabulatore vuoto"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "impossibile leggere i nomi dei file da %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: nome di file di lunghezza nulla non valido"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "nessun input da %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "usate le regole di ordinamento %s"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 #, fuzzy
 msgid "failed to set locale; "
 msgstr "impostazione del nuovo ruolo %s non riuscita"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "usato il confronto a singolo byte"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "operando %s in più non permesso con -%c"
@@ -12904,30 +12904,30 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "troppe righe ripetute"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "numero di campi da saltare non valido"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "numero di byte da saltare non valido"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "numero di byte da confrontare non valido"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr ""
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, fuzzy, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr ""
 "è senza senso stampare tutte le righe duplicate e il numero delle ripetizioni"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr ""

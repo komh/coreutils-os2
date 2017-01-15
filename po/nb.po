@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: coreutils-8.26-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2016-11-30 07:40+0100\n"
 "Last-Translator: Åka Sikrom <a4@hush.com>\n"
 "Language-Team: Norwegian Bokmaal <i18n-nb@lister.ping.uio.no>\n"
@@ -951,8 +951,8 @@ msgstr "ugyldig linjebruddsstørrelse"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1926,7 +1926,7 @@ msgid "failed to set the security context of %s"
 msgstr "klarte ikke å gi %s ny sikkerhetskontekst"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "klarte ikke å lese %s"
@@ -4071,11 +4071,11 @@ msgstr ""
 "advarsel: valgene «--apparent-size» og «-b» er ugyldige når også «--inodes» "
 "er valgt"
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "du kan ikke kombinere filparametre med «--files0-from»"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -5241,12 +5241,12 @@ msgstr "sammenføyningsfelt «%lu» og «%lu» er uforenlige"
 msgid "conflicting empty-field replacement strings"
 msgstr "strenger for tomme felt er i konflikt med hverandre"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "tabulator %s består av flere tegn"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "uforenlige tabulatorer"
 
@@ -9160,7 +9160,7 @@ msgstr "%s: klarte ikke å åpne fila for (over-)skriving"
 msgid "invalid number of passes"
 msgstr "ugyldig antall runder"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "du har oppgitt flere vilkårlighets(random-)kilder samtidig"
 
@@ -9221,7 +9221,7 @@ msgstr "ugyldig inndata-rekkevidde"
 msgid "invalid line count: %s"
 msgstr "%s er et ugyldig linjeantall"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "du har valgt flere utdatafiler samtidig"
 
@@ -9507,7 +9507,7 @@ msgstr "åpning av fil mislyktes"
 msgid "fflush failed"
 msgstr "fflush mislyktes"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "lukking av fil mislyktes"
 
@@ -9636,71 +9636,71 @@ msgstr "valgene «-%s» er ikke kompatible"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: ugyldig antall i starten av %s"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 msgid "invalid number after '-'"
 msgstr "ugyldig tall etter «-»"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 msgid "invalid number after '.'"
 msgstr "ugyldig tall etter «.»"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "ugyldig tegn i feltspesifikasjon"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "du har valgt flere komprimeringsprogrammer samtidig"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "ugyldig tall i feltstart"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "feltnummer er null"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "tegnposisjon er null"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 msgid "invalid number after ','"
 msgstr "ugyldig tall etter «,»"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "tom tabulator"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "klarte ikke å lese filnavn fra %s"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: tomt filnavn er ugyldig"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "ingen inndata fra %s"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "bruker sorteringsregler fra %s"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 msgid "failed to set locale; "
 msgstr "klarte ikke å endre region;"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "bruker enkel byte-sammenlikning"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "du kan ikke bruke %s som ekstra parameter ved bruk av «-%c»"
@@ -12583,31 +12583,31 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "for mange duplikatlinjer"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "ugyldig antall felt å hoppe over"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "ugyldig antall byte å hoppe over"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "ugyldig antall byte å sammenlikne"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr ""
 "du kan ikke velge «--group» samtidig som «-c», «-d», «-D» og/eller «-u»"
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr ""
 "det er meningsløst å både gruppere og skriv ut gjentakelsesantall samtidig"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr ""

@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNU coreutils 8.23-pre1\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2014-11-07 09:47+0000\n"
 "Last-Translator: Yasuaki Taniguchi <yasuakit@gmail.com>\n"
 "Language-Team: Japanese <translation-team-ja@lists.sourceforge.net>\n"
@@ -954,8 +954,8 @@ msgstr "無効な折り返し列数: %s"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, c-format
 msgid "extra operand %s"
@@ -1941,7 +1941,7 @@ msgid "failed to set the security context of %s"
 msgstr "%s のセキュリティコンテキストを設定できませんでした"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, c-format
 msgid "cannot open %s for reading"
 msgstr "%s を 読み込み用に開くことが出来ません"
@@ -4055,11 +4055,11 @@ msgstr "警告: 統計(-s)と --max-depth=%lu の指定が競合しています"
 msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr "ファイルオペランドと --files0-from を同時に使用できません"
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -5240,12 +5240,12 @@ msgstr "結合するフィールドが不完全です %lu、%lu"
 msgid "conflicting empty-field replacement strings"
 msgstr "空の文字列を置換する文字列が競合しています"
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, c-format
 msgid "multi-character tab %s"
 msgstr "複数文字のタブ %s"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr "互換性のないタブです"
 
@@ -9115,7 +9115,7 @@ msgstr "%s: 書き込み用に開くことに失敗しました"
 msgid "invalid number of passes"
 msgstr "%s: 無効な繰り返し回数です"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr "複数のランダムソースが指定されました"
 
@@ -9179,7 +9179,7 @@ msgstr "%s: 無効な入力範囲です"
 msgid "invalid line count: %s"
 msgstr "%s: 無効な行数です"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 msgid "multiple output files specified"
 msgstr "複数の出力ファイルが指定されています"
 
@@ -9482,7 +9482,7 @@ msgstr "オープンに失敗しました"
 msgid "fflush failed"
 msgstr "fflush に失敗しました"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "クローズに失敗しました"
 
@@ -9613,75 +9613,75 @@ msgstr "オプション `-%s' は両立しません"
 msgid "%s: invalid count at start of %s"
 msgstr "%s: %s の開始番号が無効です"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 #, fuzzy
 msgid "invalid number after '-'"
 msgstr "`-' の後の数字が正しくありません"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 #, fuzzy
 msgid "invalid number after '.'"
 msgstr "`.' の後の数字が正しくありません"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "フィールド指定に使えない文字があります"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr "複数の圧縮プログラムが指定されています"
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "フィールド開始番号が無効です"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "フィールド番号がゼロです"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "文字のオフセットがゼロです"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 #, fuzzy
 msgid "invalid number after ','"
 msgstr "`,' の後の数字が正しくありません"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr "タブが空です"
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, c-format
 msgid "cannot read file names from %s"
 msgstr "ファイル名を %s から読み込むことが出来ません"
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s:%lu: 長さが 0 のファイル名は無効です"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, c-format
 msgid "no input from %s"
 msgstr "%s からの入力がありません"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr "%s ソートルールを使用しています"
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 #, fuzzy
 msgid "failed to set locale; "
 msgstr "新しいロール %s に設定できませんでした"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr "単なるバイト比較を使用しています"
 
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "追加のオペランド %s は -%c と併せて使用できません"
@@ -12595,29 +12595,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "重複した行が多すぎます"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "スキップするフィールド数の指定が無効です"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "スキップするバイト数の指定が無効です"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "比較するバイト数の指定が無効です"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr ""
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, fuzzy, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "全ての重複行と繰り返し回数を表示することに意味がありません"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "全ての重複行と繰り返し回数を表示することに意味がありません"

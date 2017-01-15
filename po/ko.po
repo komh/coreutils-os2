@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNU textutils 2.0.22\n"
 "Report-Msgid-Bugs-To: bug-coreutils@gnu.org\n"
-"POT-Creation-Date: 2016-11-30 18:14+0000\n"
+"POT-Creation-Date: 2017-01-15 15:35+0900\n"
 "PO-Revision-Date: 2002-07-22 20:02+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Korean <translation-team-ko@lists.sourceforge.net>\n"
@@ -940,8 +940,8 @@ msgstr "부적절한 타입의 문자열 `%s'"
 #: src/hostname.c:113 src/id.c:190 src/install.c:983 src/join.c:975
 #: src/link.c:86 src/ln.c:565 src/logname.c:72 src/mknod.c:182 src/mv.c:447
 #: src/nproc.c:115 src/od.c:1870 src/ptx.c:2089 src/seq.c:619 src/shuf.c:501
-#: src/sort.c:4592 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
-#: src/uname.c:252 src/uniq.c:533 src/uniq.c:550 src/unlink.c:82
+#: src/sort.c:4598 src/split.c:1536 src/tr.c:1763 src/tsort.c:561 src/tty.c:112
+#: src/uname.c:252 src/uniq.c:536 src/uniq.c:553 src/unlink.c:82
 #: src/uptime.c:253 src/users.c:147 src/wc.c:699 src/who.c:830 src/whoami.c:80
 #, fuzzy, c-format
 msgid "extra operand %s"
@@ -1831,7 +1831,7 @@ msgid "failed to set the security context of %s"
 msgstr "%s의 시간을 유지합니다"
 
 #: src/copy.c:1035 src/csplit.c:655 src/du.c:1026 src/fmt.c:439 src/head.c:889
-#: src/sort.c:4604 src/split.c:1552 src/tail.c:1909 src/wc.c:711
+#: src/sort.c:4610 src/split.c:1552 src/tail.c:1909 src/wc.c:711
 #, fuzzy, c-format
 msgid "cannot open %s for reading"
 msgstr "`%s'를 `%s'로 이동할 수 없습니다"
@@ -3743,11 +3743,11 @@ msgstr "경고: --max-depth=%d는 요약 옵션과 충돌합니다"
 msgid "warning: options --apparent-size and -b are ineffective with --inodes"
 msgstr ""
 
-#: src/du.c:1021 src/sort.c:4594 src/wc.c:701
+#: src/du.c:1021 src/sort.c:4600 src/wc.c:701
 msgid "file operands cannot be combined with --files0-from"
 msgstr ""
 
-#: src/du.c:1088 src/sort.c:4623 src/wc.c:780
+#: src/du.c:1088 src/sort.c:4629 src/wc.c:780
 #, c-format
 msgid "when reading file names from stdin, no file name of %s allowed"
 msgstr ""
@@ -4735,12 +4735,12 @@ msgstr ""
 msgid "conflicting empty-field replacement strings"
 msgstr ""
 
-#: src/join.c:1115 src/sort.c:4529
+#: src/join.c:1115 src/sort.c:4535
 #, fuzzy, c-format
 msgid "multi-character tab %s"
 msgstr "여러 문자로 된 탭 `%s'"
 
-#: src/join.c:1119 src/sort.c:4534
+#: src/join.c:1119 src/sort.c:4540
 msgid "incompatible tabs"
 msgstr ""
 
@@ -8153,7 +8153,7 @@ msgstr "%s: 파일이 너무 깁니다"
 msgid "invalid number of passes"
 msgstr "%s: 부적절한 초"
 
-#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4502
+#: src/shred.c:1256 src/shuf.c:472 src/sort.c:4508
 msgid "multiple random sources specified"
 msgstr ""
 
@@ -8207,7 +8207,7 @@ msgstr "부적절한 숫자"
 msgid "invalid line count: %s"
 msgstr "부적절한 폭: `%s'"
 
-#: src/shuf.c:466 src/sort.c:4496
+#: src/shuf.c:466 src/sort.c:4502
 #, fuzzy
 msgid "multiple output files specified"
 msgstr "%s를 지웁니다\n"
@@ -8471,7 +8471,7 @@ msgstr "파일 열기 실패"
 msgid "fflush failed"
 msgstr "파일 닫기 실패"
 
-#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4781
+#: src/sort.c:1003 src/sort.c:2090 src/sort.c:4787
 msgid "close failed"
 msgstr "파일 닫기 실패"
 
@@ -8603,76 +8603,76 @@ msgstr ""
 msgid "%s: invalid count at start of %s"
 msgstr "%s: `%s' 시작 부분에 부적절한 갯수"
 
-#: src/sort.c:4356
+#: src/sort.c:4362
 #, fuzzy
 msgid "invalid number after '-'"
 msgstr "`-' 다음에 부적절한 숫자"
 
-#: src/sort.c:4363 src/sort.c:4449 src/sort.c:4477
+#: src/sort.c:4369 src/sort.c:4455 src/sort.c:4483
 #, fuzzy
 msgid "invalid number after '.'"
 msgstr "`.' 다음에 부적절한 숫자"
 
-#: src/sort.c:4376 src/sort.c:4482
+#: src/sort.c:4382 src/sort.c:4488
 msgid "stray character in field spec"
 msgstr "필드 스펙에 벗어난 문자"
 
-#: src/sort.c:4423
+#: src/sort.c:4429
 msgid "multiple compress programs specified"
 msgstr ""
 
-#: src/sort.c:4440
+#: src/sort.c:4446
 msgid "invalid number at field start"
 msgstr "필드 처음에 부적절한 숫자"
 
-#: src/sort.c:4444 src/sort.c:4472
+#: src/sort.c:4450 src/sort.c:4478
 msgid "field number is zero"
 msgstr "필드 개수가 0입니다"
 
-#: src/sort.c:4453
+#: src/sort.c:4459
 msgid "character offset is zero"
 msgstr "문자 오프셋이 0입니다"
 
-#: src/sort.c:4468
+#: src/sort.c:4474
 #, fuzzy
 msgid "invalid number after ','"
 msgstr "`,' 다음에 부적절한 숫자"
 
-#: src/sort.c:4518
+#: src/sort.c:4524
 msgid "empty tab"
 msgstr ""
 
-#: src/sort.c:4611 src/wc.c:725
+#: src/sort.c:4617 src/wc.c:725
 #, fuzzy, c-format
 msgid "cannot read file names from %s"
 msgstr "비교한 문자열은 %s과(와) %s입니다."
 
-#: src/sort.c:4633
+#: src/sort.c:4639
 #, fuzzy, c-format
 msgid "%s:%lu: invalid zero-length file name"
 msgstr "%s: 부적절한 접미어 길이"
 
-#: src/sort.c:4639
+#: src/sort.c:4645
 #, fuzzy, c-format
 msgid "no input from %s"
 msgstr "파일 `%s'을(를) 만듦\n"
 
-#: src/sort.c:4685
+#: src/sort.c:4691
 #, c-format
 msgid "using %s sorting rules"
 msgstr ""
 
-#: src/sort.c:4693
+#: src/sort.c:4699
 #, fuzzy
 msgid "failed to set locale; "
 msgstr "%s의 시간을 유지합니다"
 
-#: src/sort.c:4694
+#: src/sort.c:4700
 msgid "using simple byte comparison"
 msgstr ""
 
 # extra operand? 뭔 소리야?
-#: src/sort.c:4726
+#: src/sort.c:4732
 #, fuzzy, c-format
 msgid "extra operand %s not allowed with -%c"
 msgstr "-c 옵션에서는 추가 피연산자 `%s'을(를) 쓸 수 없습니다"
@@ -11108,29 +11108,29 @@ msgstr ""
 msgid "too many repeated lines"
 msgstr "인수가 너무 많음"
 
-#: src/uniq.c:613
+#: src/uniq.c:616
 msgid "invalid number of fields to skip"
 msgstr "건너 뛸 필드의 개수가 부적절합니다"
 
-#: src/uniq.c:622
+#: src/uniq.c:625
 msgid "invalid number of bytes to skip"
 msgstr "건너 뛸 바이트 수가 부적절합니다"
 
-#: src/uniq.c:632
+#: src/uniq.c:635
 msgid "invalid number of bytes to compare"
 msgstr "비교할 바이트의 개수가 부적절합니다"
 
-#: src/uniq.c:654
+#: src/uniq.c:657
 #, c-format
 msgid "--group is mutually exclusive with -c/-d/-D/-u"
 msgstr ""
 
-#: src/uniq.c:661
+#: src/uniq.c:664
 #, fuzzy, c-format
 msgid "grouping and printing repeat counts is meaningless"
 msgstr "반복된 줄을 표시하고 회수를 세는 것은 무의미합니다"
 
-#: src/uniq.c:668
+#: src/uniq.c:671
 #, c-format
 msgid "printing all duplicated lines and repeat counts is meaningless"
 msgstr "반복된 줄을 표시하고 회수를 세는 것은 무의미합니다"

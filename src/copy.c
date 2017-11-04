@@ -1657,6 +1657,25 @@ same_file_ok (char const *src_name, struct stat const *src_sb,
         }
     }
 
+#ifdef __KLIBC__
+  if (same) {
+    char *src_abs;
+    char *dst_abs;
+    bool result = false;
+
+    src_abs = realpath (src_name, NULL);
+    dst_abs = realpath (dst_name, NULL);
+
+    if (src_abs != NULL && dst_abs != NULL)
+      result = strcasecmp (src_abs, dst_abs) != 0;
+
+    free (src_abs);
+    free (dst_abs);
+
+    return result;
+  }
+#endif
+
   return false;
 }
 

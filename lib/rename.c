@@ -349,7 +349,7 @@ rpl_rename (char const *src, char const *dst)
           errno = S_ISDIR (dst_st.st_mode) ? EISDIR : ENOTDIR;
           return -1;
         }
-# if RENAME_HARD_LINK_BUG
+# if RENAME_HARD_LINK_BUG && !defined __KLIBC__
       if (SAME_INODE (src_st, dst_st))
         return 0;
 # endif /* RENAME_HARD_LINK_BUG */

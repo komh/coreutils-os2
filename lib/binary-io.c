@@ -19,7 +19,7 @@
 #define BINARY_IO_INLINE _GL_EXTERN_INLINE
 #include "binary-io.h"
 
-#if defined __DJGPP__ || defined __EMX__
+#if defined __DJGPP__
 # include <errno.h>
 # include <unistd.h>
 

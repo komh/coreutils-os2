@@ -53,7 +53,7 @@ __gl_setmode (int fd _GL_UNUSED, int mode _GL_UNUSED)
 }
 #endif
 
-#if defined __DJGPP__ || defined __EMX__
+#if defined __DJGPP__
 extern int __gl_setmode_check (int);
 #else
 BINARY_IO_INLINE int
@@ -70,6 +70,12 @@ BINARY_IO_INLINE int
 set_binary_mode (int fd, int mode)
 {
   int r = __gl_setmode_check (fd);
+#if defined __EMX__
+  /* On OS/2, setting stdin/out/err to binary is not an error, but
+     non-sense.  */
+  if (isatty (fd))
+    mode = O_TEXT;
+#endif
   return r != 0 ? r : __gl_setmode (fd, mode);
 }
 

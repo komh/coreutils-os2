@@ -1,5 +1,5 @@
 /* head -- output first part of file(s)
-   Copyright (C) 1989-2016 Free Software Foundation, Inc.
+   Copyright (C) 1989-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Options: (see usage)
    Reads from standard input if no files are given or when a filename of
@@ -37,7 +37,7 @@
 #include "quote.h"
 #include "safe-read.h"
 #include "stat-size.h"
-#include "xfreopen.h"
+#include "xbinary-io.h"
 #include "xdectoint.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
@@ -141,6 +141,7 @@ With more than one FILE, precede each with a header giving the file name.\n\
 NUM may have a multiplier suffix:\n\
 b 512, kB 1000, K 1024, MB 1000*1000, M 1024*1024,\n\
 GB 1000*1000*1000, G 1024*1024*1024, and so on for T, P, E, Z, Y.\n\
+Binary prefixes can be used, too: KiB=K, MiB=M, and so on.\n\
 "), stdout);
       emit_ancillary_info (PROGRAM_NAME);
     }
@@ -878,8 +879,7 @@ head_file (const char *filename, uintmax_t n_units, bool count_lines,
       have_read_stdin = true;
       fd = STDIN_FILENO;
       filename = _("standard input");
-      if (O_BINARY && ! isatty (STDIN_FILENO))
-        xfreopen (NULL, "rb", stdin);
+      xset_binary_mode (STDIN_FILENO, O_BINARY);
     }
   else
     {
@@ -1083,8 +1083,7 @@ main (int argc, char **argv)
                ? (char const *const *) &argv[optind]
                : default_file_list);
 
-  if (O_BINARY && ! isatty (STDOUT_FILENO))
-    xfreopen (NULL, "wb", stdout);
+  xset_binary_mode (STDOUT_FILENO, O_BINARY);
 
   for (i = 0; file_list[i]; ++i)
     ok &= head_file (file_list[i], n_units, count_lines, elide_from_end);

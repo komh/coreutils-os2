@@ -1,5 +1,5 @@
 /* wc - print the number of lines, words, and bytes in files
-   Copyright (C) 1985-2016 Free Software Foundation, Inc.
+   Copyright (C) 1985-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Rubin, phr@ocf.berkeley.edu
    and David MacKenzie, djm@gnu.ai.mit.edu. */
@@ -36,7 +36,7 @@
 #include "readtokens0.h"
 #include "safe-read.h"
 #include "stat-size.h"
-#include "xfreopen.h"
+#include "xbinary-io.h"
 
 #if !defined iswspace && !HAVE_ISWSPACE
 # define iswspace(wc) \
@@ -70,6 +70,12 @@ static int number_width;
 
 /* True if we have ever read the standard input. */
 static bool have_read_stdin;
+
+/* Used to determine if file size can be determined without reading.  */
+static size_t page_size;
+
+/* Enable to _not_ treat non breaking space as a word separator.  */
+static bool posixly_correct;
 
 /* The result of calling fstat or stat on a file descriptor or file.  */
 struct fstatus
@@ -142,6 +148,21 @@ the following order: newline, word, character, byte, maximum line length.\n\
       emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
+}
+
+/* Return non zero if a non breaking space.  */
+static int _GL_ATTRIBUTE_PURE
+iswnbspace (wint_t wc)
+{
+  return ! posixly_correct
+         && (wc == 0x00A0 || wc == 0x2007
+             || wc == 0x202F || wc == 0x2060);
+}
+
+static int
+isnbspace (int c)
+{
+  return iswnbspace (btowc (c));
 }
 
 /* FILE is the name of the file (or NULL for standard input)
@@ -235,6 +256,8 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
 
   if (count_bytes && !count_chars && !print_lines && !count_complicated)
     {
+      bool skip_read = false;
+
       if (0 < fstatus->failed)
         fstatus->failed = fstat (fd, &fstatus->st);
 
@@ -245,24 +268,44 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
           && 0 <= fstatus->st.st_size)
         {
           size_t end_pos = fstatus->st.st_size;
-          off_t hi_pos = end_pos - end_pos % (ST_BLKSIZE (fstatus->st) + 1);
           if (current_pos < 0)
             current_pos = lseek (fd, 0, SEEK_CUR);
-          if (0 <= current_pos && current_pos < hi_pos
-              && 0 <= lseek (fd, hi_pos, SEEK_CUR))
-            bytes = hi_pos - current_pos;
+
+          if (end_pos % page_size)
+            {
+              /* We only need special handling of /proc and /sys files etc.
+                 when they're a multiple of PAGE_SIZE.  In the common case
+                 for files with st_size not a multiple of PAGE_SIZE,
+                 it's more efficient and accurate to use st_size.
+
+                 Be careful here.  The current position may actually be
+                 beyond the end of the file.  As in the example above.  */
+
+              bytes = end_pos < current_pos ? 0 : end_pos - current_pos;
+              skip_read = true;
+            }
+          else
+            {
+              off_t hi_pos = end_pos - end_pos % (ST_BLKSIZE (fstatus->st) + 1);
+              if (0 <= current_pos && current_pos < hi_pos
+                  && 0 <= lseek (fd, hi_pos, SEEK_CUR))
+                bytes = hi_pos - current_pos;
+            }
         }
 
-      fdadvise (fd, 0, 0, FADVISE_SEQUENTIAL);
-      while ((bytes_read = safe_read (fd, buf, BUFFER_SIZE)) > 0)
+      if (! skip_read)
         {
-          if (bytes_read == SAFE_READ_ERROR)
+          fdadvise (fd, 0, 0, FADVISE_SEQUENTIAL);
+          while ((bytes_read = safe_read (fd, buf, BUFFER_SIZE)) > 0)
             {
-              error (0, errno, "%s", quotef (file));
-              ok = false;
-              break;
+              if (bytes_read == SAFE_READ_ERROR)
+                {
+                  error (0, errno, "%s", quotef (file));
+                  ok = false;
+                  break;
+                }
+              bytes += bytes_read;
             }
-          bytes += bytes_read;
         }
     }
   else if (!count_chars && !count_complicated)
@@ -354,6 +397,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
             {
               wchar_t wide_char;
               size_t n;
+              bool wide = true;
 
               if (!in_shift && is_basic (*p))
                 {
@@ -361,6 +405,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                      mbrtowc().  */
                   n = 1;
                   wide_char = *p;
+                  wide = false;
                 }
               else
                 {
@@ -394,14 +439,12 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                       n = 1;
                     }
                 }
-              p += n;
-              bytes_read -= n;
-              chars++;
+
               switch (wide_char)
                 {
                 case '\n':
                   lines++;
-                  /* Fall through. */
+                  FALLTHROUGH;
                 case '\r':
                 case '\f':
                   if (linepos > linelength)
@@ -413,24 +456,40 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                   goto mb_word_separator;
                 case ' ':
                   linepos++;
-                  /* Fall through. */
+                  FALLTHROUGH;
                 case '\v':
                 mb_word_separator:
                   words += in_word;
                   in_word = false;
                   break;
                 default:
-                  if (iswprint (wide_char))
+                  if (wide && iswprint (wide_char))
                     {
-                      int width = wcwidth (wide_char);
-                      if (width > 0)
-                        linepos += width;
-                      if (iswspace (wide_char))
+                      /* wcwidth can be expensive on OSX for example,
+                         so avoid if uneeded.  */
+                      if (print_linelength)
+                        {
+                          int width = wcwidth (wide_char);
+                          if (width > 0)
+                            linepos += width;
+                        }
+                      if (iswspace (wide_char) || iswnbspace (wide_char))
+                        goto mb_word_separator;
+                      in_word = true;
+                    }
+                  else if (!wide && isprint (to_uchar (*p)))
+                    {
+                      linepos++;
+                      if (isspace (to_uchar (*p)))
                         goto mb_word_separator;
                       in_word = true;
                     }
                   break;
                 }
+
+              p += n;
+              bytes_read -= n;
+              chars++;
             }
           while (bytes_read > 0);
 
@@ -475,7 +534,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                 {
                 case '\n':
                   lines++;
-                  /* Fall through. */
+                  FALLTHROUGH;
                 case '\r':
                 case '\f':
                   if (linepos > linelength)
@@ -487,7 +546,7 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                   goto word_separator;
                 case ' ':
                   linepos++;
-                  /* Fall through. */
+                  FALLTHROUGH;
                 case '\v':
                 word_separator:
                   words += in_word;
@@ -497,7 +556,8 @@ wc (int fd, char const *file_x, struct fstatus *fstatus, off_t current_pos)
                   if (isprint (to_uchar (p[-1])))
                     {
                       linepos++;
-                      if (isspace (to_uchar (p[-1])))
+                      if (isspace (to_uchar (p[-1]))
+                          || isnbspace (to_uchar (p[-1])))
                         goto word_separator;
                       in_word = true;
                     }
@@ -531,8 +591,7 @@ wc_file (char const *file, struct fstatus *fstatus)
   if (! file || STREQ (file, "-"))
     {
       have_read_stdin = true;
-      if (O_BINARY && ! isatty (STDIN_FILENO))
-        xfreopen (NULL, "rb", stdin);
+      xset_binary_mode (STDIN_FILENO, O_BINARY);
       return wc (STDIN_FILENO, file, fstatus, -1);
     }
   else
@@ -575,9 +634,7 @@ get_input_fstatus (size_t nfiles, char *const *file)
     fstatus[0].failed = 1;
   else
     {
-      size_t i;
-
-      for (i = 0; i < nfiles; i++)
+      for (size_t i = 0; i < nfiles; i++)
         fstatus[i].failed = (! file[i] || STREQ (file[i], "-")
                              ? fstat (STDIN_FILENO, &fstatus[i].st)
                              : stat (file[i], &fstatus[i].st));
@@ -599,9 +656,8 @@ compute_number_width (size_t nfiles, struct fstatus const *fstatus)
     {
       int minimum_width = 1;
       uintmax_t regular_total = 0;
-      size_t i;
 
-      for (i = 0; i < nfiles; i++)
+      for (size_t i = 0; i < nfiles; i++)
         if (! fstatus[i].failed)
           {
             if (S_ISREG (fstatus[i].st.st_mode))
@@ -639,9 +695,12 @@ main (int argc, char **argv)
 
   atexit (close_stdout);
 
+  page_size = getpagesize ();
   /* Line buffer stdout to ensure lines are written atomically and immediately
      so that processes running in parallel do not intersperse their output.  */
   setvbuf (stdout, NULL, _IOLBF, 0);
+
+  posixly_correct = (getenv ("POSIXLY_CORRECT") != NULL);
 
   print_lines = print_words = print_chars = print_bytes = false;
   print_linelength = false;
@@ -749,9 +808,8 @@ main (int argc, char **argv)
   fstatus = get_input_fstatus (nfiles, files);
   number_width = compute_number_width (nfiles, fstatus);
 
-  int i;
   ok = true;
-  for (i = 0; /* */; i++)
+  for (int i = 0; /* */; i++)
     {
       bool skip_file = false;
       enum argv_iter_err ai_err;
@@ -807,6 +865,9 @@ main (int argc, char **argv)
         ok = false;
       else
         ok &= wc_file (file_name, &fstatus[nfiles ? i : 0]);
+
+      if (! nfiles)
+        fstatus[0].failed = 1;
     }
  argv_iter_done:
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test some of ls's sorting options.
 
-# Copyright (C) 1998-2016 Free Software Foundation, Inc.
+# Copyright (C) 1998-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,13 +14,13 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ ls
 
 # Avoid any possible glitches due to daylight-saving changes near the
-# time stamps used during the test.
+# timestamps used during the test.
 TZ=UTC0
 export TZ
 
@@ -112,7 +112,7 @@ else
 failed ls ctime test -- this failure is expected at least for SunOS4.1.4
 and for tmpfs file systems on Solaris 5.5.1.
 It is also expected to fail on a btrfs file system until
-http://bugzilla.redhat.com/591068 is addressed.
+https://bugzilla.redhat.com/591068 is addressed.
 
 In the output below, 'c' should have had a ctime more recent than
 that of 'a', but does not.

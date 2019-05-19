@@ -1,5 +1,5 @@
 /* Test of file timestamp modification functions.
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* This file defines some prerequisites useful to utime-related tests.  */
 
@@ -22,6 +22,7 @@
 # include <fcntl.h>
 # include <errno.h>
 # include <string.h>
+# include <sys/stat.h>
 # include <unistd.h>
 
 /* Gnulib modules.  */
@@ -48,10 +49,11 @@ enum {
                           : 0)
 };
 
-# if (defined _WIN32 || defined __WIN32__) && !defined __CYGWIN__
+# if defined _WIN32 && !defined __CYGWIN__
 /* Skip ctime tests on native Windows, since it is either a copy of
    mtime or birth time (depending on the file system), rather than a
-   properly tracked change time.  */
+   properly tracked change time.  See
+   <https://msdn.microsoft.com/en-us/library/14h5k7ff(VS.80).aspx>.  */
 #  define check_ctime 0
 # else
 #  define check_ctime 1

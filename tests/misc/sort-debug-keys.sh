@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test annotation of sort keys
 
-# Copyright (C) 2010-2016 Free Software Foundation, Inc.
+# Copyright (C) 2010-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ sort printf
@@ -324,13 +324,13 @@ if test "$LOCALE_FR_UTF8" != "none"; then
   echo '   1²---++3   1,234  Mi' |
     LC_ALL=C sort --debug -k2g -k1b,1
   echo '   1²---++3   1,234  Mi' |
-    LC_COLLATE=$f LC_CTYPE=$f LC_NUMERIC=$f LC_MESSAGES=C \
-        sort --debug -k2g -k1b,1
+    LC_ALL=$f sort --debug -k2g -k1b,1
   echo '+1234 1234Gi 1,234M' |
-    LC_COLLATE=$f LC_CTYPE=$f LC_NUMERIC=$f LC_MESSAGES=C \
-      sort --debug -k1,1n -k1,1g \
-        -k1,1h -k2,2n -k2,2g -k2,2h -k3,3n -k3,3g -k3,3h
-  ) > out
+    LC_ALL=$f sort --debug \
+        -k1,1n -k1,1g -k1,1h \
+        -k2,2n -k2,2g -k2,2h \
+        -k3,3n -k3,3g -k3,3h
+  ) | sed 's/^^ .*/^ no match for key/' > out
   compare exp out || fail=1
 fi
 

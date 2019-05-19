@@ -1,6 +1,6 @@
 /* A more useful interface to strtol.
 
-   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2016 Free Software
+   Copyright (C) 1995-1996, 1998-2001, 2003-2007, 2009-2019 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Jim Meyering. */
 
@@ -41,20 +41,8 @@
 #include <string.h>
 
 #include "assure.h"
-#include "intprops.h"
 
-/* xstrtoll.c and xstrtoull.c, which include this file, require that
-   ULLONG_MAX, LLONG_MAX, LLONG_MIN are defined, but <limits.h> does not
-   define them on all platforms.  */
-#ifndef ULLONG_MAX
-# define ULLONG_MAX TYPE_MAXIMUM (unsigned long long)
-#endif
-#ifndef LLONG_MAX
-# define LLONG_MAX TYPE_MAXIMUM (long long int)
-#endif
-#ifndef LLONG_MIN
-# define LLONG_MIN TYPE_MINIMUM (long long int)
-#endif
+#define TYPE_SIGNED(t) (! ((t) 0 < (t) -1))
 
 static strtol_error
 bkm_scale (__strtol_t *x, int scale_factor)

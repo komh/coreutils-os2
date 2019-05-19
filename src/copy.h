@@ -1,5 +1,5 @@
 /* core functions for copying files and directories
-   Copyright (C) 1989-2016 Free Software Foundation, Inc.
+   Copyright (C) 1989-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Extracted from cp.c and librarified by Jim Meyering.  */
 
@@ -249,6 +249,15 @@ struct cp_options
      such a symlink) and returns false.  */
   bool open_dangling_dest_symlink;
 
+  /* If true, this is the last filed to be copied.  mv uses this to
+     avoid some unnecessary work.  */
+  bool last_file;
+
+  /* Zero if the source has already been renamed to the destination; a
+     positive errno number if this failed with the given errno; -1 if
+     no attempt has been made to rename.  Always -1, except for mv.  */
+  int rename_errno;
+
   /* Control creation of COW files.  */
   enum Reflink_type reflink_mode;
 
@@ -284,6 +293,14 @@ int rpl_rename (const char *, const char *);
 bool copy (char const *src_name, char const *dst_name,
            bool nonexistent_dst, const struct cp_options *options,
            bool *copy_into_self, bool *rename_succeeded);
+
+extern bool set_process_security_ctx (char const *src_name,
+                                      char const *dst_name,
+                                      mode_t mode, bool new_dst,
+                                      const struct cp_options *x);
+
+extern bool set_file_security_ctx (char const *dst_name, bool process_local,
+                                   bool recurse, const struct cp_options *x);
 
 void dest_info_init (struct cp_options *);
 void src_info_init (struct cp_options *);

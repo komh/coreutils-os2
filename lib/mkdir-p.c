@@ -1,6 +1,6 @@
 /* mkdir-p.c -- Ensure that a directory and its parents exist.
 
-   Copyright (C) 1990, 1997-2000, 2002-2007, 2009-2016 Free Software
+   Copyright (C) 1990, 1997-2000, 2002-2007, 2009-2019 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert, David MacKenzie, and Jim Meyering.  */
 
@@ -146,12 +146,23 @@ make_dir_parents (char *dir,
 
           if (preserve_existing)
             {
-              struct stat st;
-              if (mkdir_errno == 0
-                  || (mkdir_errno != ENOENT && make_ancestor
-                      && stat (dir + prefix_len, &st) == 0
-                      && S_ISDIR (st.st_mode)))
+              if (mkdir_errno == 0)
                 return true;
+              if (mkdir_errno != ENOENT && make_ancestor)
+                {
+                  struct stat st;
+                  if (stat (dir + prefix_len, &st) == 0)
+                    {
+                      if (S_ISDIR (st.st_mode))
+                        return true;
+                    }
+                  else if (mkdir_errno == EEXIST
+                           && errno != ENOENT && errno != ENOTDIR)
+                    {
+                      error (0, errno, _("cannot stat %s"), quote (dir));
+                      return false;
+                    }
+                }
             }
           else
             {

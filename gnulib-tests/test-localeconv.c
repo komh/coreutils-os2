@@ -1,5 +1,5 @@
 /* Test of localeconv() function.
-   Copyright (C) 2012-2016 Free Software Foundation, Inc.
+   Copyright (C) 2012-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Bruno Haible <bruno@clisp.org>, 2012.  */
 
@@ -37,13 +37,13 @@ main ()
 
     ASSERT (STREQ (l->decimal_point, "."));
     ASSERT (STREQ (l->thousands_sep, ""));
-#if !(defined __FreeBSD__ || defined __sun)
+#if !((defined __FreeBSD__ || defined __DragonFly__) || defined __sun || defined __CYGWIN__)
     ASSERT (STREQ (l->grouping, ""));
 #endif
 
     ASSERT (STREQ (l->mon_decimal_point, ""));
     ASSERT (STREQ (l->mon_thousands_sep, ""));
-#if !(defined __FreeBSD__ || defined __sun)
+#if !((defined __FreeBSD__ || defined __DragonFly__) || defined __sun || defined __CYGWIN__)
     ASSERT (STREQ (l->mon_grouping, ""));
 #endif
     ASSERT (STREQ (l->positive_sign, ""));

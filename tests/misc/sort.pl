@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2008-2016 Free Software Foundation, Inc.
+# Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use strict;
 
@@ -190,7 +190,7 @@ my @Tests =
 ["10e", '-k 1.2,1.2', {IN=>"ab\nba\n"}, {OUT=>"ba\nab\n"}],
 #
 # The way sort works on these inputs (10f and 10g) seems wrong to me.
-# See http://git.sv.gnu.org/gitweb/?p=coreutils.git;a=commitdiff;h=3c467c0d223
+# See https://git.sv.gnu.org/gitweb/?p=coreutils.git;a=commitdiff;h=3c467c0d223
 # POSIX doesn't seem to say one way or the other, but that's the way all
 # other sort implementations work.
 ["10f", '-t : -k 1.3,1.3', {IN=>":ab\n:ba\n"}, {OUT=>":ba\n:ab\n"}],
@@ -317,7 +317,7 @@ my @Tests =
 ["22a", '-k 2,2fd -k 1,1r', {IN=>"3 b\n4 B\n"}, {OUT=>"4 B\n3 b\n"}],
 ["22b", '-k 2,2d  -k 1,1r', {IN=>"3 b\n4 b\n"}, {OUT=>"4 b\n3 b\n"}],
 
-# This fails in Fedora 20, per Göran Uddeborg in: http://bugs.gnu.org/18540
+# This fails in Fedora 20, per Göran Uddeborg in: https://bugs.gnu.org/18540
 ["23", '-s -k1,1 -t/', {IN=>"a b/x\na-b-c/x\n"}, {OUT=>"a b/x\na-b-c/x\n"},
  {ENV => "LC_ALL=$mb_locale"}],
 
@@ -383,8 +383,7 @@ my @Tests =
 ['obs-inval', '+1x', {EXIT=>2},
  {ERR=>"foo\n"}, {ERR_SUBST => 's/^$prog: .*/foo/'}],
 
-# Exercise the code that enlarges the line buffer.  See the thread here:
-# http://thread.gmane.org/gmane.comp.gnu.coreutils.bugs/11006
+# Exercise the code that enlarges the line buffer.
 ['realloc-buf', '-S1', {IN=>'a'x4000 ."\n"}, {OUT=>'a'x4000 ."\n"}],
 ['realloc-buf-2', '-S1', {IN=>'a'x5 ."\n"}, {OUT=>'a'x5 ."\n"}],
 

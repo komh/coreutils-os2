@@ -146,15 +146,6 @@ sub prefix ($)
   s{^([\w.]+\s*\+?=)(.*)$}
    {prefix_assignment($1, $2)}gem;
 
-  # These three guys escape all the other regular rules.
-  # Require the leading white space to avoid inserting the prefix
-  # on a line like this:
-  # charset_alias = $(DESTDIR)$(libdir)/charset.alias
-  # With $(libdir), it would be erroneous.
-  s{(\s)(charset\.alias|ref-add\.sed|ref-del\.sed)}{$1$prefix$2}g;
-  # Unfortunately, as a result we sometimes have lib/lib.
-  s{($prefix){2}}{$1}g;
-
   # $(srcdir)/ is actually $(top_srcdir)/$prefix/.
   # The trailing slash is required to avoid matching this rule:
   #   test '$(srcdir)' = . || rm -f $(top_builddir)/GNUmakefile
@@ -230,7 +221,7 @@ sub process ($)
 ## cperl-extra-newline-before-brace: t
 ## cperl-merge-trailing-else: nil
 ## cperl-continued-statement-offset: 2
-## eval: (add-hook 'write-file-hooks 'time-stamp)
+## eval: (add-hook 'before-save-hook 'time-stamp)
 ## time-stamp-start: "my $VERSION = '"
 ## time-stamp-format: "%:y-%02m-%02d %02H:%02M"
 ## time-stamp-time-zone: "UTC0"

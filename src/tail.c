@@ -1,5 +1,5 @@
 /* tail -- output the last part of file(s)
-   Copyright (C) 1989-2016 Free Software Foundation, Inc.
+   Copyright (C) 1989-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Can display any amount of data, unlike the Unix version, which uses
    a fixed size buffer and therefore can only deliver a limited number
@@ -28,12 +28,16 @@
 #include <stdio.h>
 #include <assert.h>
 #include <getopt.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <signal.h>
+#ifdef _AIX
+# include <poll.h>
+#endif
 
 #include "system.h"
 #include "argmatch.h"
-#include "c-strtod.h"
+#include "cl-strtod.h"
 #include "die.h"
 #include "error.h"
 #include "fcntl--.h"
@@ -43,19 +47,19 @@
 #include "safe-read.h"
 #include "stat-size.h"
 #include "stat-time.h"
-#include "xfreopen.h"
-#include "xnanosleep.h"
+#include "xbinary-io.h"
 #include "xdectoint.h"
+#include "xnanosleep.h"
 #include "xstrtol.h"
 #include "xstrtod.h"
 
 #if HAVE_INOTIFY
 # include "hash.h"
 # include <sys/inotify.h>
-/* 'select' is used by tail_forever_inotify.  */
-# include <sys/select.h>
+#endif
 
-/* inotify needs to know if a file is local.  */
+/* Linux can optimize the handling of local files.  */
+#if defined __linux__ || defined __ANDROID__
 # include "fs.h"
 # include "fs-is-local.h"
 # if HAVE_SYS_STATFS_H
@@ -174,6 +178,9 @@ static enum Follow_mode follow_mode = Follow_descriptor;
 
 /* If true, read from the ends of all specified files until killed.  */
 static bool forever;
+
+/* If true, monitor output so we exit if pipe reader terminates.  */
+static bool monitor_output;
 
 /* If true, count from start of file instead of end.  */
 static bool from_start;
@@ -312,6 +319,7 @@ With more than one FILE, precede each with a header giving the file name.\n\
 NUM may have a multiplier suffix:\n\
 b 512, kB 1000, K 1024, MB 1000*1000, M 1024*1024,\n\
 GB 1000*1000*1000, G 1024*1024*1024, and so on for T, P, E, Z, Y.\n\
+Binary prefixes can be used, too: KiB=K, MiB=M, and so on.\n\
 \n\
 "), stdout);
      fputs (_("\
@@ -325,6 +333,45 @@ named file in a way that accommodates renaming, removal and creation.\n\
       emit_ancillary_info (PROGRAM_NAME);
     }
   exit (status);
+}
+
+/* Ensure exit, either with SIGPIPE or EXIT_FAILURE status.  */
+static void ATTRIBUTE_NORETURN
+die_pipe (void)
+{
+  raise (SIGPIPE);
+  exit (EXIT_FAILURE);
+}
+
+/* If the output has gone away, then terminate
+   as we would if we had written to this output.  */
+static void
+check_output_alive (void)
+{
+  if (! monitor_output)
+    return;
+
+#ifdef _AIX
+  /* select on AIX was seen to give a readable event immediately.  */
+  struct pollfd pfd;
+  pfd.fd = STDOUT_FILENO;
+  pfd.events = POLLERR;
+
+  if (poll (&pfd, 1, 0) >= 0 && (pfd.revents & POLLERR))
+    die_pipe ();
+#else
+  struct timeval delay;
+  delay.tv_sec = delay.tv_usec = 0;
+
+  fd_set rfd;
+  FD_ZERO (&rfd);
+  FD_SET (STDOUT_FILENO, &rfd);
+
+  /* readable event on STDOUT is equivalent to POLLERR,
+     and implies an error condition on output like broken pipe.  */
+  if (select (STDOUT_FILENO + 1, &rfd, NULL, NULL, &delay) == 1)
+    die_pipe ();
+#endif
 }
 
 static bool
@@ -399,7 +446,8 @@ xwrite_stdout (char const *buffer, size_t n_bytes)
    Return the number of bytes read from the file.  */
 
 static uintmax_t
-dump_remainder (const char *pretty_filename, int fd, uintmax_t n_bytes)
+dump_remainder (bool want_header, const char *pretty_filename, int fd,
+                uintmax_t n_bytes)
 {
   uintmax_t n_written;
   uintmax_t n_remaining = n_bytes;
@@ -419,6 +467,11 @@ dump_remainder (const char *pretty_filename, int fd, uintmax_t n_bytes)
         }
       if (bytes_read == 0)
         break;
+      if (want_header)
+        {
+          write_header (pretty_filename);
+          want_header = false;
+        }
       xwrite_stdout (buffer, bytes_read);
       n_written += bytes_read;
       if (n_bytes != COPY_TO_EOF)
@@ -528,7 +581,7 @@ file_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
                  output the part that is after it.  */
               if (n != bytes_read - 1)
                 xwrite_stdout (nl + 1, bytes_read - (n + 1));
-              *read_pos += dump_remainder (pretty_filename, fd,
+              *read_pos += dump_remainder (false, pretty_filename, fd,
                                            end_pos - (pos + bytes_read));
               return true;
             }
@@ -540,7 +593,7 @@ file_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
           /* Not enough lines in the file; print everything from
              start_pos to the end.  */
           xlseek (fd, start_pos, SEEK_SET, pretty_filename);
-          *read_pos = start_pos + dump_remainder (pretty_filename, fd,
+          *read_pos = start_pos + dump_remainder (false, pretty_filename, fd,
                                                   end_pos);
           return true;
         }
@@ -886,7 +939,8 @@ fremote (int fd, const char *name)
 {
   bool remote = true;           /* be conservative (poll by default).  */
 
-#if HAVE_FSTATFS && HAVE_STRUCT_STATFS_F_TYPE && defined __linux__
+#if HAVE_FSTATFS && HAVE_STRUCT_STATFS_F_TYPE \
+ && (defined __linux__ || defined __ANDROID__)
   struct statfs buf;
   int err = fstatfs (fd, &buf);
   if (err != 0)
@@ -981,8 +1035,7 @@ recheck (struct File_spec *f, bool blocking)
       ok = false;
       f->errnum = -1;
       f->tailable = false;
-      if (! (reopen_inaccessible_files && follow_mode == Follow_name))
-        f->ignore = true;
+      f->ignore = ! (reopen_inaccessible_files && follow_mode == Follow_name);
       if (was_tailable || prev_errnum != f->errnum)
         error (0, 0, _("%s has been replaced with an untailable file%s"),
                quoteaf (pretty_name (f)),
@@ -1070,15 +1123,13 @@ recheck (struct File_spec *f, bool blocking)
 static bool
 any_live_files (const struct File_spec *f, size_t n_files)
 {
-  size_t i;
-
   /* In inotify mode, ignore may be set for files
      which may later be replaced with new files.
      So always consider files live in -F mode.  */
   if (reopen_inaccessible_files && follow_mode == Follow_name)
     return true;
 
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     {
       if (0 <= f[i].fd)
         return true;
@@ -1224,7 +1275,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
           else
             bytes_to_read = COPY_TO_EOF;
 
-          bytes_read = dump_remainder (name, fd, bytes_to_read);
+          bytes_read = dump_remainder (false, name, fd, bytes_to_read);
 
           any_input |= (bytes_read != 0);
           f[i].size += bytes_read;
@@ -1238,6 +1289,8 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
 
       if ((!any_input || blocking) && fflush (stdout) != 0)
         die (EXIT_FAILURE, errno, _("write error"));
+
+      check_output_alive ();
 
       /* If nothing was read, sleep and/or check for dead writers.  */
       if (!any_input)
@@ -1269,9 +1322,7 @@ tail_forever (struct File_spec *f, size_t n_files, double sleep_interval)
 static bool
 any_remote_file (const struct File_spec *f, size_t n_files)
 {
-  size_t i;
-
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     if (0 <= f[i].fd && f[i].remote)
       return true;
   return false;
@@ -1283,9 +1334,7 @@ any_remote_file (const struct File_spec *f, size_t n_files)
 static bool
 any_non_remote_file (const struct File_spec *f, size_t n_files)
 {
-  size_t i;
-
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     if (0 <= f[i].fd && ! f[i].remote)
       return true;
   return false;
@@ -1299,11 +1348,23 @@ any_non_remote_file (const struct File_spec *f, size_t n_files)
 static bool
 any_symlinks (const struct File_spec *f, size_t n_files)
 {
-  size_t i;
-
   struct stat st;
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     if (lstat (f[i].name, &st) == 0 && S_ISLNK (st.st_mode))
+      return true;
+  return false;
+}
+
+/* Return true if any of the N_FILES files in F is not
+   a regular file or fifo.  This is used to avoid adding inotify
+   watches on a device file for example, which inotify
+   will accept, but not give any events for.  */
+
+static bool
+any_non_regular_fifo (const struct File_spec *f, size_t n_files)
+{
+  for (size_t i = 0; i < n_files; i++)
+    if (0 <= f[i].fd && ! S_ISREG (f[i].mode) && ! S_ISFIFO (f[i].mode))
       return true;
   return false;
 }
@@ -1314,9 +1375,7 @@ any_symlinks (const struct File_spec *f, size_t n_files)
 static bool
 tailable_stdin (const struct File_spec *f, size_t n_files)
 {
-  size_t i;
-
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     if (!f[i].ignore && STREQ (f[i].name, "-"))
       return true;
   return false;
@@ -1337,7 +1396,8 @@ wd_comparator (const void *e1, const void *e2)
   return spec1->wd == spec2->wd;
 }
 
-/* Output (new) data for FSPEC->fd.  */
+/* Output (new) data for FSPEC->fd.
+   PREV_FSPEC records the last File_spec for which we output.  */
 static void
 check_fspec (struct File_spec *fspec, struct File_spec **prev_fspec)
 {
@@ -1372,18 +1432,18 @@ check_fspec (struct File_spec *fspec, struct File_spec **prev_fspec)
            && timespec_cmp (fspec->mtime, get_stat_mtime (&stats)) == 0)
     return;
 
-  if (fspec != *prev_fspec)
-    {
-      if (print_headers)
-        write_header (name);
-      *prev_fspec = fspec;
-    }
+  bool want_header = print_headers && (fspec != *prev_fspec);
 
-  uintmax_t bytes_read = dump_remainder (name, fspec->fd, COPY_TO_EOF);
+  uintmax_t bytes_read = dump_remainder (want_header, name, fspec->fd,
+                                         COPY_TO_EOF);
   fspec->size += bytes_read;
 
-  if (fflush (stdout) != 0)
-    die (EXIT_FAILURE, errno, _("write error"));
+  if (bytes_read)
+    {
+      *prev_fspec = fspec;
+      if (fflush (stdout) != 0)
+        die (EXIT_FAILURE, errno, _("write error"));
+    }
 }
 
 /* Attempt to tail N_FILES files forever, or until killed.
@@ -1451,7 +1511,8 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
                   In that case the same watch descriptor is returned.  */
               f[i].parent_wd = inotify_add_watch (wd, dirlen ? f[i].name : ".",
                                                   (IN_CREATE | IN_DELETE
-                                                   | IN_MOVED_TO | IN_ATTRIB));
+                                                   | IN_MOVED_TO | IN_ATTRIB
+                                                   | IN_DELETE_SELF));
 
               f[i].name[dirlen] = prev;
 
@@ -1570,32 +1631,48 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
 
       /* When watching a PID, ensure that a read from WD will not block
          indefinitely.  */
-      if (pid)
+      while (len <= evbuf_off)
         {
-          if (writer_is_dead)
-            exit (EXIT_SUCCESS);
-
-          writer_is_dead = (kill (pid, 0) != 0 && errno != EPERM);
-
           struct timeval delay; /* how long to wait for file changes.  */
-          if (writer_is_dead)
-            delay.tv_sec = delay.tv_usec = 0;
-          else
+
+          if (pid)
             {
-              delay.tv_sec = (time_t) sleep_interval;
-              delay.tv_usec = 1000000 * (sleep_interval - delay.tv_sec);
+              if (writer_is_dead)
+                exit (EXIT_SUCCESS);
+
+              writer_is_dead = (kill (pid, 0) != 0 && errno != EPERM);
+
+              if (writer_is_dead)
+                delay.tv_sec = delay.tv_usec = 0;
+              else
+                {
+                  delay.tv_sec = (time_t) sleep_interval;
+                  delay.tv_usec = 1000000 * (sleep_interval - delay.tv_sec);
+                }
             }
 
            fd_set rfd;
            FD_ZERO (&rfd);
            FD_SET (wd, &rfd);
+           if (monitor_output)
+             FD_SET (STDOUT_FILENO, &rfd);
 
-           int file_change = select (wd + 1, &rfd, NULL, NULL, &delay);
+           int file_change = select (MAX (wd, STDOUT_FILENO) + 1,
+                                     &rfd, NULL, NULL, pid ? &delay: NULL);
 
            if (file_change == 0)
              continue;
            else if (file_change == -1)
-             die (EXIT_FAILURE, errno, _("error monitoring inotify event"));
+             die (EXIT_FAILURE, errno,
+                  _("error waiting for inotify and output events"));
+           else if (FD_ISSET (STDOUT_FILENO, &rfd))
+             {
+               /* readable event on STDOUT is equivalent to POLLERR,
+                  and implies an error on output like broken pipe.  */
+               die_pipe ();
+             }
+           else
+             break;
         }
 
       if (len <= evbuf_off)
@@ -1621,6 +1698,25 @@ tail_forever_inotify (int wd, struct File_spec *f, size_t n_files,
       void_ev = evbuf + evbuf_off;
       ev = void_ev;
       evbuf_off += sizeof (*ev) + ev->len;
+
+      /* If a directory is deleted, IN_DELETE_SELF is emitted
+         with ev->name of length 0.
+         We need to catch it, otherwise it would wait forever,
+         as wd for directory becomes inactive. Revert to polling now.   */
+      if ((ev->mask & IN_DELETE_SELF) && ! ev->len)
+        {
+          for (i = 0; i < n_files; i++)
+            {
+              if (ev->wd == f[i].parent_wd)
+                {
+                  hash_free (wd_to_name);
+                  error (0, 0,
+                      _("directory containing watched file was removed"));
+                  errno = 0;  /* we've already diagnosed enough errno detail. */
+                  return true;
+                }
+            }
+        }
 
       if (ev->len) /* event on ev->name in watched directory.  */
         {
@@ -1758,12 +1854,11 @@ tail_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
 
   if (from_start)
     {
-      if ( ! presume_input_pipe
-           && S_ISREG (stats.st_mode) && n_bytes <= OFF_T_MAX)
-        {
-          xlseek (fd, n_bytes, SEEK_CUR, pretty_filename);
-          *read_pos += n_bytes;
-        }
+      if (! presume_input_pipe && n_bytes <= OFF_T_MAX
+          && ((S_ISREG (stats.st_mode)
+               && xlseek (fd, n_bytes, SEEK_CUR, pretty_filename) >= 0)
+              || lseek (fd, n_bytes, SEEK_CUR) != -1))
+        *read_pos += n_bytes;
       else
         {
           int t = start_bytes (pretty_filename, fd, n_bytes, read_pos);
@@ -1774,12 +1869,20 @@ tail_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
     }
   else
     {
-      off_t end_pos = ((! presume_input_pipe && usable_st_size (&stats)
-                        && n_bytes <= OFF_T_MAX)
-                       ? stats.st_size : -1);
-      if (end_pos <= ST_BLKSIZE (stats))
+      off_t end_pos = -1;
+      off_t current_pos = -1;
+
+      if (! presume_input_pipe && n_bytes <= OFF_T_MAX)
+        {
+          if (usable_st_size (&stats))
+            end_pos = stats.st_size;
+          else if ((current_pos = lseek (fd, -n_bytes, SEEK_END)) != -1)
+            end_pos = current_pos + n_bytes;
+        }
+      if (end_pos <= (off_t) ST_BLKSIZE (stats))
         return pipe_bytes (pretty_filename, fd, n_bytes, read_pos);
-      off_t current_pos = xlseek (fd, 0, SEEK_CUR, pretty_filename);
+      if (current_pos == -1)
+        current_pos = xlseek (fd, 0, SEEK_CUR, pretty_filename);
       if (current_pos < end_pos)
         {
           off_t bytes_remaining = end_pos - current_pos;
@@ -1793,7 +1896,7 @@ tail_bytes (const char *pretty_filename, int fd, uintmax_t n_bytes,
       *read_pos = current_pos;
     }
 
-  *read_pos += dump_remainder (pretty_filename, fd, n_bytes);
+  *read_pos += dump_remainder (false, pretty_filename, fd, n_bytes);
   return true;
 }
 
@@ -1817,7 +1920,7 @@ tail_lines (const char *pretty_filename, int fd, uintmax_t n_lines,
       int t = start_lines (pretty_filename, fd, n_lines, read_pos);
       if (t)
         return t < 0;
-      *read_pos += dump_remainder (pretty_filename, fd, COPY_TO_EOF);
+      *read_pos += dump_remainder (false, pretty_filename, fd, COPY_TO_EOF);
     }
   else
     {
@@ -1888,8 +1991,7 @@ tail_file (struct File_spec *f, uintmax_t n_units)
     {
       have_read_stdin = true;
       fd = STDIN_FILENO;
-      if (O_BINARY && ! isatty (STDIN_FILENO))
-        xfreopen (NULL, "rb", stdin);
+      xset_binary_mode (STDIN_FILENO, O_BINARY);
     }
   else
     fd = open (f->name, O_RDONLY | O_BINARY);
@@ -1940,6 +2042,7 @@ tail_file (struct File_spec *f, uintmax_t n_units)
               ok = false;
               f->errnum = -1;
               f->tailable = false;
+              f->ignore = ! reopen_inaccessible_files;
               error (0, 0, _("%s: cannot follow end of this type of file%s"),
                      quotef (pretty_name (f)),
                      f->ignore ? _("; giving up on this name") : "");
@@ -1947,8 +2050,7 @@ tail_file (struct File_spec *f, uintmax_t n_units)
 
           if (!ok)
             {
-              f->ignore = ! (reopen_inaccessible_files
-                             && follow_mode == Follow_name);
+              f->ignore = ! reopen_inaccessible_files;
               close_fd (fd, pretty_name (f));
               f->fd = -1;
             }
@@ -1956,7 +2058,7 @@ tail_file (struct File_spec *f, uintmax_t n_units)
             {
               /* Note: we must use read_pos here, not stats.st_size,
                  to avoid a race condition described by Ken Raeburn:
-        http://mail.gnu.org/archive/html/bug-textutils/2003-05/msg00007.html */
+       https://lists.gnu.org/r/bug-textutils/2003-05/msg00007.html */
               record_open_fd (f, fd, read_pos, &stats, (is_stdin ? -1 : 1));
               f->remote = fremote (fd, pretty_name (f));
             }
@@ -2039,8 +2141,8 @@ parse_obsolete_option (int argc, char * const *argv, uintmax_t *n_units)
 
   switch (*p)
     {
-    case 'b': default_count *= 512;	/* Fall through.  */
-    case 'c': t_count_lines = false;	/* Fall through.  */
+    case 'b': default_count *= 512; FALLTHROUGH;
+    case 'c': t_count_lines = false; FALLTHROUGH;
     case 'l': p++; break;
     }
 
@@ -2144,7 +2246,7 @@ parse_options (int argc, char **argv,
         case 's':
           {
             double s;
-            if (! (xstrtod (optarg, NULL, &s, c_strtod) && 0 <= s))
+            if (! (xstrtod (optarg, NULL, &s, cl_strtod) && 0 <= s))
               die (EXIT_FAILURE, 0,
                    _("invalid number of seconds: %s"), quote (optarg));
             *sleep_interval = s;
@@ -2205,8 +2307,7 @@ ignore_fifo_and_pipe (struct File_spec *f, size_t n_files)
      ignore any "-" operand that corresponds to a pipe or FIFO.  */
   size_t n_viable = 0;
 
-  size_t i;
-  for (i = 0; i < n_files; i++)
+  for (size_t i = 0; i < n_files; i++)
     {
       bool is_a_fifo_or_pipe =
         (STREQ (f[i].name, "-")
@@ -2298,12 +2399,22 @@ main (int argc, char **argv)
     if (found_hyphen && follow_mode == Follow_name)
       die (EXIT_FAILURE, 0, _("cannot follow %s by name"), quoteaf ("-"));
 
-    /* When following forever, warn if any file is '-'.
+    /* When following forever, and not using simple blocking, warn if
+       any file is '-' as the stats() used to check for input are ineffective.
        This is only a warning, since tail's output (before a failing seek,
        and that from any non-stdin files) might still be useful.  */
-    if (forever && found_hyphen && isatty (STDIN_FILENO))
-      error (0, 0, _("warning: following standard input"
-                     " indefinitely is ineffective"));
+    if (forever && found_hyphen)
+      {
+        struct stat in_stat;
+        bool blocking_stdin;
+        blocking_stdin = (pid == 0 && follow_mode == Follow_descriptor
+                          && n_files == 1 && ! fstat (STDIN_FILENO, &in_stat)
+                          && ! S_ISREG (in_stat.st_mode));
+
+        if (! blocking_stdin && isatty (STDIN_FILENO))
+          error (0, 0, _("warning: following standard input"
+                         " indefinitely is ineffective"));
+      }
   }
 
   /* Don't read anything if we'll never output anything.  */
@@ -2318,14 +2429,22 @@ main (int argc, char **argv)
       || (header_mode == multiple_files && n_files > 1))
     print_headers = true;
 
-  if (O_BINARY && ! isatty (STDOUT_FILENO))
-    xfreopen (NULL, "wb", stdout);
+  xset_binary_mode (STDOUT_FILENO, O_BINARY);
 
   for (i = 0; i < n_files; i++)
     ok &= tail_file (&F[i], n_units);
 
   if (forever && ignore_fifo_and_pipe (F, n_files))
     {
+      /* If stdout is a fifo or pipe, then monitor it
+         so that we exit if the reader goes away.
+         Note select() on a regular file is always readable.  */
+      struct stat out_stat;
+      if (fstat (STDOUT_FILENO, &out_stat) < 0)
+        die (EXIT_FAILURE, errno, _("standard output"));
+      monitor_output = (S_ISFIFO (out_stat.st_mode)
+                        || (HAVE_FIFO_PIPES != 1 && isapipe (STDOUT_FILENO)));
+
 #if HAVE_INOTIFY
       /* tailable_stdin() checks if the user specifies stdin via  "-",
          or implicitly by providing no arguments. If so, we won't use inotify.
@@ -2372,6 +2491,7 @@ main (int argc, char **argv)
                                || any_remote_file (F, n_files)
                                || ! any_non_remote_file (F, n_files)
                                || any_symlinks (F, n_files)
+                               || any_non_regular_fifo (F, n_files)
                                || (!ok && follow_mode == Follow_descriptor)))
         disable_inotify = true;
 

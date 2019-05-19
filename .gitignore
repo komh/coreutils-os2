@@ -1,9 +1,0 @@
-*.bak
-*.o
-*.exe
-*.1
-lib/*.h
-Makefile
-Makefile.in
-.deps
-.dirstamp

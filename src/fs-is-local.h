@@ -6,6 +6,7 @@ is_local_fs_type (unsigned long int magic)
 {
   switch (magic)
     {
+      case S_MAGIC_AAFS: return 1;
       case S_MAGIC_ACFS: return 0;
       case S_MAGIC_ADFS: return 1;
       case S_MAGIC_AFFS: return 1;
@@ -37,6 +38,7 @@ is_local_fs_type (unsigned long int magic)
       case S_MAGIC_ECRYPTFS: return 1;
       case S_MAGIC_EFIVARFS: return 1;
       case S_MAGIC_EFS: return 1;
+      case S_MAGIC_EXFS: return 1;
       case S_MAGIC_EXOFS: return 1;
       case S_MAGIC_EXT: return 1;
       case S_MAGIC_EXT2: return 1;
@@ -92,9 +94,11 @@ is_local_fs_type (unsigned long int magic)
       case S_MAGIC_QNX4: return 1;
       case S_MAGIC_QNX6: return 1;
       case S_MAGIC_RAMFS: return 1;
+      case S_MAGIC_RDTGROUP: return 1;
       case S_MAGIC_REISERFS: return 1;
       case S_MAGIC_ROMFS: return 1;
       case S_MAGIC_RPC_PIPEFS: return 1;
+      case S_MAGIC_SDCARDFS: return 1;
       case S_MAGIC_SECURITYFS: return 1;
       case S_MAGIC_SELINUX: return 1;
       case S_MAGIC_SMACK: return 1;

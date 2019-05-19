@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Basic tests for "factor".
 
-# Copyright (C) 1998-2016 Free Software Foundation, Inc.
+# Copyright (C) 1998-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use strict;
 
@@ -73,6 +73,13 @@ my @Tests =
      ['bug-2012-c', '6635692801', {OUT => '57601 115201'}],
      ['bug-2012-d', '17709149503', {OUT => '94099 188197'}],
      ['bug-2012-e', '17754345703', {OUT => '94219 188437'}],
+     # Infinite loop bugs in v8.20 to 8.26 inclusive
+     ['bug-2016-a', '158909489063877810457',
+      {OUT => '3401347 3861211 12099721'}],
+     ['bug-2016-b', '222087527029934481871',
+      {OUT => '15601 26449 111427 4830277'}],
+     ['bug-2016-c', '12847291069740315094892340035',
+      {OUT => '5 4073 18899 522591721 63874247821'}],
     );
 
 # If we have GMP support, append tests to exercise it.

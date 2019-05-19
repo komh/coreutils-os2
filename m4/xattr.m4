@@ -1,13 +1,12 @@
 # xattr.m4 - check for Extended Attributes (Linux)
 # serial 3
 
-# Copyright (C) 2003-2016 Free Software Foundation, Inc.
+# Copyright (C) 2003-2019 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
 
 # Originally written by Andreas Gruenbacher.
-# http://www.suse.de/~agruen/coreutils/5.91/coreutils-xattr.diff
 
 AC_DEFUN([gl_FUNC_XATTR],
 [

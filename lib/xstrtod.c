@@ -1,6 +1,6 @@
 /* error-checking interface to strtod-like functions
 
-   Copyright (C) 1996, 1999-2000, 2003-2006, 2009-2016 Free Software
+   Copyright (C) 1996, 1999-2000, 2003-2006, 2009-2019 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Jim Meyering.  */
 

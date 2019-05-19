@@ -1,5 +1,5 @@
 /* Test of execution of file name canonicalization.
-   Copyright (C) 2007-2016 Free Software Foundation, Inc.
+   Copyright (C) 2007-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Bruno Haible <bruno@clisp.org>, 2007.  */
 
@@ -30,15 +30,11 @@
 
 #include "same-inode.h"
 #include "ignore-value.h"
+
+#include "null-ptr.h"
 #include "macros.h"
 
 #define BASE "t-can.tmp"
-
-static void *
-null_ptr (void)
-{
-  return NULL;
-}
 
 int
 main (void)

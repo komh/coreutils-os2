@@ -1,5 +1,5 @@
 /* Tests of lchown.
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake <ebb9@byu.net>, 2009.  */
 
@@ -124,7 +124,7 @@ test_lchown (int (*func) (char const *, uid_t, gid_t), bool print)
       return 77;
     }
   result = func (BASE "dir/link2", -1, -1);
-  if (result == -1 && errno == ENOSYS)
+  if (result == -1 && (errno == ENOSYS || errno == EOPNOTSUPP))
     {
       ASSERT (unlink (BASE "dir/file") == 0);
       ASSERT (unlink (BASE "dir/link2") == 0);

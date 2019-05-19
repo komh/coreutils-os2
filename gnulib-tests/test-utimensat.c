@@ -1,5 +1,5 @@
 /* Tests of utimensat.
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake <ebb9@byu.net>, 2009.  */
 
@@ -101,8 +101,12 @@ main (void)
   ASSERT (utimensat (fd, ".", NULL, 0) == -1);
   ASSERT (errno == ENOTDIR);
   {
-    struct timespec ts[2] = { { Y2K, 0 }, { Y2K, 0 } };
+    struct timespec ts[2];
     struct stat st;
+    ts[0].tv_sec = Y2K;
+    ts[0].tv_nsec = 0;
+    ts[1].tv_sec = Y2K;
+    ts[1].tv_nsec = 0;
     ASSERT (utimensat (dfd, BASE "dir/file", ts, AT_SYMLINK_NOFOLLOW) == 0);
     ASSERT (stat ("file", &st) == 0);
     ASSERT (st.st_atime == Y2K);

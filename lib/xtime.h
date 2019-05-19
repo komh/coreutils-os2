@@ -1,6 +1,6 @@
-/* xtime -- extended-resolution integer time stamps
+/* xtime -- extended-resolution integer timestamps
 
-   Copyright (C) 2005-2006, 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2005-2006, 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert.  */
 
@@ -28,7 +28,7 @@ _GL_INLINE_HEADER_BEGIN
 # define XTIME_INLINE _GL_INLINE
 #endif
 
-/* xtime_t is a signed type used for time stamps.  It is an integer
+/* xtime_t is a signed type used for timestamps.  It is an integer
    type that is a count of nanoseconds -- except for obsolescent hosts
    without sufficiently-wide integers, where it is a count of
    seconds.  */
@@ -50,10 +50,13 @@ extern "C" {
 #endif
 
 /* Return an extended time value that contains S seconds and NS
-   nanoseconds, without any overflow checking.  */
+   nanoseconds.  */
 XTIME_INLINE xtime_t
 xtime_make (xtime_t s, long int ns)
 {
+  const long int giga = 1000 * 1000 * 1000;
+  s += ns / giga;
+  ns %= giga;
   if (XTIME_PRECISION == 1)
     return s;
   else

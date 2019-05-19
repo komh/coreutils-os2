@@ -1,5 +1,5 @@
-# fchownat.m4 serial 1
-dnl Copyright (C) 2004-2016 Free Software Foundation, Inc.
+# fchownat.m4 serial 3
+dnl Copyright (C) 2004-2019 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -43,7 +43,7 @@ AC_DEFUN([gl_FUNC_FCHOWNAT_DEREF_BUG],
   AC_REQUIRE([gl_USE_SYSTEM_EXTENSIONS])
 
   AC_CACHE_CHECK([whether fchownat works with AT_SYMLINK_NOFOLLOW],
-    gl_cv_func_fchownat_nofollow_works,
+    [gl_cv_func_fchownat_nofollow_works],
     [
      gl_dangle=conftest.dangle
      # Remove any remnants of a previous test.
@@ -56,6 +56,8 @@ AC_DEFUN([gl_FUNC_FCHOWNAT_DEREF_BUG],
           [[
 #include <fcntl.h>
 #include <unistd.h>
+/* Android 4.3 declares fchownat() in <sys/stat.h> instead.  */
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -67,10 +69,9 @@ main ()
           && errno == ENOENT);
 }
           ]])],
-    [gl_cv_func_fchownat_nofollow_works=yes],
-    [gl_cv_func_fchownat_nofollow_works=no],
-    [gl_cv_func_fchownat_nofollow_works=no],
-    )
+       [gl_cv_func_fchownat_nofollow_works=yes],
+       [gl_cv_func_fchownat_nofollow_works=no],
+       [gl_cv_func_fchownat_nofollow_works=no])
   ])
   AS_IF([test $gl_cv_func_fchownat_nofollow_works = no], [$1], [$2])
 ])
@@ -87,6 +88,8 @@ AC_DEFUN([gl_FUNC_FCHOWNAT_EMPTY_FILENAME_BUG],
        [AC_LANG_PROGRAM(
           [[#include <unistd.h>
             #include <fcntl.h>
+            /* Android 4.3 declares fchownat() in <sys/stat.h> instead.  */
+            #include <sys/stat.h>
           ]],
           [[int fd;
             int ret;

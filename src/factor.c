@@ -1,5 +1,5 @@
 /* factor -- print prime factors of n.
-   Copyright (C) 1986-2016 Free Software Foundation, Inc.
+   Copyright (C) 1986-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Originally written by Paul Rubin <phr@ocf.berkeley.edu>.
    Adapted for GNU, fixed to factor UINT_MAX by Jim Meyering.
@@ -480,10 +480,16 @@ gcd_odd (uintmax_t a, uintmax_t b)
 static uintmax_t
 gcd2_odd (uintmax_t *r1, uintmax_t a1, uintmax_t a0, uintmax_t b1, uintmax_t b0)
 {
+  assert (b0 & 1);
+
+  if ( (a0 | a1) == 0)
+    {
+      *r1 = b1;
+      return b0;
+    }
+
   while ((a0 & 1) == 0)
     rsh2 (a1, a0, a1, a0, 1);
-  while ((b0 & 1) == 0)
-    rsh2 (b1, b0, b1, b0, 1);
 
   for (;;)
     {
@@ -1516,6 +1522,13 @@ factor_using_pollard_rho (uintmax_t n, unsigned long int a,
         }
       while (g == 1);
 
+      if (n == g)
+        {
+          /* Found n itself as factor.  Restart with different params.  */
+          factor_using_pollard_rho (n, a + 1, factors);
+          return;
+        }
+
       n = n / g;
 
       if (!prime_p (g))
@@ -1601,7 +1614,7 @@ factor_using_pollard_rho2 (uintmax_t n1, uintmax_t n0, unsigned long int a,
 
       if (g1 == 0)
         {
-          /* The found factor is one word. */
+          /* The found factor is one word, and > 1. */
           divexact_21 (n1, n0, n1, n0, g0);     /* n = n / g */
 
           if (!prime_p (g0))
@@ -1614,6 +1627,13 @@ factor_using_pollard_rho2 (uintmax_t n1, uintmax_t n0, unsigned long int a,
           /* The found factor is two words.  This is highly unlikely, thus hard
              to trigger.  Please be careful before you change this code!  */
           uintmax_t ginv;
+
+          if (n1 == g1 && n0 == g0)
+            {
+              /* Found n itself as factor.  Restart with different params.  */
+              factor_using_pollard_rho2 (n1, n0, a + 1, factors);
+              return;
+            }
 
           binv (ginv, g0);      /* Compute n = n / g.  Since the result will */
           n0 = ginv * n0;       /* fit one word, we can compute the quotient */
@@ -1952,7 +1972,7 @@ factor_using_squfof (uintmax_t n1, uintmax_t n0, struct factors *factors)
      SQUARE FORM FACTORIZATION
      JASON E. GOWER AND SAMUEL S. WAGSTAFF, JR.
 
-     http://homes.cerias.purdue.edu/~ssw/squfof.pdf
+     https://homes.cerias.purdue.edu/~ssw/squfof.pdf
    */
 
   static const unsigned int multipliers_1[] =

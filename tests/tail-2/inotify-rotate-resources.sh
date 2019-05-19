@@ -1,7 +1,7 @@
 #!/bin/sh
 # ensure that tail -F doesn't leak inotify resources
 
-# Copyright (C) 2015-2016 Free Software Foundation, Inc.
+# Copyright (C) 2015-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,18 +14,18 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
+
+# Inotify not used on remote file systems
+require_local_dir_
 
 grep '^#define HAVE_INOTIFY 1' "$CONFIG_HEADER" >/dev/null \
   || skip_ 'inotify required'
 
 require_strace_ 'inotify_add_watch,inotify_rm_watch'
-
-# Quickly skip on remote file systems
-is_local_dir_ . || skip_ 'inotify not used on remote file system'
 
 check_tail_output()
 {

@@ -1,5 +1,5 @@
 # List of files which contain translatable strings.
-# Copyright (C) 1996-2016 Free Software Foundation, Inc.
+# Copyright (C) 1996-2019 Free Software Foundation, Inc.
 
 # These are nominally temporary...
 lib/argmatch.c
@@ -26,15 +26,15 @@ lib/userspec.c
 lib/verror.c
 lib/version-etc.c
 lib/xalloc-die.c
-lib/xfreopen.c
+lib/xbinary-io.c
 lib/xmemcoll.c
 lib/xprintf.c
 lib/xstrtol-error.c
 
 # Package source files
 
-src/base64.c
 src/basename.c
+src/basenc.c
 src/cat.c
 src/chcon.c
 src/chgrp.c

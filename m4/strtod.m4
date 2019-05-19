@@ -1,5 +1,5 @@
-# strtod.m4 serial 22
-dnl Copyright (C) 2002-2003, 2006-2016 Free Software Foundation, Inc.
+# strtod.m4 serial 24
+dnl Copyright (C) 2002-2003, 2006-2019 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -7,6 +7,7 @@ dnl with or without modifications, as long as this notice is preserved.
 AC_DEFUN([gl_FUNC_STRTOD],
 [
   AC_REQUIRE([gl_STDLIB_H_DEFAULTS])
+  AC_REQUIRE([AC_CANONICAL_HOST]) dnl for cross-compiles
   m4_ifdef([gl_FUNC_STRTOD_OBSOLETE], [
     dnl Test whether strtod is declared.
     dnl Don't call AC_FUNC_STRTOD, because it does not have the right guess
@@ -113,7 +114,14 @@ numeric_equal (double x, double y)
 #endif
            ],
            [gl_cv_func_strtod_works="guessing yes"],
-           [gl_cv_func_strtod_works="guessing no"])])])
+           [case "$host_os" in
+                      # Guess yes on native Windows.
+              mingw*) gl_cv_func_strtod_works="guessing yes" ;;
+              *)      gl_cv_func_strtod_works="guessing no" ;;
+            esac
+           ])
+        ])
+      ])
     case "$gl_cv_func_strtod_works" in
       *yes) ;;
       *)
@@ -130,4 +138,5 @@ AC_DEFUN([gl_PREREQ_STRTOD], [
     AC_DEFINE([HAVE_LDEXP_IN_LIBC], [1],
       [Define if the ldexp function is available in libc.])
   fi
+  AC_CHECK_FUNCS([nl_langinfo])
 ])

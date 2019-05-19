@@ -1,5 +1,5 @@
 /* Test of POSIX compatible vasprintf() and asprintf() functions.
-   Copyright (C) 2007-2016 Free Software Foundation, Inc.
+   Copyright (C) 2007-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Bruno Haible <bruno@clisp.org>, 2007.  */
 
@@ -444,7 +444,7 @@ test_function (int (*my_asprintf) (char **, const char *, ...))
       my_asprintf (&result, "%010a %d", Infinityd (), 33, 44, 55);
     ASSERT (result != NULL);
     /* "0000000inf 33" is not a valid result; see
-       <http://lists.gnu.org/archive/html/bug-gnulib/2007-04/msg00107.html> */
+       <https://lists.gnu.org/r/bug-gnulib/2007-04/msg00107.html> */
     ASSERT (strcmp (result, "       inf 33") == 0);
     ASSERT (retval == strlen (result));
     free (result);
@@ -456,7 +456,7 @@ test_function (int (*my_asprintf) (char **, const char *, ...))
       my_asprintf (&result, "%050a %d", NaNd (), 33, 44, 55);
     ASSERT (result != NULL);
     /* "0000000nan 33" is not a valid result; see
-       <http://lists.gnu.org/archive/html/bug-gnulib/2007-04/msg00107.html> */
+       <https://lists.gnu.org/r/bug-gnulib/2007-04/msg00107.html> */
     ASSERT (strlen (result) == 50 + 3
             && strisnan (result, strspn (result, " "), strlen (result) - 3, 0)
             && strcmp (result + strlen (result) - 3, " 33") == 0);
@@ -708,7 +708,7 @@ test_function (int (*my_asprintf) (char **, const char *, ...))
 
   { /* Rounding can turn a ...FFF into a ...000.
        This shows a Mac OS X 10.3.9 (Darwin 7.9) bug and a
-       glibc 2.4 bug <http://sourceware.org/bugzilla/show_bug.cgi?id=2908>.  */
+       glibc 2.4 bug <https://sourceware.org/bugzilla/show_bug.cgi?id=2908>.  */
     char *result;
     int retval =
       my_asprintf (&result, "%.1La %d", 1.999L, 33, 44, 55);
@@ -844,7 +844,7 @@ test_function (int (*my_asprintf) (char **, const char *, ...))
       my_asprintf (&result, "%010La %d", Infinityl (), 33, 44, 55);
     ASSERT (result != NULL);
     /* "0000000inf 33" is not a valid result; see
-       <http://lists.gnu.org/archive/html/bug-gnulib/2007-04/msg00107.html> */
+       <https://lists.gnu.org/r/bug-gnulib/2007-04/msg00107.html> */
     ASSERT (strcmp (result, "       inf 33") == 0);
     ASSERT (retval == strlen (result));
     free (result);
@@ -856,7 +856,7 @@ test_function (int (*my_asprintf) (char **, const char *, ...))
       my_asprintf (&result, "%050La %d", NaNl (), 33, 44, 55);
     ASSERT (result != NULL);
     /* "0000000nan 33" is not a valid result; see
-       <http://lists.gnu.org/archive/html/bug-gnulib/2007-04/msg00107.html> */
+       <https://lists.gnu.org/r/bug-gnulib/2007-04/msg00107.html> */
     ASSERT (strlen (result) == 50 + 3
             && strisnan (result, strspn (result, " "), strlen (result) - 3, 0)
             && strcmp (result + strlen (result) - 3, " 33") == 0);

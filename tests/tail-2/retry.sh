@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercise tail's behavior regarding missing files with/without --retry.
 
-# Copyright (C) 2013-2016 Free Software Foundation, Inc.
+# Copyright (C) 2013-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ tail
@@ -164,7 +164,7 @@ if ! cat . >/dev/null; then
 mkdir untailable || framework_failure_
 timeout 10 \
   tail $mode $fastpoll -F untailable >out 2>&1 & pid=$!
-# Wait for "cannot open" error.
+# Wait for "cannot follow" error.
 retry_delay_ wait4lines_ .1 6 2 || { cat out; fail=1; }
 { rmdir untailable; echo foo > untailable; }   || framework_failure_
 # Wait for the expected output.
@@ -172,7 +172,9 @@ retry_delay_ wait4lines_ .1 6 4 || { cat out; fail=1; }
 cleanup_
 [ "$(countlines_)" = 4 ]                       || { fail=1; cat out; }
 grep -F 'cannot follow' out                    || { fail=1; cat out; }
-grep -F 'has become accessible' out            || { fail=1; cat out; }
+# The first is the common case, "has appeared" arises with slow rmdir.
+grep -E 'become accessible|has appeared' out   || { fail=1; cat out; }
+grep -F 'giving up' out                        && { fail=1; cat out; }
 grep -F 'foo' out                              || { fail=1; cat out; }
 rm -fd untailable out                          || framework_failure_
 fi

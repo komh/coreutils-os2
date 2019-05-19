@@ -1,5 +1,5 @@
 /* Test that openat_safer leave standard fds alone.
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake <ebb9@byu.net>, 2009.  */
 
@@ -96,11 +96,15 @@ main (void)
           errno = 0;
           ASSERT (openat (dfd, witness "/", O_RDONLY) == -1);
           ASSERT (errno == ENOTDIR || errno == EISDIR || errno == EINVAL);
+#if defined __linux__ || defined __ANDROID__
           /* Using a bad directory is okay for absolute paths.  */
           fd = openat (-1, "/dev/null", O_WRONLY);
           ASSERT (STDERR_FILENO < fd);
+#endif
           /* Using a non-directory is wrong for relative paths.  */
           errno = 0;
+          fd = open ("/dev/null", O_RDONLY);
+          ASSERT (STDERR_FILENO < fd);
           ASSERT (openat (fd, ".", O_RDONLY) == -1);
           ASSERT (errno == EBADF || errno == ENOTDIR);
           ASSERT (close (fd) == 0);

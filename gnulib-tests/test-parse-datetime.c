@@ -1,5 +1,5 @@
 /* Test of parse_datetime() function.
-   Copyright (C) 2008-2016 Free Software Foundation, Inc.
+   Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, see <http://www.gnu.org/licenses/>.  */
+   along with this program; if not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Simon Josefsson <simon@josefsson.org>, 2008.  */
 
@@ -123,7 +123,7 @@ main (int argc _GL_UNUSED, char **argv)
   /* Set the time zone to US Eastern time with the 2012 rules.  This
      should disable any leap second support.  Otherwise, there will be
      a problem with glibc on sites that default to leap seconds; see
-     <http://bugs.gnu.org/12206>.  */
+     <https://bugs.gnu.org/12206>.  */
   setenv ("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
 
   gmtoff = gmt_offset (ref_time);
@@ -431,6 +431,22 @@ main (int argc _GL_UNUSED, char **argv)
   ASSERT (   parse_datetime (&result, " TZ=\"\"", &now));
   ASSERT (   parse_datetime (&result, "TZ=\"\\\\\"", &now));
   ASSERT (   parse_datetime (&result, "TZ=\"\\\"\"", &now));
+
+  /* Outlandishly-long time zone abbreviations should not cause problems.  */
+  {
+    static char const bufprefix[] = "TZ=\"";
+    enum { tzname_len = 2000 };
+    static char const bufsuffix[] = "0\" 1970-01-01 01:02:03.123456789";
+    enum { bufsize = sizeof bufprefix - 1 + tzname_len + sizeof bufsuffix };
+    char buf[bufsize];
+    memcpy (buf, bufprefix, sizeof bufprefix - 1);
+    memset (buf + sizeof bufprefix - 1, 'X', tzname_len);
+    strcpy (buf + bufsize - sizeof bufsuffix, bufsuffix);
+    ASSERT (parse_datetime (&result, buf, &now));
+    LOG (buf, now, result);
+    ASSERT (result.tv_sec == 1 * 60 * 60 + 2 * 60 + 3
+            && result.tv_nsec == 123456789);
+  }
 
   return 0;
 }

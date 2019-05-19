@@ -1,5 +1,5 @@
-# link.m4 serial 8
-dnl Copyright (C) 2009-2016 Free Software Foundation, Inc.
+# link.m4 serial 10
+dnl Copyright (C) 2009-2019 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -22,6 +22,7 @@ AC_DEFUN([gl_FUNC_LINK],
        AC_RUN_IFELSE(
          [AC_LANG_PROGRAM(
            [[#include <unistd.h>
+             #include <stdio.h>
            ]],
            [[int result = 0;
              if (!link ("conftest.a", "conftest.b/"))
@@ -38,10 +39,12 @@ AC_DEFUN([gl_FUNC_LINK],
            ]])],
          [gl_cv_func_link_works=yes], [gl_cv_func_link_works=no],
          [case "$host_os" in
-                    # Guess yes on glibc systems.
-            *-gnu*) gl_cv_func_link_works="guessing yes" ;;
-                    # If we don't know, assume the worst.
-            *)      gl_cv_func_link_works="guessing no" ;;
+                             # Guess yes on Linux systems.
+            linux-* | linux) gl_cv_func_link_works="guessing yes" ;;
+                             # Guess yes on glibc systems.
+            *-gnu* | gnu*)   gl_cv_func_link_works="guessing yes" ;;
+                             # If we don't know, assume the worst.
+            *)               gl_cv_func_link_works="guessing no" ;;
           esac
          ])
        rm -f conftest.a conftest.b conftest.lnk])

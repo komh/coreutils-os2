@@ -41,6 +41,11 @@ src_libsinglebin_stdbuf_a_CFLAGS = "-Dmain=single_binary_main_stdbuf (int, char 
 noinst_LIBRARIES += src/libsinglebin_stty.a
 src_libsinglebin_stty_a_SOURCES = src/stty.c
 src_libsinglebin_stty_a_CFLAGS = "-Dmain=single_binary_main_stty (int, char **);  int single_binary_main_stty"  -Dusage=_usage_stty $(src_coreutils_CFLAGS)
+# Command timeout
+noinst_LIBRARIES += src/libsinglebin_timeout.a
+src_libsinglebin_timeout_a_SOURCES =   src/timeout.c src/operand2sig.c
+src_libsinglebin_timeout_a_ldadd =   $(LIB_TIMER_TIME)
+src_libsinglebin_timeout_a_CFLAGS = "-Dmain=single_binary_main_timeout (int, char **);  int single_binary_main_timeout"  -Dusage=_usage_timeout $(src_coreutils_CFLAGS)
 # Command uptime
 noinst_LIBRARIES += src/libsinglebin_uptime.a
 src_libsinglebin_uptime_a_SOURCES = src/uptime.c
@@ -64,17 +69,22 @@ src_libsinglebin___a_CFLAGS = "-Dmain=single_binary_main__ (int, char **);  int 
 noinst_LIBRARIES += src/libsinglebin_b2sum.a
 src_libsinglebin_b2sum_a_SOURCES =   src/md5sum.c src/blake2/blake2.h src/blake2/blake2-impl.h src/blake2/blake2b-ref.c src/blake2/b2sum.c src/blake2/b2sum.h
 src_libsinglebin_b2sum_a_CFLAGS = "-Dmain=single_binary_main_b2sum (int, char **);  int single_binary_main_b2sum"  -Dusage=_usage_b2sum $(src_coreutils_CFLAGS)
-src_libsinglebin_b2sum_a_CPPFLAGS =   -include config.h -DHASH_ALGO_BLAKE2=1 $(AM_CPPFLAGS)
+src_libsinglebin_b2sum_a_CPPFLAGS =   -include config.h  -DHASH_ALGO_BLAKE2=1 $(AM_CPPFLAGS)
 # Command base64
 noinst_LIBRARIES += src/libsinglebin_base64.a
-src_libsinglebin_base64_a_SOURCES = src/base64.c
+src_libsinglebin_base64_a_SOURCES =   src/basenc.c
 src_libsinglebin_base64_a_CFLAGS = "-Dmain=single_binary_main_base64 (int, char **);  int single_binary_main_base64"  -Dusage=_usage_base64 $(src_coreutils_CFLAGS)
 src_libsinglebin_base64_a_CPPFLAGS =   -DBASE_TYPE=64 $(AM_CPPFLAGS)
 # Command base32
 noinst_LIBRARIES += src/libsinglebin_base32.a
-src_libsinglebin_base32_a_SOURCES =   src/base64.c
+src_libsinglebin_base32_a_SOURCES =   src/basenc.c
 src_libsinglebin_base32_a_CFLAGS = "-Dmain=single_binary_main_base32 (int, char **);  int single_binary_main_base32"  -Dusage=_usage_base32 $(src_coreutils_CFLAGS)
 src_libsinglebin_base32_a_CPPFLAGS =   -DBASE_TYPE=32 $(AM_CPPFLAGS)
+# Command basenc
+noinst_LIBRARIES += src/libsinglebin_basenc.a
+src_libsinglebin_basenc_a_SOURCES =   src/basenc.c
+src_libsinglebin_basenc_a_CFLAGS = "-Dmain=single_binary_main_basenc (int, char **);  int single_binary_main_basenc"  -Dusage=_usage_basenc $(src_coreutils_CFLAGS)
+src_libsinglebin_basenc_a_CPPFLAGS =   -DBASE_TYPE=42 $(AM_CPPFLAGS)
 # Command basename
 noinst_LIBRARIES += src/libsinglebin_basename.a
 src_libsinglebin_basename_a_SOURCES = src/basename.c
@@ -154,7 +164,7 @@ src_libsinglebin_echo_a_SOURCES = src/echo.c
 src_libsinglebin_echo_a_CFLAGS = "-Dmain=single_binary_main_echo (int, char **);  int single_binary_main_echo"  -Dusage=_usage_echo $(src_coreutils_CFLAGS)
 # Command env
 noinst_LIBRARIES += src/libsinglebin_env.a
-src_libsinglebin_env_a_SOURCES = src/env.c
+src_libsinglebin_env_a_SOURCES =   src/env.c src/operand2sig.c
 src_libsinglebin_env_a_CFLAGS = "-Dmain=single_binary_main_env (int, char **);  int single_binary_main_env"  -Dusage=_usage_env $(src_coreutils_CFLAGS)
 # Command expand
 noinst_LIBRARIES += src/libsinglebin_expand.a
@@ -216,7 +226,7 @@ src_libsinglebin_link_a_SOURCES = src/link.c
 src_libsinglebin_link_a_CFLAGS = "-Dmain=single_binary_main_link (int, char **);  int single_binary_main_link"  -Dusage=_usage_link $(src_coreutils_CFLAGS)
 # Command ln
 noinst_LIBRARIES += src/libsinglebin_ln.a
-src_libsinglebin_ln_a_SOURCES =   src/ln.c src/relpath.c src/relpath.h
+src_libsinglebin_ln_a_SOURCES =   src/ln.c src/force-link.c src/force-link.h src/relpath.c src/relpath.h
 src_libsinglebin_ln_a_CFLAGS = "-Dmain=single_binary_main_ln (int, char **);  int single_binary_main_ln"  -Dusage=_usage_ln $(src_coreutils_CFLAGS)
 # Command logname
 noinst_LIBRARIES += src/libsinglebin_logname.a
@@ -419,11 +429,6 @@ noinst_LIBRARIES += src/libsinglebin_test.a
 src_libsinglebin_test_a_SOURCES = src/test.c
 src_libsinglebin_test_a_ldadd =   $(LIB_EACCESS)
 src_libsinglebin_test_a_CFLAGS = "-Dmain=single_binary_main_test (int, char **);  int single_binary_main_test"  -Dusage=_usage_test $(src_coreutils_CFLAGS)
-# Command timeout
-noinst_LIBRARIES += src/libsinglebin_timeout.a
-src_libsinglebin_timeout_a_SOURCES =   src/timeout.c src/operand2sig.c
-src_libsinglebin_timeout_a_ldadd =   $(LIB_TIMER_TIME)
-src_libsinglebin_timeout_a_CFLAGS = "-Dmain=single_binary_main_timeout (int, char **);  int single_binary_main_timeout"  -Dusage=_usage_timeout $(src_coreutils_CFLAGS)
 # Command touch
 noinst_LIBRARIES += src/libsinglebin_touch.a
 src_libsinglebin_touch_a_SOURCES = src/touch.c

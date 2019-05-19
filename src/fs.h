@@ -2,7 +2,8 @@
    Please send additions to bug-coreutils@gnu.org and meskes@debian.org.
    This file is generated automatically from ./src/stat.c. */
 
-#if defined __linux__
+#if defined __linux__ || defined __ANDROID__
+# define S_MAGIC_AAFS 0x5A3C69F0
 # define S_MAGIC_ACFS 0x61636673
 # define S_MAGIC_ADFS 0xADF5
 # define S_MAGIC_AFFS 0xADFF
@@ -34,6 +35,7 @@
 # define S_MAGIC_ECRYPTFS 0xF15F
 # define S_MAGIC_EFIVARFS 0xDE5E81E4
 # define S_MAGIC_EFS 0x00414A53
+# define S_MAGIC_EXFS 0x45584653
 # define S_MAGIC_EXOFS 0x5DF5
 # define S_MAGIC_EXT 0x137D
 # define S_MAGIC_EXT2 0xEF53
@@ -89,9 +91,11 @@
 # define S_MAGIC_QNX4 0x002F
 # define S_MAGIC_QNX6 0x68191122
 # define S_MAGIC_RAMFS 0x858458F6
+# define S_MAGIC_RDTGROUP 0x07655821
 # define S_MAGIC_REISERFS 0x52654973
 # define S_MAGIC_ROMFS 0x7275
 # define S_MAGIC_RPC_PIPEFS 0x67596969
+# define S_MAGIC_SDCARDFS 0x5DCA2DF5
 # define S_MAGIC_SECURITYFS 0x73636673
 # define S_MAGIC_SELINUX 0xF97CFF8C
 # define S_MAGIC_SMACK 0x43415D53

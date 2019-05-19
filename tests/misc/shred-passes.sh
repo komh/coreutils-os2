@@ -1,7 +1,7 @@
 #!/bin/sh
 # Verify the operations done by shred
 
-# Copyright (C) 2009-2016 Free Software Foundation, Inc.
+# Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ shred
@@ -79,5 +79,13 @@ shred: f: removed" > exp || framework_failure_
 shred -v -u -n20 -s4096 --random-source=Us f 2>out || fail=1
 compare exp out || fail=1
 
+# Trigger an issue in shred before v8.27 where single
+# bytes in the pattern space were not initialized correctly
+# for particular sizes, like 7,13,...
+# This failed under both valgrind and ASAN.
+for size in 1 2 6 7 8; do
+  touch shred.pattern.umr.size
+  shred -n4 -s$size shred.pattern.umr.size || fail=1
+done
 
 Exit $fail

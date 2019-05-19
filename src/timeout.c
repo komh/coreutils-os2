@@ -1,5 +1,5 @@
 /* timeout -- run a command with bounded time
-   Copyright (C) 2008-2016 Free Software Foundation, Inc.
+   Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 
 /* timeout - Start a command, and kill it if the specified timeout expires
@@ -55,7 +55,7 @@
 #include <sys/wait.h>
 
 #include "system.h"
-#include "c-strtod.h"
+#include "cl-strtod.h"
 #include "xstrtod.h"
 #include "sig2str.h"
 #include "operand2sig.h"
@@ -79,10 +79,12 @@
 
 static int timed_out;
 static int term_signal = SIGTERM;  /* same default as kill command.  */
-static int monitored_pid;
+static pid_t monitored_pid;
 static double kill_after;
 static bool foreground;      /* whether to use another program group.  */
 static bool preserve_status; /* whether to use a timeout status or not.  */
+static bool verbose;         /* whether to diagnose timeouts or not.  */
+static char const* command;
 
 /* for long options with no corresponding short option, use enum */
 enum
@@ -95,22 +97,13 @@ static struct option const long_options[] =
 {
   {"kill-after", required_argument, NULL, 'k'},
   {"signal", required_argument, NULL, 's'},
+  {"verbose", no_argument, NULL, 'v'},
   {"foreground", no_argument, NULL, FOREGROUND_OPTION},
   {"preserve-status", no_argument, NULL, PRESERVE_STATUS_OPTION},
   {GETOPT_HELP_OPTION_DECL},
   {GETOPT_VERSION_OPTION_DECL},
   {NULL, 0, NULL, 0}
 };
-
-static void
-unblock_signal (int sig)
-{
-  sigset_t unblock_set;
-  sigemptyset (&unblock_set);
-  sigaddset (&unblock_set, sig);
-  if (sigprocmask (SIG_UNBLOCK, &unblock_set, NULL) != 0)
-    error (0, errno, _("warning: sigprocmask"));
-}
 
 /* Start the timeout after which we'll receive a SIGALRM.
    Round DURATION up to the next representable value.
@@ -120,10 +113,6 @@ unblock_signal (int sig)
 static void
 settimeout (double duration, bool warn)
 {
-
-  /* We configure timers below so that SIGALRM is sent on expiry.
-     Therefore ensure we don't inherit a mask blocking SIGALRM.  */
-  unblock_signal (SIGALRM);
 
 /* timer_settime() provides potentially nanosecond resolution.
    setitimer() is more portable (to Darwin for example),
@@ -165,11 +154,11 @@ settimeout (double duration, bool warn)
 /* send SIG avoiding the current process.  */
 
 static int
-send_sig (int where, int sig)
+send_sig (pid_t where, int sig)
 {
   /* If sending to the group, then ignore the signal,
      so we don't go into a signal loop.  Note that this will ignore any of the
-     signals registered in install_signal_handlers(), that are sent after we
+     signals registered in install_cleanup(), that are sent after we
      propagate the first one, which hopefully won't be an issue.  Note this
      process can be implicitly multithreaded due to some timer_settime()
      implementations, therefore a signal sent to the group, can be sent
@@ -178,6 +167,14 @@ send_sig (int where, int sig)
     signal (sig, SIG_IGN);
   return kill (where, sig);
 }
+
+/* Signal handler which is required for sigsuspend() to be interrupted
+   whenever SIGCHLD is received.  */
+static void
+chld (int sig)
+{
+}
+
 
 static void
 cleanup (int sig)
@@ -202,6 +199,14 @@ cleanup (int sig)
       /* Send the signal directly to the monitored child,
          in case it has itself become group leader,
          or is not running in a separate group.  */
+      if (verbose)
+        {
+          char signame[MAX (SIG2STR_MAX, INT_BUFSIZE_BOUND (int))];
+          if (sig2str (sig, signame) != 0)
+            snprintf (signame, sizeof signame, "%d", sig);
+          error (0, 0, _("sending signal %s to command %s"),
+                 signame, quote (command));
+        }
       send_sig (monitored_pid, sig);
 
       /* The normal case is the job has remained in our
@@ -252,14 +257,16 @@ Start COMMAND, and kill it if still running after DURATION.\n\
                  specify the signal to be sent on timeout;\n\
                    SIGNAL may be a name like 'HUP' or a number;\n\
                    see 'kill -l' for a list of signals\n"), stdout);
+      fputs (_("\
+  -v, --verbose  diagnose to stderr any signal sent upon timeout\n"), stdout);
 
       fputs (HELP_OPTION_DESCRIPTION, stdout);
       fputs (VERSION_OPTION_DESCRIPTION, stdout);
 
       fputs (_("\n\
 DURATION is a floating point number with an optional suffix:\n\
-'s' for seconds (the default), 'm' for minutes, 'h' for hours \
-or 'd' for days.\n"), stdout);
+'s' for seconds (the default), 'm' for minutes, 'h' for hours or \
+'d' for days.\nA duration of 0 disables the associated timeout.\n"), stdout);
 
       fputs (_("\n\
 If the command times out, and --preserve-status is not set, then exit with\n\
@@ -309,12 +316,12 @@ apply_time_suffix (double *x, char suffix_char)
 }
 
 static double
-parse_duration (const char* str)
+parse_duration (const char *str)
 {
   double duration;
   const char *ep;
 
-  if (! (xstrtod (str, &ep, &duration, c_strtod) || errno == ERANGE)
+  if (! (xstrtod (str, &ep, &duration, cl_strtod) || errno == ERANGE)
       /* Nonnegative interval.  */
       || ! (0 <= duration)
       /* No extra chars after the number and an optional s,m,h,d char.  */
@@ -330,7 +337,33 @@ parse_duration (const char* str)
 }
 
 static void
-install_signal_handlers (int sigterm)
+unblock_signal (int sig)
+{
+  sigset_t unblock_set;
+  sigemptyset (&unblock_set);
+  sigaddset (&unblock_set, sig);
+  if (sigprocmask (SIG_UNBLOCK, &unblock_set, NULL) != 0)
+    error (0, errno, _("warning: sigprocmask"));
+}
+
+static void
+install_sigchld (void)
+{
+  struct sigaction sa;
+  sigemptyset (&sa.sa_mask);  /* Allow concurrent calls to handler */
+  sa.sa_handler = chld;
+  sa.sa_flags = SA_RESTART;   /* Restart syscalls if possible, as that's
+                                 more likely to work cleanly.  */
+
+  sigaction (SIGCHLD, &sa, NULL);
+
+  /* We inherit the signal mask from our parent process,
+     so ensure SIGCHLD is not blocked. */
+  unblock_signal (SIGCHLD);
+}
+
+static void
+install_cleanup (int sigterm)
 {
   struct sigaction sa;
   sigemptyset (&sa.sa_mask);  /* Allow concurrent calls to handler */
@@ -344,6 +377,30 @@ install_signal_handlers (int sigterm)
   sigaction (SIGHUP, &sa, NULL);  /* terminal closed for example.  */
   sigaction (SIGTERM, &sa, NULL); /* if we're killed, stop monitored proc.  */
   sigaction (sigterm, &sa, NULL); /* user specified termination signal.  */
+}
+
+/* Block all signals which were registered with cleanup() as the signal
+   handler, so we never kill processes after waitpid() returns.
+   Also block SIGCHLD to ensure it doesn't fire between
+   waitpid() polling and sigsuspend() waiting for a signal.
+   Return original mask in OLD_SET.  */
+static void
+block_cleanup_and_chld (int sigterm, sigset_t *old_set)
+{
+  sigset_t block_set;
+  sigemptyset (&block_set);
+
+  sigaddset (&block_set, SIGALRM);
+  sigaddset (&block_set, SIGINT);
+  sigaddset (&block_set, SIGQUIT);
+  sigaddset (&block_set, SIGHUP);
+  sigaddset (&block_set, SIGTERM);
+  sigaddset (&block_set, sigterm);
+
+  sigaddset (&block_set, SIGCHLD);
+
+  if (sigprocmask (SIG_BLOCK, &block_set, old_set) != 0)
+    error (0, errno, _("warning: sigprocmask"));
 }
 
 /* Try to disable core dumps for this process.
@@ -385,7 +442,7 @@ main (int argc, char **argv)
   initialize_exit_failure (EXIT_CANCELED);
   atexit (close_stdout);
 
-  while ((c = getopt_long (argc, argv, "+k:s:", long_options, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "+k:s:v", long_options, NULL)) != -1)
     {
       switch (c)
         {
@@ -397,6 +454,10 @@ main (int argc, char **argv)
           term_signal = operand2sig (optarg, signame);
           if (term_signal == -1)
             usage (EXIT_CANCELED);
+          break;
+
+        case 'v':
+          verbose = true;
           break;
 
         case FOREGROUND_OPTION:
@@ -423,6 +484,7 @@ main (int argc, char **argv)
   timeout = parse_duration (argv[optind++]);
 
   argv += optind;
+  command = argv[0];
 
   /* Ensure we're in our own group so all subprocesses can be killed.
      Note we don't just put the child in a separate group as
@@ -433,10 +495,10 @@ main (int argc, char **argv)
 
   /* Setup handlers before fork() so that we
      handle any signals caused by child, without races.  */
-  install_signal_handlers (term_signal);
+  install_cleanup (term_signal);
   signal (SIGTTIN, SIG_IGN);   /* Don't stop if background child needs tty.  */
   signal (SIGTTOU, SIG_IGN);   /* Don't stop if background child needs tty.  */
-  signal (SIGCHLD, SIG_DFL);   /* Don't inherit CHLD handling from parent.   */
+  install_sigchld ();          /* Interrupt sigsuspend() when child exits.   */
 
   monitored_pid = fork ();
   if (monitored_pid == -1)
@@ -454,7 +516,7 @@ main (int argc, char **argv)
 
       /* exit like sh, env, nohup, ...  */
       int exit_status = errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE;
-      error (0, errno, _("failed to run command %s"), quote (argv[0]));
+      error (0, errno, _("failed to run command %s"), quote (command));
       return exit_status;
     }
   else
@@ -462,11 +524,19 @@ main (int argc, char **argv)
       pid_t wait_result;
       int status;
 
+      /* We configure timers so that SIGALRM is sent on expiry.
+         Therefore ensure we don't inherit a mask blocking SIGALRM.  */
+      unblock_signal (SIGALRM);
+
       settimeout (timeout, true);
 
-      while ((wait_result = waitpid (monitored_pid, &status, 0)) < 0
-             && errno == EINTR)
-        continue;
+      /* Ensure we don't cleanup() after waitpid() reaps the child,
+         to avoid sending signals to a possibly different process.  */
+      sigset_t cleanup_set;
+      block_cleanup_and_chld (term_signal, &cleanup_set);
+
+      while ((wait_result = waitpid (monitored_pid, &status, WNOHANG)) == 0)
+        sigsuspend (&cleanup_set);  /* Wait with cleanup signals unblocked.  */
 
       if (wait_result < 0)
         {
@@ -487,6 +557,7 @@ main (int argc, char **argv)
                 {
                   /* exit with the signal flag set.  */
                   signal (sig, SIG_DFL);
+                  unblock_signal (sig);
                   raise (sig);
                 }
               status = sig + 128; /* what sh returns for signaled processes.  */

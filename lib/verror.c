@@ -1,5 +1,5 @@
 /* va_list error handler for noninteractive utilities
-   Copyright (C) 2006-2007, 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2006-2007, 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Eric Blake.  */
 
@@ -58,7 +58,7 @@ verror_at_line (int status, int errnum, const char *file,
   char *message = xvasprintf (format, args);
   if (message)
     {
-      /* Until http://sourceware.org/bugzilla/show_bug.cgi?id=2997 is fixed,
+      /* Until https://sourceware.org/bugzilla/show_bug.cgi?id=2997 is fixed,
          glibc violates GNU Coding Standards when the file argument to
          error_at_line is NULL.  */
       if (file)

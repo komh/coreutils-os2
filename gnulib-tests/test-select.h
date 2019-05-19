@@ -1,5 +1,5 @@
 /* Test of select() substitute.
-   Copyright (C) 2008-2016 Free Software Foundation, Inc.
+   Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,12 +12,13 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paolo Bonzini, 2008.  */
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -29,16 +30,12 @@
 
 #include "macros.h"
 
-#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#if defined _WIN32 && ! defined __CYGWIN__
 # define WINDOWS_NATIVE
 #endif
 
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
-#endif
-
-#ifndef SO_REUSEPORT
-# define SO_REUSEPORT    SO_REUSEADDR
 #endif
 
 #define TEST_PORT       12345
@@ -245,9 +242,11 @@ test_bad_nfd (select_fn my_select)
   /* Can't test FD_SETSIZE + 1 for EINVAL, since some systems allow
      dynamically larger set size by redefining FD_SETSIZE anywhere up
      to the actual maximum fd.  */
-  /* if (do_select_bad_nfd_nowait (FD_SETSIZE + 1, my_select) != -1 */
-  /*     || errno != EINVAL) */
-  /*   failed ("invalid errno after bogus nfds"); */
+#if 0
+  if (do_select_bad_nfd_nowait (FD_SETSIZE + 1, my_select) != -1
+      || errno != EINVAL)
+    failed ("invalid errno after bogus nfds");
+#endif
 }
 
 /* Test select(2) on invalid file descriptors.  */
@@ -292,11 +291,16 @@ test_bad_fd (select_fn my_select)
   /* On Linux, Mac OS X, *BSD, values of fd like 99 or 399 are discarded
      by the kernel early and therefore do *not* lead to EBADF, as required
      by POSIX.  */
-# if defined __linux__ || (defined __APPLE__ && defined __MACH__) || defined __FreeBSD__ || defined __OpenBSD__ || defined __NetBSD__
-  fd = 16;
+# if defined __linux__ || (defined __APPLE__ && defined __MACH__) || (defined __FreeBSD__ || defined __DragonFly__) || defined __OpenBSD__ || defined __NetBSD__
+  fd = 14;
 # else
   fd = 99;
 # endif
+  /* Even on the best POSIX compliant platforms, values of fd >= FD_SETSIZE
+     require an nfds argument that is > FD_SETSIZE and thus may lead to EINVAL,
+     not EBADF.  */
+  if (fd >= FD_SETSIZE)
+    fd = FD_SETSIZE - 1;
   close (fd);
 
   if (do_select_bad_fd_nowait (fd, SEL_IN, my_select) == 0 || errno != EBADF)

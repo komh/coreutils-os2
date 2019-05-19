@@ -1,6 +1,6 @@
 /* Diacritics processing for a few character codes.  -*- coding: utf-8 -*-
 
-   Copyright (C) 1990-1993, 2000, 2006, 2009-2016 Free Software Foundation,
+   Copyright (C) 1990-1993, 2000, 2006, 2009-2019 Free Software Foundation,
    Inc.
 
    François Pinard <pinard@iro.umontreal.ca>, 1988.
@@ -18,7 +18,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 

@@ -56,66 +56,6 @@ m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
 _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
 
-# Copyright (C) 2011-2014 Free Software Foundation, Inc.
-#
-# This file is free software; the Free Software Foundation
-# gives unlimited permission to copy and/or distribute it,
-# with or without modifications, as long as this notice is preserved.
-
-# AM_PROG_AR([ACT-IF-FAIL])
-# -------------------------
-# Try to determine the archiver interface, and trigger the ar-lib wrapper
-# if it is needed.  If the detection of archiver interface fails, run
-# ACT-IF-FAIL (default is to abort configure with a proper error message).
-AC_DEFUN([AM_PROG_AR],
-[AC_BEFORE([$0], [LT_INIT])dnl
-AC_BEFORE([$0], [AC_PROG_LIBTOOL])dnl
-AC_REQUIRE([AM_AUX_DIR_EXPAND])dnl
-AC_REQUIRE_AUX_FILE([ar-lib])dnl
-AC_CHECK_TOOLS([AR], [ar lib "link -lib"], [false])
-: ${AR=ar}
-
-AC_CACHE_CHECK([the archiver ($AR) interface], [am_cv_ar_interface],
-  [AC_LANG_PUSH([C])
-   am_cv_ar_interface=ar
-   AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int some_variable = 0;]])],
-     [am_ar_try='$AR cru libconftest.a conftest.$ac_objext >&AS_MESSAGE_LOG_FD'
-      AC_TRY_EVAL([am_ar_try])
-      if test "$ac_status" -eq 0; then
-        am_cv_ar_interface=ar
-      else
-        am_ar_try='$AR -NOLOGO -OUT:conftest.lib conftest.$ac_objext >&AS_MESSAGE_LOG_FD'
-        AC_TRY_EVAL([am_ar_try])
-        if test "$ac_status" -eq 0; then
-          am_cv_ar_interface=lib
-        else
-          am_cv_ar_interface=unknown
-        fi
-      fi
-      rm -f conftest.lib libconftest.a
-     ])
-   AC_LANG_POP([C])])
-
-case $am_cv_ar_interface in
-ar)
-  ;;
-lib)
-  # Microsoft lib, so override with the ar-lib wrapper script.
-  # FIXME: It is wrong to rewrite AR.
-  # But if we don't then we get into trouble of one sort or another.
-  # A longer-term fix would be to have automake use am__AR in this case,
-  # and then we could set am__AR="$am_aux_dir/ar-lib \$(AR)" or something
-  # similar.
-  AR="$am_aux_dir/ar-lib $AR"
-  ;;
-unknown)
-  m4_default([$1],
-             [AC_MSG_ERROR([could not determine $AR interface])])
-  ;;
-esac
-AC_SUBST([AR])dnl
-])
-
 # AM_AUX_DIR_EXPAND                                         -*- Autoconf -*-
 
 # Copyright (C) 2001-2014 Free Software Foundation, Inc.
@@ -872,23 +812,6 @@ AC_LANG_POP([C])])
 # For backward compatibility.
 AC_DEFUN_ONCE([AM_PROG_CC_C_O], [AC_REQUIRE([AC_PROG_CC])])
 
-# Copyright (C) 2001-2014 Free Software Foundation, Inc.
-#
-# This file is free software; the Free Software Foundation
-# gives unlimited permission to copy and/or distribute it,
-# with or without modifications, as long as this notice is preserved.
-
-# AM_RUN_LOG(COMMAND)
-# -------------------
-# Run COMMAND, save the exit status in ac_status, and log it.
-# (This has been adapted from Autoconf's _AC_RUN_LOG macro.)
-AC_DEFUN([AM_RUN_LOG],
-[{ echo "$as_me:$LINENO: $1" >&AS_MESSAGE_LOG_FD
-   ($1) >&AS_MESSAGE_LOG_FD 2>&AS_MESSAGE_LOG_FD
-   ac_status=$?
-   echo "$as_me:$LINENO: \$? = $ac_status" >&AS_MESSAGE_LOG_FD
-   (exit $ac_status); }])
-
 # Check to make sure that the build environment is sane.    -*- Autoconf -*-
 
 # Copyright (C) 1996-2014 Free Software Foundation, Inc.
@@ -1211,8 +1134,10 @@ AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
 m4_include([m4/00gnulib.m4])
+m4_include([m4/__inline.m4])
 m4_include([m4/absolute-header.m4])
 m4_include([m4/acl.m4])
+m4_include([m4/af_alg.m4])
 m4_include([m4/alloca.m4])
 m4_include([m4/arpa_inet_h.m4])
 m4_include([m4/assert.m4])
@@ -1223,6 +1148,8 @@ m4_include([m4/base64.m4])
 m4_include([m4/bison.m4])
 m4_include([m4/boottime.m4])
 m4_include([m4/btowc.m4])
+m4_include([m4/builtin-expect.m4])
+m4_include([m4/byteswap.m4])
 m4_include([m4/c-strtod.m4])
 m4_include([m4/calloc.m4])
 m4_include([m4/canon-host.m4])
@@ -1255,6 +1182,7 @@ m4_include([m4/environ.m4])
 m4_include([m4/errno_h.m4])
 m4_include([m4/error.m4])
 m4_include([m4/euidaccess.m4])
+m4_include([m4/explicit_bzero.m4])
 m4_include([m4/exponentd.m4])
 m4_include([m4/exponentf.m4])
 m4_include([m4/exponentl.m4])
@@ -1279,6 +1207,7 @@ m4_include([m4/filenamecat.m4])
 m4_include([m4/flexmember.m4])
 m4_include([m4/float_h.m4])
 m4_include([m4/fnmatch.m4])
+m4_include([m4/fnmatch_h.m4])
 m4_include([m4/fopen.m4])
 m4_include([m4/fpending.m4])
 m4_include([m4/fpieee.m4])
@@ -1320,6 +1249,7 @@ m4_include([m4/getopt.m4])
 m4_include([m4/getpagesize.m4])
 m4_include([m4/getpass.m4])
 m4_include([m4/getprogname.m4])
+m4_include([m4/getrusage.m4])
 m4_include([m4/gettext.m4])
 m4_include([m4/gettime.m4])
 m4_include([m4/gettimeofday.m4])
@@ -1332,7 +1262,7 @@ m4_include([m4/gnu-make.m4])
 m4_include([m4/gnulib-common.m4])
 m4_include([m4/gnulib-comp.m4])
 m4_include([m4/group-member.m4])
-m4_include([m4/hard-locale.m4])
+m4_include([m4/host-cpu-c-abi.m4])
 m4_include([m4/host-os.m4])
 m4_include([m4/hostent.m4])
 m4_include([m4/human.m4])
@@ -1346,6 +1276,7 @@ m4_include([m4/include_next.m4])
 m4_include([m4/inet_ntop.m4])
 m4_include([m4/inet_pton.m4])
 m4_include([m4/inline.m4])
+m4_include([m4/intl-thread-locale.m4])
 m4_include([m4/intlmacosx.m4])
 m4_include([m4/intmax_t.m4])
 m4_include([m4/inttostr.m4])
@@ -1387,9 +1318,9 @@ m4_include([m4/locale-zh.m4])
 m4_include([m4/locale_h.m4])
 m4_include([m4/localeconv.m4])
 m4_include([m4/localename.m4])
+m4_include([m4/localtime-buffer.m4])
 m4_include([m4/lock.m4])
 m4_include([m4/longlong.m4])
-m4_include([m4/ls-mntd-fs.m4])
 m4_include([m4/lseek.m4])
 m4_include([m4/lstat.m4])
 m4_include([m4/malloc.m4])
@@ -1413,11 +1344,13 @@ m4_include([m4/memcoll.m4])
 m4_include([m4/mempcpy.m4])
 m4_include([m4/memrchr.m4])
 m4_include([m4/mgetgroups.m4])
+m4_include([m4/minmax.m4])
 m4_include([m4/mkancesdirs.m4])
 m4_include([m4/mkdir-p.m4])
 m4_include([m4/mkdir.m4])
 m4_include([m4/mkfifo.m4])
 m4_include([m4/mknod.m4])
+m4_include([m4/mkostemp.m4])
 m4_include([m4/mkstemp.m4])
 m4_include([m4/mktime.m4])
 m4_include([m4/mmap-anon.m4])
@@ -1436,8 +1369,10 @@ m4_include([m4/nls.m4])
 m4_include([m4/nocrash.m4])
 m4_include([m4/non-recursive-gnulib-prefix-hack.m4])
 m4_include([m4/nproc.m4])
+m4_include([m4/nstrftime.m4])
 m4_include([m4/obstack.m4])
 m4_include([m4/off_t.m4])
+m4_include([m4/open-cloexec.m4])
 m4_include([m4/open.m4])
 m4_include([m4/openat.m4])
 m4_include([m4/opendir.m4])
@@ -1447,6 +1382,7 @@ m4_include([m4/perl.m4])
 m4_include([m4/perror.m4])
 m4_include([m4/physmem.m4])
 m4_include([m4/pipe.m4])
+m4_include([m4/pipe2.m4])
 m4_include([m4/po.m4])
 m4_include([m4/posix-shell.m4])
 m4_include([m4/posixtm.m4])
@@ -1458,6 +1394,8 @@ m4_include([m4/printf.m4])
 m4_include([m4/priv-set.m4])
 m4_include([m4/progtest.m4])
 m4_include([m4/pthread.m4])
+m4_include([m4/pthread_rwlock_rdlock.m4])
+m4_include([m4/pthread_sigmask.m4])
 m4_include([m4/putenv.m4])
 m4_include([m4/quote.m4])
 m4_include([m4/quotearg.m4])
@@ -1473,6 +1411,7 @@ m4_include([m4/realloc.m4])
 m4_include([m4/regex.m4])
 m4_include([m4/remove.m4])
 m4_include([m4/rename.m4])
+m4_include([m4/renameat.m4])
 m4_include([m4/rewinddir.m4])
 m4_include([m4/rmdir.m4])
 m4_include([m4/rpmatch.m4])
@@ -1512,6 +1451,7 @@ m4_include([m4/stat-prog.m4])
 m4_include([m4/stat-size.m4])
 m4_include([m4/stat-time.m4])
 m4_include([m4/stat.m4])
+m4_include([m4/std-gnu11.m4])
 m4_include([m4/stdalign.m4])
 m4_include([m4/stdarg.m4])
 m4_include([m4/stdbool.m4])
@@ -1525,16 +1465,15 @@ m4_include([m4/stpncpy.m4])
 m4_include([m4/strdup.m4])
 m4_include([m4/strerror.m4])
 m4_include([m4/strerror_r.m4])
-m4_include([m4/strftime.m4])
 m4_include([m4/string_h.m4])
 m4_include([m4/strncat.m4])
 m4_include([m4/strndup.m4])
 m4_include([m4/strnlen.m4])
-m4_include([m4/strpbrk.m4])
 m4_include([m4/strsignal.m4])
 m4_include([m4/strstr.m4])
 m4_include([m4/strtod.m4])
 m4_include([m4/strtoimax.m4])
+m4_include([m4/strtold.m4])
 m4_include([m4/strtoll.m4])
 m4_include([m4/strtoull.m4])
 m4_include([m4/strtoumax.m4])
@@ -1562,6 +1501,8 @@ m4_include([m4/timer_time.m4])
 m4_include([m4/timespec.m4])
 m4_include([m4/tls.m4])
 m4_include([m4/tm_gmtoff.m4])
+m4_include([m4/tmpdir.m4])
+m4_include([m4/tmpfile.m4])
 m4_include([m4/tzset.m4])
 m4_include([m4/uname.m4])
 m4_include([m4/ungetc.m4])
@@ -1575,7 +1516,9 @@ m4_include([m4/unlinkdir.m4])
 m4_include([m4/unlocked-io.m4])
 m4_include([m4/uptime.m4])
 m4_include([m4/userspec.m4])
-m4_include([m4/utimbuf.m4])
+m4_include([m4/usleep.m4])
+m4_include([m4/utime.m4])
+m4_include([m4/utime_h.m4])
 m4_include([m4/utimecmp.m4])
 m4_include([m4/utimens.m4])
 m4_include([m4/utimensat.m4])
@@ -1607,5 +1550,6 @@ m4_include([m4/xstrndup.m4])
 m4_include([m4/xstrtod.m4])
 m4_include([m4/xstrtol.m4])
 m4_include([m4/xvasprintf.m4])
+m4_include([m4/year2038.m4])
 m4_include([m4/yesno.m4])
 m4_include([m4/yield.m4])

@@ -1,6 +1,6 @@
 # Make coreutils.					-*-Makefile-*-
 
-# Copyright (C) 1990-2016 Free Software Foundation, Inc.
+# Copyright (C) 1990-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,33 +13,13 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ALL_RECURSIVE_TARGETS =
 
 SUBDIRS = po . gnulib-tests
 
-changelog_etc =				\
-  ChangeLog-2005			\
-  ChangeLog-2006			\
-  ChangeLog-2007			\
-  ChangeLog-2008			\
-  build-aux/ChangeLog-2007		\
-  doc/ChangeLog-2007			\
-  lib/ChangeLog-2007			\
-  m4/ChangeLog-2007			\
-  old/fileutils/ChangeLog		\
-  old/fileutils/ChangeLog-1997		\
-  old/fileutils/NEWS			\
-  old/sh-utils/ChangeLog		\
-  old/sh-utils/ChangeLog.0		\
-  old/sh-utils/NEWS			\
-  old/textutils/ChangeLog		\
-  old/textutils/NEWS			\
-  po/ChangeLog-2007
-
 EXTRA_DIST =				\
-  $(changelog_etc)			\
   .mailmap				\
   .prev-version				\
   .version				\
@@ -104,13 +84,16 @@ BUILT_SOURCES = .version
 # Have .timestamp based dates only in tarball builds.
 # The perl substitution is to change some key uses of "rm" to "/bin/rm".
 # See the rm_subst comment for details.
+# The touch avoids a subtle, spurious "make distcheck" failure.
 dist-hook: gen-ChangeLog
 	$(AM_V_GEN)chmod -R +rw $(distdir)
 	$(AM_V_GEN)echo $(VERSION) > $(distdir)/.tarball-version
 	$(AM_V_GEN)date +%s > $(distdir)/.timestamp
 	$(AM_V_at)perl -pi -e '$(rm_subst)' $(distdir)/Makefile.in
+	$(AM_V_at)touch $(distdir)/doc/constants.texi \
+	  $(distdir)/doc/coreutils.info
 
-gen_start_date = 2008-02-08
+gen_start_ver = 8.22
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
 	$(AM_V_GEN)if test -d .git; then				\
@@ -118,9 +101,11 @@ gen-ChangeLog:
 	  test -e "$$log_fix"						\
 	    && amend_git_log="--amend=$$log_fix"			\
 	    || amend_git_log=;						\
-	  $(top_srcdir)/build-aux/gitlog-to-changelog			\
-	    $$amend_git_log --since=$(gen_start_date) > $(distdir)/cl-t && \
-	    { rm -f $(distdir)/ChangeLog &&				\
+	  $(top_srcdir)/build-aux/gitlog-to-changelog $$amend_git_log	\
+	    -- v$(gen_start_ver)~.. > $(distdir)/cl-t &&		\
+	    { printf '\n\nSee the source repo for older entries\n'	\
+	      >> $(distdir)/cl-t &&					\
+	      rm -f $(distdir)/ChangeLog &&				\
 	      mv $(distdir)/cl-t $(distdir)/ChangeLog; }		\
 	fi
 
@@ -135,7 +120,7 @@ THANKS-to-translators: po/LINGUAS THANKStt.in
 	$(AM_V_GEN)(							\
 	  cat $(srcdir)/THANKStt.in;					\
 	  for lang in `cat $(srcdir)/po/LINGUAS`; do			\
-	    echo http://translationproject.org/team/$$lang.html;	\
+	    echo https://translationproject.org/team/$$lang.html;	\
 	  done;								\
 	) > $@-tmp && mv $@-tmp $@
 

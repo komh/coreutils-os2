@@ -1,5 +1,5 @@
 /* stty -- change and print terminal line settings
-   Copyright (C) 1990-2016 Free Software Foundation, Inc.
+   Copyright (C) 1990-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Usage: stty [-ag] [--all] [--save] [-F device] [--file=device] [setting...]
 
@@ -1077,6 +1077,193 @@ settings, CHAR is taken literally, or coded as in ^c, 0x37, 0177 or\n\
   exit (status);
 }
 
+
+/* Apply specified settings to MODE, and update
+   SPEED_WAS_SET and REQUIRE_SET_ATTR as required.
+   If CHECKING is true, this function doesn't interact
+   with a device, and only validates specified settings.  */
+
+static void
+apply_settings (bool checking, const char *device_name,
+                char * const *settings, int n_settings,
+                struct termios *mode, bool *speed_was_set,
+                bool *require_set_attr)
+{
+#define check_argument(arg)						\
+  do									\
+    {									\
+      if (k == n_settings - 1 || ! settings[k+1])			\
+        {								\
+          error (0, 0, _("missing argument to %s"), quote (arg));	\
+          usage (EXIT_FAILURE);						\
+        }								\
+    }									\
+  while (0)
+
+  for (int k = 1; k < n_settings; k++)
+    {
+      char const *arg = settings[k];
+      bool match_found = false;
+      bool not_set_attr = false;
+      bool reversed = false;
+      int i;
+
+      if (! arg)
+        continue;
+
+      if (arg[0] == '-')
+        {
+          ++arg;
+          reversed = true;
+        }
+      if (STREQ (arg, "drain"))
+        {
+          tcsetattr_options = reversed ? TCSANOW : TCSADRAIN;
+          continue;
+        }
+      for (i = 0; mode_info[i].name != NULL; ++i)
+        {
+          if (STREQ (arg, mode_info[i].name))
+            {
+              if ((mode_info[i].flags & NO_SETATTR) == 0)
+                {
+                  match_found = set_mode (&mode_info[i], reversed, mode);
+                  *require_set_attr = true;
+                }
+              else
+                match_found = not_set_attr = true;
+              break;
+            }
+        }
+      if (!match_found && reversed)
+        {
+          error (0, 0, _("invalid argument %s"), quote (arg - 1));
+          usage (EXIT_FAILURE);
+        }
+      if (!match_found)
+        {
+          for (i = 0; control_info[i].name != NULL; ++i)
+            {
+              if (STREQ (arg, control_info[i].name))
+                {
+                  check_argument (arg);
+                  match_found = true;
+                  ++k;
+                  set_control_char (&control_info[i], settings[k], mode);
+                  *require_set_attr = true;
+                  break;
+                }
+            }
+        }
+      if (!match_found || not_set_attr)
+        {
+          if (STREQ (arg, "ispeed"))
+            {
+              check_argument (arg);
+              ++k;
+              if (checking)
+                continue;
+              set_speed (input_speed, settings[k], mode);
+              *speed_was_set = true;
+              *require_set_attr = true;
+            }
+          else if (STREQ (arg, "ospeed"))
+            {
+              check_argument (arg);
+              ++k;
+              if (checking)
+                continue;
+              set_speed (output_speed, settings[k], mode);
+              *speed_was_set = true;
+              *require_set_attr = true;
+            }
+#ifdef TIOCEXT
+          /* This is the BSD interface to "extproc".
+            Even though it's an lflag, an ioctl is used to set it.  */
+          else if (STREQ (arg, "extproc"))
+            {
+              int val = ! reversed;
+
+              if (checking)
+                continue;
+
+              if (ioctl (STDIN_FILENO, TIOCEXT, &val) != 0)
+                {
+                  die (EXIT_FAILURE, errno, _("%s: error setting %s"),
+                       quotef_n (0, device_name), quote_n (1, arg));
+                }
+            }
+#endif
+#ifdef TIOCGWINSZ
+          else if (STREQ (arg, "rows"))
+            {
+              check_argument (arg);
+              ++k;
+              if (checking)
+                continue;
+              set_window_size (integer_arg (settings[k], INT_MAX), -1,
+                               device_name);
+            }
+          else if (STREQ (arg, "cols")
+                   || STREQ (arg, "columns"))
+            {
+              check_argument (arg);
+              ++k;
+              if (checking)
+                continue;
+              set_window_size (-1, integer_arg (settings[k], INT_MAX),
+                               device_name);
+            }
+          else if (STREQ (arg, "size"))
+            {
+              if (checking)
+                continue;
+              max_col = screen_columns ();
+              current_col = 0;
+              display_window_size (false, device_name);
+            }
+#endif
+#ifdef HAVE_C_LINE
+          else if (STREQ (arg, "line"))
+            {
+              unsigned long int value;
+              check_argument (arg);
+              ++k;
+              mode->c_line = value = integer_arg (settings[k], ULONG_MAX);
+              if (mode->c_line != value)
+                error (0, 0, _("invalid line discipline %s"),
+                       quote (settings[k]));
+              *require_set_attr = true;
+            }
+#endif
+          else if (STREQ (arg, "speed"))
+            {
+              if (checking)
+                continue;
+              max_col = screen_columns ();
+              display_speed (mode, false);
+            }
+          else if (string_to_baud (arg) != (speed_t) -1)
+            {
+              if (checking)
+                continue;
+              set_speed (both_speeds, arg, mode);
+              *speed_was_set = true;
+              *require_set_attr = true;
+            }
+          else
+            {
+              if (! recover_mode (arg, mode))
+                {
+                  error (0, 0, _("invalid argument %s"), quote (arg));
+                  usage (EXIT_FAILURE);
+                }
+              *require_set_attr = true;
+            }
+        }
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1092,7 +1279,6 @@ main (int argc, char **argv)
   bool speed_was_set _GL_UNUSED;
   bool verbose_output;
   bool recoverable_output;
-  int k;
   bool noargs = true;
   char *file_name = NULL;
   const char *device_name;
@@ -1179,15 +1365,18 @@ main (int argc, char **argv)
     die (EXIT_FAILURE, 0,
          _("when specifying an output style, modes may not be set"));
 
-  /* FIXME: it'd be better not to open the file until we've verified
-     that all arguments are valid.  Otherwise, we could end up doing
-     only some of the requested operations and then failing, probably
-     leaving things in an undesirable state.  */
+  device_name = file_name ? file_name : _("standard input");
+
+  if (!noargs && !verbose_output && !recoverable_output)
+    {
+      static struct termios check_mode;
+      apply_settings (/* checking= */ true, device_name, argv, argc,
+                      &check_mode, &speed_was_set, &require_set_attr);
+    }
 
   if (file_name)
     {
       int fdflags;
-      device_name = file_name;
       if (fd_reopen (STDIN_FILENO, device_name, O_RDONLY | O_NONBLOCK, 0) < 0)
         die (EXIT_FAILURE, errno, "%s", quotef (device_name));
       if ((fdflags = fcntl (STDIN_FILENO, F_GETFL)) == -1
@@ -1195,8 +1384,6 @@ main (int argc, char **argv)
         die (EXIT_FAILURE, errno, _("%s: couldn't reset non-blocking mode"),
              quotef (device_name));
     }
-  else
-    device_name = _("standard input");
 
   if (tcgetattr (STDIN_FILENO, &mode))
     die (EXIT_FAILURE, errno, "%s", quotef (device_name));
@@ -1211,174 +1398,8 @@ main (int argc, char **argv)
 
   speed_was_set = false;
   require_set_attr = false;
-  for (k = 1; k < argc; k++)
-    {
-      char const *arg = argv[k];
-      bool match_found = false;
-      bool not_set_attr = false;
-      bool reversed = false;
-      int i;
-
-      if (! arg)
-        continue;
-
-      if (arg[0] == '-')
-        {
-          ++arg;
-          reversed = true;
-        }
-      if (STREQ (arg, "drain"))
-        {
-          tcsetattr_options = reversed ? TCSANOW : TCSADRAIN;
-          continue;
-        }
-      for (i = 0; mode_info[i].name != NULL; ++i)
-        {
-          if (STREQ (arg, mode_info[i].name))
-            {
-              if ((mode_info[i].flags & NO_SETATTR) == 0)
-                {
-                  match_found = set_mode (&mode_info[i], reversed, &mode);
-                  require_set_attr = true;
-                }
-              else
-                match_found = not_set_attr = true;
-              break;
-            }
-        }
-      if (!match_found && reversed)
-        {
-          error (0, 0, _("invalid argument %s"), quote (arg - 1));
-          usage (EXIT_FAILURE);
-        }
-      if (!match_found)
-        {
-          for (i = 0; control_info[i].name != NULL; ++i)
-            {
-              if (STREQ (arg, control_info[i].name))
-                {
-                  if (k == argc - 1)
-                    {
-                      error (0, 0, _("missing argument to %s"), quote (arg));
-                      usage (EXIT_FAILURE);
-                    }
-                  match_found = true;
-                  ++k;
-                  set_control_char (&control_info[i], argv[k], &mode);
-                  require_set_attr = true;
-                  break;
-                }
-            }
-        }
-      if (!match_found || not_set_attr)
-        {
-          if (STREQ (arg, "ispeed"))
-            {
-              if (k == argc - 1)
-                {
-                  error (0, 0, _("missing argument to %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              ++k;
-              set_speed (input_speed, argv[k], &mode);
-              speed_was_set = true;
-              require_set_attr = true;
-            }
-          else if (STREQ (arg, "ospeed"))
-            {
-              if (k == argc - 1)
-                {
-                  error (0, 0, _("missing argument to %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              ++k;
-              set_speed (output_speed, argv[k], &mode);
-              speed_was_set = true;
-              require_set_attr = true;
-            }
-#ifdef TIOCEXT
-          /* This is the BSD interface to "extproc".
-            Even though it's an lflag, an ioctl is used to set it.  */
-          else if (STREQ (arg, "extproc"))
-            {
-              int val = ! reversed;
-
-              if (ioctl (STDIN_FILENO, TIOCEXT, &val) != 0)
-                {
-                  die (EXIT_FAILURE, errno, _("%s: error setting %s"),
-                       quotef_n (0, device_name), quote_n (1, arg));
-                }
-            }
-#endif
-#ifdef TIOCGWINSZ
-          else if (STREQ (arg, "rows"))
-            {
-              if (k == argc - 1)
-                {
-                  error (0, 0, _("missing argument to %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              ++k;
-              set_window_size (integer_arg (argv[k], INT_MAX), -1,
-                               device_name);
-            }
-          else if (STREQ (arg, "cols")
-                   || STREQ (arg, "columns"))
-            {
-              if (k == argc - 1)
-                {
-                  error (0, 0, _("missing argument to %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              ++k;
-              set_window_size (-1, integer_arg (argv[k], INT_MAX),
-                               device_name);
-            }
-          else if (STREQ (arg, "size"))
-            {
-              max_col = screen_columns ();
-              current_col = 0;
-              display_window_size (false, device_name);
-            }
-#endif
-#ifdef HAVE_C_LINE
-          else if (STREQ (arg, "line"))
-            {
-              unsigned long int value;
-              if (k == argc - 1)
-                {
-                  error (0, 0, _("missing argument to %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              ++k;
-              mode.c_line = value = integer_arg (argv[k], ULONG_MAX);
-              if (mode.c_line != value)
-                error (0, 0, _("invalid line discipline %s"), quote (argv[k]));
-              require_set_attr = true;
-            }
-#endif
-          else if (STREQ (arg, "speed"))
-            {
-              max_col = screen_columns ();
-              display_speed (&mode, false);
-            }
-          else if (string_to_baud (arg) != (speed_t) -1)
-            {
-              set_speed (both_speeds, arg, &mode);
-              speed_was_set = true;
-              require_set_attr = true;
-            }
-          else
-            {
-              if (! recover_mode (arg, &mode))
-                {
-                  error (0, 0, _("invalid argument %s"), quote (arg));
-                  usage (EXIT_FAILURE);
-                }
-              require_set_attr = true;
-            }
-        }
-    }
+  apply_settings (/* checking= */ false, device_name, argv, argc,
+                  &mode, &speed_was_set, &require_set_attr);
 
   if (require_set_attr)
     {
@@ -1427,9 +1448,8 @@ main (int argc, char **argv)
                    quotef (device_name));
 #ifdef TESTING
               {
-                size_t i;
                 printf ("new_mode: mode\n");
-                for (i = 0; i < sizeof (new_mode); i++)
+                for (size_t i = 0; i < sizeof (new_mode); i++)
                   printf ("0x%02x: 0x%02x\n",
                           *(((unsigned char *) &new_mode) + i),
                           *(((unsigned char *) &mode) + i));
@@ -2042,14 +2062,12 @@ display_speed (struct termios *mode, bool fancy)
 static void
 display_recoverable (struct termios *mode)
 {
-  size_t i;
-
   printf ("%lx:%lx:%lx:%lx",
           (unsigned long int) mode->c_iflag,
           (unsigned long int) mode->c_oflag,
           (unsigned long int) mode->c_cflag,
           (unsigned long int) mode->c_lflag);
-  for (i = 0; i < NCCS; ++i)
+  for (size_t i = 0; i < NCCS; ++i)
     printf (":%lx", (unsigned long int) mode->c_cc[i]);
   putchar ('\n');
 }
@@ -2192,9 +2210,7 @@ static struct speed_map const speeds[] =
 static speed_t _GL_ATTRIBUTE_PURE
 string_to_baud (const char *arg)
 {
-  int i;
-
-  for (i = 0; speeds[i].string != NULL; ++i)
+  for (int i = 0; speeds[i].string != NULL; ++i)
     if (STREQ (arg, speeds[i].string))
       return speeds[i].speed;
   return (speed_t) -1;
@@ -2203,9 +2219,7 @@ string_to_baud (const char *arg)
 static unsigned long int _GL_ATTRIBUTE_PURE
 baud_to_value (speed_t speed)
 {
-  int i;
-
-  for (i = 0; speeds[i].string != NULL; ++i)
+  for (int i = 0; speeds[i].string != NULL; ++i)
     if (speed == speeds[i].speed)
       return speeds[i].value;
   return 0;
@@ -2234,11 +2248,13 @@ sane_mode (struct termios *mode)
       if (mode_info[i].flags & SANE_SET)
         {
           bitsp = mode_type_flag (mode_info[i].type, mode);
+          assert (bitsp); /* combination modes will not have SANE_SET.  */
           *bitsp = (*bitsp & ~mode_info[i].mask) | mode_info[i].bits;
         }
       else if (mode_info[i].flags & SANE_UNSET)
         {
           bitsp = mode_type_flag (mode_info[i].type, mode);
+          assert (bitsp); /* combination modes will not have SANE_UNSET.  */
           *bitsp = *bitsp & ~mode_info[i].mask & ~mode_info[i].bits;
         }
     }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Test cp --sparse=always through fiemap copy
 
-# Copyright (C) 2010-2016 Free Software Foundation, Inc.
+# Copyright (C) 2010-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ cp
@@ -26,8 +26,6 @@ touch fiemap_chk
 if fiemap_capable_ fiemap_chk && ! df -t ext3 . >/dev/null; then
   : # Current partition has working extents.  Good!
 else
-  # FIXME: temporarily(?) skip this variant, at least until after this bug
-  # is fixed: http://thread.gmane.org/gmane.comp.file-systems.ext4/24495
   skip_ "current file system has insufficient FIEMAP support"
 
   # It's not;  we need to create one, hence we need root access.

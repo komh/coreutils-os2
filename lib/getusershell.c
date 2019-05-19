@@ -1,6 +1,6 @@
 /* getusershell.c -- Return names of valid user shells.
 
-   Copyright (C) 1991, 1997, 2000-2001, 2003-2006, 2008-2016 Free Software
+   Copyright (C) 1991, 1997, 2000-2001, 2003-2006, 2008-2019 Free Software
    Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by David MacKenzie <djm@gnu.ai.mit.edu> */
 

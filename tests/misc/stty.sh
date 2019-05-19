@@ -1,7 +1,7 @@
 #!/bin/sh
 # Make sure stty can parse most of its options.
 
-# Copyright (C) 1998-2016 Free Software Foundation, Inc.
+# Copyright (C) 1998-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Make sure there's a tty on stdin.
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
@@ -22,6 +22,7 @@ print_ver_ stty
 
 require_controlling_input_terminal_
 require_trap_signame_
+require_strace_ ioctl
 
 trap '' TTOU # Ignore SIGTTOU
 
@@ -60,7 +61,7 @@ for opt in $options; do
   # on Linux 2.2.0-pre4 kernels.  Also since around Linux 2.6.30
   # other serial control settings give the same error. So skip them.
   # Also on ppc*|sparc* glibc platforms 'icanon' gives the same error.
-  # See: http://debbugs.gnu.org/7228#14
+  # See: https://bugs.gnu.org/7228#14
   case $opt in
     parenb|parodd|cmspar) continue;;
     cstopb|crtscts|cdtrdsr|icanon) continue;;
@@ -80,5 +81,12 @@ for opt in $options; do
 done
 
 stty $(cat $saved_state)
+
+# Ensure we validate options before accessing the device
+strace -o log1 -e ioctl stty --version || fail=1
+n_ioctl1=$(wc -l < log1) || framework_failure_
+returns_ 1 strace -o log2 -e ioctl stty -blahblah || fail=1
+n_ioctl2=$(wc -l < log2) || framework_failure_
+test "$n_ioctl1" = "$n_ioctl2" || fail=1
 
 Exit $fail

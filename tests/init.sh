@@ -1,6 +1,6 @@
 # source this file; set up for tests
 
-# Copyright (C) 2009-2016 Free Software Foundation, Inc.
+# Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Using this file in a test
 # =========================
@@ -45,6 +45,9 @@
 # Running a single test, with verbose output:
 #   $ make check TESTS=test-foo.sh VERBOSE=yes
 #
+# Running a single test, keeping the temporary directory:
+#   $ make check TESTS=test-foo.sh KEEP=yes
+#
 # Running a single test, with single-stepping:
 #   1. Go into a sub-shell:
 #   $ bash
@@ -58,6 +61,19 @@
 #   $ exit
 
 ME_=`expr "./$0" : '.*/\(.*\)$'`
+
+# Prepare PATH_SEPARATOR.
+# The user is always right.
+if test "${PATH_SEPARATOR+set}" != set; then
+  # Determine PATH_SEPARATOR by trying to find /bin/sh in a PATH which
+  # contains only /bin. Note that ksh looks also at the FPATH variable,
+  # so we have to set that as well for the test.
+  PATH_SEPARATOR=:
+  (PATH='/bin;/bin'; FPATH=$PATH; sh -c :) >/dev/null 2>&1 \
+    && { (PATH='/bin:/bin'; FPATH=$PATH; sh -c :) >/dev/null 2>&1 \
+           || PATH_SEPARATOR=';'
+       }
+fi
 
 # We use a trap below for cleanup.  This requires us to go through
 # hoops to get the right exit status transported through the handler.
@@ -247,7 +263,7 @@ test -n "$BASH_VERSION" && unalias -a
 # That is part of the shell-selection test above.  Why use aliases rather
 # than functions?  Because support for hyphen-containing aliases is more
 # widespread than that for hyphen-containing function names.
-test -n "$EXEEXT" && shopt -s expand_aliases
+test -n "$EXEEXT" && test -n "$BASH_VERSION" && shopt -s expand_aliases
 
 # Enable glibc's malloc-perturbing option.
 # This is useful for exposing code that depends on the fact that
@@ -349,11 +365,15 @@ remove_tmp_ ()
 {
   __st=$?
   cleanup_
-  # cd out of the directory we're about to remove
-  cd "$initial_cwd_" || cd / || cd /tmp
-  chmod -R u+rwx "$test_dir_"
-  # If removal fails and exit status was to be 0, then change it to 1.
-  rm -rf "$test_dir_" || { test $__st = 0 && __st=1; }
+  if test "$KEEP" = yes; then
+    echo "Not removing temporary directory $test_dir_"
+  else
+    # cd out of the directory we're about to remove
+    cd "$initial_cwd_" || cd / || cd /tmp
+    chmod -R u+rwx "$test_dir_"
+    # If removal fails and exit status was to be 0, then change it to 1.
+    rm -rf "$test_dir_" || { test $__st = 0 && __st=1; }
+  fi
   exit $__st
 }
 
@@ -422,13 +442,13 @@ path_prepend_ ()
     path_dir_=$1
     case $path_dir_ in
       '') fail_ "invalid path dir: '$1'";;
-      /*) abs_path_dir_=$path_dir_;;
+      /* | ?:*) abs_path_dir_=$path_dir_;;
       *) abs_path_dir_=$initial_cwd_/$path_dir_;;
     esac
     case $abs_path_dir_ in
-      *:*) fail_ "invalid path dir: '$abs_path_dir_'";;
+      *$PATH_SEPARATOR*) fail_ "invalid path dir: '$abs_path_dir_'";;
     esac
-    PATH="$abs_path_dir_:$PATH"
+    PATH="$abs_path_dir_$PATH_SEPARATOR$PATH"
 
     # Create an alias, FOO, for each FOO.exe in this directory.
     create_exe_shims_ "$abs_path_dir_" \
@@ -507,7 +527,7 @@ rand_bytes_ ()
   fi
 
   n_plus_50_=`expr $n_ + 50`
-  cmds_='date; date +%N; free; who -a; w; ps auxww; ps ef; netstat -n'
+  cmds_='date; date +%N; free; who -a; w; ps auxww; ps -ef'
   data_=` (eval "$cmds_") 2>&1 | gzip `
 
   # Ensure that $data_ has length at least 50+$n_

@@ -1,6 +1,6 @@
 /* Save and restore the working directory, possibly using a child process.
 
-   Copyright (C) 2006-2007, 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2006-2007, 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert.  */
 
@@ -35,6 +35,14 @@
 #include "assure.h"
 #include "dosname.h"
 #include "fcntl-safer.h"
+
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif
 
 /* Save the working directory into *WD, if it hasn't been saved
    already.  Return true if a child has been forked to do the real
@@ -63,13 +71,13 @@ savewd_save (struct savewd *wd)
       }
       wd->state = FORKING_STATE;
       wd->val.child = -1;
-      /* Fall through.  */
+      FALLTHROUGH;
     case FORKING_STATE:
       if (wd->val.child < 0)
         {
           /* "Save" the initial working directory by forking a new
              subprocess that will attempt all the work from the chdir
-             until until the next savewd_restore.  */
+             until the next savewd_restore.  */
           wd->val.child = fork ();
           if (wd->val.child != 0)
             {
@@ -188,7 +196,7 @@ savewd_restore (struct savewd *wd, int status)
           wd->state = ERROR_STATE;
           wd->val.errnum = chdir_errno;
         }
-      /* Fall through.  */
+      FALLTHROUGH;
     case ERROR_STATE:
       /* Report an error if asked to restore the working directory.  */
       errno = wd->val.errnum;

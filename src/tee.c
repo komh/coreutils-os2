@@ -1,5 +1,5 @@
 /* tee - read from standard input and write to standard output and files.
-   Copyright (C) 1985-2016 Free Software Foundation, Inc.
+   Copyright (C) 1985-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Mike Parker, Richard M. Stallman, and David MacKenzie */
 
@@ -27,7 +27,7 @@
 #include "error.h"
 #include "fadvise.h"
 #include "stdio--.h"
-#include "xfreopen.h"
+#include "xbinary-io.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "tee"
@@ -194,11 +194,8 @@ tee_files (int nfiles, char **files)
      ? (append ? "ab" : "wb")
      : (append ? "a" : "w"));
 
-  if (O_BINARY && ! isatty (STDIN_FILENO))
-    xfreopen (NULL, "rb", stdin);
-  if (O_BINARY && ! isatty (STDOUT_FILENO))
-    xfreopen (NULL, "wb", stdout);
-
+  xset_binary_mode (STDIN_FILENO, O_BINARY);
+  xset_binary_mode (STDOUT_FILENO, O_BINARY);
   fadvise (stdin, FADVISE_SEQUENTIAL);
 
   /* Set up FILES[0 .. NFILES] and DESCRIPTORS[0 .. NFILES].

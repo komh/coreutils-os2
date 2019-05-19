@@ -1,6 +1,6 @@
 /* Convert double to timespec.
 
-   Copyright (C) 2011-2016 Free Software Foundation, Inc.
+   Copyright (C) 2011-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* written by Paul Eggert */
 
@@ -29,29 +29,23 @@
 struct timespec
 dtotimespec (double sec)
 {
-  double min_representable = TYPE_MINIMUM (time_t);
-  double max_representable =
-    ((TYPE_MAXIMUM (time_t) * (double) TIMESPEC_RESOLUTION
-      + (TIMESPEC_RESOLUTION - 1))
-     / TIMESPEC_RESOLUTION);
-
-  if (! (min_representable < sec))
+  if (! (TYPE_MINIMUM (time_t) < sec))
     return make_timespec (TYPE_MINIMUM (time_t), 0);
-  else if (! (sec < max_representable))
-    return make_timespec (TYPE_MAXIMUM (time_t), TIMESPEC_RESOLUTION - 1);
+  else if (! (sec < 1.0 + TYPE_MAXIMUM (time_t)))
+    return make_timespec (TYPE_MAXIMUM (time_t), TIMESPEC_HZ - 1);
   else
     {
       time_t s = sec;
-      double frac = TIMESPEC_RESOLUTION * (sec - s);
+      double frac = TIMESPEC_HZ * (sec - s);
       long ns = frac;
       ns += ns < frac;
-      s += ns / TIMESPEC_RESOLUTION;
-      ns %= TIMESPEC_RESOLUTION;
+      s += ns / TIMESPEC_HZ;
+      ns %= TIMESPEC_HZ;
 
       if (ns < 0)
         {
           s--;
-          ns += TIMESPEC_RESOLUTION;
+          ns += TIMESPEC_HZ;
         }
 
       return make_timespec (s, ns);

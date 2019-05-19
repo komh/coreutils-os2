@@ -1,5 +1,5 @@
 /* Self tests for base32.
-   Copyright (C) 2004, 2008-2016 Free Software Foundation, Inc.
+   Copyright (C) 2004, 2008-2019 Free Software Foundation, Inc.
    Based on the tests for base64 written by Simon Josefsson.
    Adapted for base32 by Gijs van Tulder.
 
@@ -14,7 +14,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 

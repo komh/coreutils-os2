@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 Free Software Foundation, Inc.
+ * Copyright (C) 2008-2019 Free Software Foundation, Inc.
  * Written by Eric Blake
  *
  * This program is free software: you can redistribute it and/or modify
@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 
@@ -155,10 +155,7 @@ main (void)
     double result;
     errno = 0;
     result = strtod (input, &ptr);
-    /* FIXME - gnulib's version is rather inaccurate.  It would be
-       nice to guarantee an exact result, but for now, we settle for a
-       1-ulp error.  */
-    ASSERT (FABS (result - 0.5) < DBL_EPSILON);
+    ASSERT (result == 0.5);
     ASSERT (ptr == input + 2);
     ASSERT (errno == 0);
   }
@@ -238,10 +235,7 @@ main (void)
     double result;
     errno = 0;
     result = strtod (input, &ptr);
-    /* FIXME - gnulib's version is rather inaccurate.  It would be
-       nice to guarantee an exact result, but for now, we settle for a
-       1-ulp error.  */
-    ASSERT (FABS (result - 0.5) < DBL_EPSILON);
+    ASSERT (result == 0.5);
     ASSERT (ptr == input + 4);
     ASSERT (errno == 0);
   }

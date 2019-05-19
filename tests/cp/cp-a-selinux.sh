@@ -4,7 +4,7 @@
 # Check also locally if --preserve=context, -a and --preserve=all
 # does work
 
-# Copyright (C) 2007-2016 Free Software Foundation, Inc.
+# Copyright (C) 2007-2019 Free Software Foundation, Inc.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 . "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
 print_ver_ cp
@@ -28,11 +28,12 @@ cwd=$(pwd)
 cleanup_() { cd /; umount "$cwd/mnt"; }
 
 # This context is special: it works even when mcstransd isn't running.
-ctx=root:object_r:tmp_t:s0
+ctx='root:object_r:tmp_t'
+mls_enabled_ && ctx="$ctx:s0"
 
 # Check basic functionality - before check on fixed context mount
 touch c || framework_failure_
-chcon $ctx c || framework_failure_
+chcon $ctx c || skip_ "Failed to set context: $ctx"
 cp -a c d 2>err || framework_failure_
 cp --preserve=context c e || framework_failure_
 cp --preserve=all c f || framework_failure_
@@ -47,7 +48,6 @@ rm -f f
 # due to recursion, and was handled incorrectly in coreutils-8.22
 # Note standard permissions are updated for existing directories
 # in the destination, so SELinux contexts should be updated too.
-chmod o+rw restore/existing_dir
 mkdir -p backup/existing_dir/ || framework_failure_
 ls -Zd backup/existing_dir > ed_ctx || fail=1
 grep $ctx ed_ctx && framework_failure_
@@ -56,13 +56,32 @@ chcon $ctx backup/existing_dir/file || framework_failure_
 # Set the dir context to ensure it is reset
 mkdir -p --context="$ctx" restore/existing_dir || framework_failure_
 # Copy and ensure existing directories updated
-cp -a backup/. restore/
+cp -a backup/. restore/ || fail=1
 ls -Zd restore/existing_dir > ed_ctx || fail=1
 grep $ctx ed_ctx &&
   { ls -lZd restore/existing_dir; fail=1; }
 
+# Check context preserved with directories created with --parents,
+# which was not handled before coreutils-8.27
+mkdir -p parents/a/b || framework_failure_
+ls -Zd parents/a/b > ed_ctx || fail=1
+grep $ctx ed_ctx && framework_failure_
+touch parents/a/b/file || framework_failure_
+chcon $ctx parents/a/b || framework_failure_
+# Set the dir context to ensure it is reset
+mkdir -p --context="$ctx" parents_dest/parents/a || framework_failure_
+# Copy and ensure existing directories updated
+cp -r --parents --preserve=context parents/a/b/file parents_dest || fail=1
+# Check new context
+ls -Zd parents_dest/parents/a/b > ed_ctx || fail=1
+grep $ctx ed_ctx ||
+  { ls -lZd parents_dest/parents/a/b; fail=1; }
+# Check updated context
+ls -Zd parents_dest/parents/a > ed_ctx || fail=1
+grep $ctx ed_ctx &&
+  { ls -lZd parents_dest/parents/a; fail=1; }
+
 # Check restorecon (-Z) functionality for file and directory
-get_selinux_type() { ls -Zd "$1" | sed -n 's/.*:\(.*_t\):.*/\1/p'; }
 # Also make a dir with our known context
 mkdir c_d || framework_failure_
 chcon $ctx c_d || framework_failure_

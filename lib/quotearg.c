@@ -1,6 +1,6 @@
 /* quotearg.c - quote arguments for output
 
-   Copyright (C) 1998-2002, 2004-2016 Free Software Foundation, Inc.
+   Copyright (C) 1998-2002, 2004-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Paul Eggert <eggert@twinsun.com> */
 
@@ -29,6 +29,7 @@
 #include "quotearg.h"
 #include "quote.h"
 
+#include "minmax.h"
 #include "xalloc.h"
 #include "c-strcaseeq.h"
 #include "localcharset.h"
@@ -37,6 +38,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -51,6 +53,14 @@
 #endif
 
 #define INT_BITS (sizeof (int) * CHAR_BIT)
+
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif
 
 struct quoting_options
 {
@@ -308,7 +318,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
     case c_maybe_quoting_style:
       quoting_style = c_quoting_style;
       elide_outer_quotes = true;
-      /* Fall through.  */
+      FALLTHROUGH;
     case c_quoting_style:
       if (!elide_outer_quotes)
         STORE ('"');
@@ -347,7 +357,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
                for your locale.
 
                If you don't know what to put here, please see
-               <http://en.wikipedia.org/wiki/Quotation_marks_in_other_languages>
+               <https://en.wikipedia.org/wiki/Quotation_marks_in_other_languages>
                and use glyphs suitable for your language.  */
             left_quote = gettext_quote (N_("`"), quoting_style);
             right_quote = gettext_quote (N_("'"), quoting_style);
@@ -363,14 +373,14 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
 
     case shell_escape_quoting_style:
       backslash_escapes = true;
-      /* Fall through.  */
+      FALLTHROUGH;
     case shell_quoting_style:
       elide_outer_quotes = true;
-      /* Fall through.  */
+      FALLTHROUGH;
     case shell_escape_always_quoting_style:
       if (!elide_outer_quotes)
         backslash_escapes = true;
-      /* Fall through.  */
+      FALLTHROUGH;
     case shell_always_quoting_style:
       quoting_style = shell_always_quoting_style;
       if (!elide_outer_quotes)
@@ -503,7 +513,7 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
           if (quoting_style == shell_always_quoting_style
               && elide_outer_quotes)
             goto force_outer_quoting_style;
-          /* Fall through.  */
+          /* fall through */
         c_escape:
           if (backslash_escapes)
             {
@@ -515,14 +525,14 @@ quotearg_buffer_restyled (char *buffer, size_t buffersize,
         case '{': case '}': /* sometimes special if isolated */
           if (! (argsize == SIZE_MAX ? arg[1] == '\0' : argsize == 1))
             break;
-          /* Fall through.  */
+          FALLTHROUGH;
         case '#': case '~':
           if (i != 0)
             break;
-          /* Fall through.  */
+          FALLTHROUGH;
         case ' ':
           c_and_shell_quote_compat = true;
-          /* Fall through.  */
+          FALLTHROUGH;
         case '!': /* special in bash */
         case '"': case '$': case '&':
         case '(': case ')': case '*': case ';':
@@ -830,7 +840,7 @@ struct slotvec
 /* Preallocate a slot 0 buffer, so that the caller can always quote
    one small component of a "memory exhausted" message in slot 0.  */
 static char slot0[256];
-static unsigned int nslots = 1;
+static int nslots = 1;
 static struct slotvec slotvec0 = {sizeof slot0, slot0};
 static struct slotvec *slotvec = &slotvec0;
 
@@ -838,7 +848,7 @@ void
 quotearg_free (void)
 {
   struct slotvec *sv = slotvec;
-  unsigned int i;
+  int i;
   for (i = 1; i < nslots; i++)
     free (sv[i].val);
   if (sv[0].val != slot0)
@@ -869,30 +879,24 @@ quotearg_n_options (int n, char const *arg, size_t argsize,
 {
   int e = errno;
 
-  unsigned int n0 = n;
   struct slotvec *sv = slotvec;
 
   if (n < 0)
     abort ();
 
-  if (nslots <= n0)
+  if (nslots <= n)
     {
-      /* FIXME: technically, the type of n1 should be 'unsigned int',
-         but that evokes an unsuppressible warning from gcc-4.0.1 and
-         older.  If gcc ever provides an option to suppress that warning,
-         revert to the original type, so that the test in xalloc_oversized
-         is once again performed only at compile time.  */
-      size_t n1 = n0 + 1;
       bool preallocated = (sv == &slotvec0);
+      int nmax = MIN (INT_MAX, MIN (PTRDIFF_MAX, SIZE_MAX) / sizeof *sv) - 1;
 
-      if (xalloc_oversized (n1, sizeof *sv))
+      if (nmax < n)
         xalloc_die ();
 
-      slotvec = sv = xrealloc (preallocated ? NULL : sv, n1 * sizeof *sv);
+      slotvec = sv = xrealloc (preallocated ? NULL : sv, (n + 1) * sizeof *sv);
       if (preallocated)
         *sv = slotvec0;
-      memset (sv + nslots, 0, (n1 - nslots) * sizeof *sv);
-      nslots = n1;
+      memset (sv + nslots, 0, (n + 1 - nslots) * sizeof *sv);
+      nslots = n + 1;
     }
 
   {
@@ -1076,3 +1080,10 @@ quote (char const *arg)
 {
   return quote_n (0, arg);
 }
+
+/*
+ * Hey Emacs!
+ * Local Variables:
+ * coding: utf-8
+ * End:
+ */

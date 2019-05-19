@@ -1,5 +1,5 @@
 /* libstdbuf -- a shared lib to preload to setup stdio buffering for a command
-   Copyright (C) 2009-2016 Free Software Foundation, Inc.
+   Copyright (C) 2009-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,13 +12,18 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Written by Pádraig Brady.  LD_PRELOAD idea from Brian Dessent.  */
 
 #include <config.h>
 #include <stdio.h>
 #include "system.h"
+
+/* Deactivate config.h's "rpl_"-prefixed definition of malloc,
+   since we don't link gnulib here, and the replacement isn't
+   needed in this case as we don't malloc(0).  */
+#undef malloc
 
 /* Note currently for glibc (2.3.5) the following call does not change
    the buffer size, and more problematically does not give any indication

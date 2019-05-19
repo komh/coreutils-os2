@@ -1,5 +1,5 @@
 /* date - print or set the system date and time
-   Copyright (C) 1989-2016 Free Software Foundation, Inc.
+   Copyright (C) 1989-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
    David MacKenzie <djm@gnu.ai.mit.edu> */
 
@@ -72,8 +72,8 @@ static enum Time_spec const time_spec[] =
 };
 ARGMATCH_VERIFY (time_spec_string, time_spec);
 
-/* A format suitable for Internet RFC 2822.  */
-static char const rfc_2822_format[] = "%a, %d %b %Y %H:%M:%S %z";
+/* A format suitable for Internet RFCs 5322, 2822, and 822.  */
+static char const rfc_email_format[] = "%a, %d %b %Y %H:%M:%S %z";
 
 /* For long options that have no equivalent short option, use a
    non-character as a pseudo short option, starting with CHAR_MAX + 1.  */
@@ -92,6 +92,7 @@ static struct option const long_options[] =
   {"file", required_argument, NULL, 'f'},
   {"iso-8601", optional_argument, NULL, 'I'},
   {"reference", required_argument, NULL, 'r'},
+  {"rfc-email", no_argument, NULL, 'R'},
   {"rfc-822", no_argument, NULL, 'R'},
   {"rfc-2822", no_argument, NULL, 'R'},
   {"rfc-3339", required_argument, NULL, RFC_3339_OPTION},
@@ -155,7 +156,7 @@ Display the current time in the given FORMAT, or set the system date.\n\
                                Example: 2006-08-14T02:34:56-06:00\n\
 "), stdout);
       fputs (_("\
-  -R, --rfc-2822             output date and time in RFC 2822 format.\n\
+  -R, --rfc-email            output date and time in RFC 5322 format.\n\
                                Example: Mon, 14 Aug 2006 02:34:56 -0600\n\
 "), stdout);
       fputs (_("\
@@ -193,7 +194,7 @@ FORMAT controls the output.  Interpreted sequences are:\n\
   %e   day of month, space padded; same as %_d\n\
 "), stdout);
       fputs (_("\
-  %F   full date; same as %Y-%m-%d\n\
+  %F   full date; like %+4Y-%m-%d\n\
   %g   last two digits of year of ISO week number (see %G)\n\
   %G   year of ISO week number (see %V); normally useful only with %V\n\
 "), stdout);
@@ -252,6 +253,7 @@ The following optional flags may follow '%':\n\
   -  (hyphen) do not pad the field\n\
   _  (underscore) pad with spaces\n\
   0  (zero) pad with zeros\n\
+  +  pad with zeros, and put '+' before future years with >4 digits\n\
   ^  use upper case if possible\n\
   #  use opposite case if possible\n\
 "), stdout);
@@ -285,7 +287,8 @@ Show the local time for 9AM next Friday on the west coast of the US\n\
    Return true if successful.  */
 
 static bool
-batch_convert (const char *input_filename, const char *format, timezone_t tz)
+batch_convert (const char *input_filename, const char *format,
+               timezone_t tz, char const *tzstring)
 {
   bool ok;
   FILE *in_stream;
@@ -319,7 +322,8 @@ batch_convert (const char *input_filename, const char *format, timezone_t tz)
           break;
         }
 
-      if (! parse_datetime2 (&when, line, NULL, parse_datetime_flags))
+      if (! parse_datetime2 (&when, line, NULL,
+                             parse_datetime_flags, tz, tzstring))
         {
           if (line[line_length - 1] == '\n')
             line[line_length - 1] = '\0';
@@ -414,7 +418,7 @@ main (int argc, char **argv)
           reference = optarg;
           break;
         case 'R':
-          new_format = rfc_2822_format;
+          new_format = rfc_email_format;
           break;
         case 's':
           set_datestr = optarg;
@@ -501,10 +505,11 @@ main (int argc, char **argv)
         }
     }
 
-  timezone_t tz = tzalloc (getenv ("TZ"));
+  char const *tzstring = getenv ("TZ");
+  timezone_t tz = tzalloc (tzstring);
 
   if (batch_file != NULL)
-    ok = batch_convert (batch_file, format, tz);
+    ok = batch_convert (batch_file, format, tz, tzstring);
   else
     {
       bool valid_date = true;
@@ -544,7 +549,8 @@ main (int argc, char **argv)
               if (set_datestr)
                 datestr = set_datestr;
               valid_date = parse_datetime2 (&when, datestr, NULL,
-                                            parse_datetime_flags);
+                                            parse_datetime_flags,
+                                            tz, tzstring);
             }
         }
 
@@ -580,10 +586,10 @@ show_date (const char *format, struct timespec when, timezone_t tz)
 
   if (localtime_rz (tz, &when.tv_sec, &tm))
     {
-      if (format == rfc_2822_format)
+      if (format == rfc_email_format)
         setlocale (LC_TIME, "C");
       fprintftime (stdout, format, &tm, tz, when.tv_nsec);
-      if (format == rfc_2822_format)
+      if (format == rfc_email_format)
         setlocale (LC_TIME, "");
       fputc ('\n', stdout);
       return true;

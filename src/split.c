@@ -1,5 +1,5 @@
 /* split.c -- split a file into pieces.
-   Copyright (C) 1988-2016 Free Software Foundation, Inc.
+   Copyright (C) 1988-2019 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* By tege@sics.se, with rms.
 
@@ -38,7 +38,7 @@
 #include "quote.h"
 #include "safe-read.h"
 #include "sig2str.h"
-#include "xfreopen.h"
+#include "xbinary-io.h"
 #include "xdectoint.h"
 #include "xstrtol.h"
 
@@ -141,6 +141,7 @@ static struct option const longopts[] =
   {"additional-suffix", required_argument, NULL,
    ADDITIONAL_SUFFIX_OPTION},
   {"numeric-suffixes", optional_argument, NULL, 'd'},
+  {"hex-suffixes", optional_argument, NULL, 'x'},
   {"filter", required_argument, NULL, FILTER_OPTION},
   {"verbose", no_argument, NULL, VERBOSE_OPTION},
   {"separator", required_argument, NULL, 't'},
@@ -242,6 +243,8 @@ default size is 1000 lines, and default PREFIX is 'x'.\n\
   -d                      use numeric suffixes starting at 0, not alphabetic\n\
       --numeric-suffixes[=FROM]  same as -d, but allow setting the start value\
 \n\
+  -x                      use hex suffixes starting at 0, not alphabetic\n\
+      --hex-suffixes[=FROM]  same as -x, but allow setting the start value\n\
   -e, --elide-empty-files  do not generate empty output files with '-n'\n\
       --filter=COMMAND    write to shell COMMAND; file name is $FILE\n\
   -l, --lines=NUMBER      put NUMBER lines/records per output file\n\
@@ -467,7 +470,8 @@ create (const char *name)
       if (SAME_INODE (in_stat_buf, out_stat_buf))
         die (EXIT_FAILURE, 0, _("%s would overwrite input; aborting"),
              quoteaf (name));
-      if (ftruncate (fd, 0) != 0)
+      if (ftruncate (fd, 0) != 0
+          && (S_ISREG (out_stat_buf.st_mode) || S_TYPEISSHM (&out_stat_buf)))
         die (EXIT_FAILURE, errno, _("%s: error truncating"), quotef (name));
 
       return fd;
@@ -623,6 +627,7 @@ bytes_split (uintmax_t n_bytes, char *buf, size_t bufsize, size_t initial_read,
 {
   size_t n_read;
   bool new_file_flag = true;
+  bool filter_ok = true;
   uintmax_t to_write = n_bytes;
   uintmax_t opened = 0;
   bool eof;
@@ -637,41 +642,48 @@ bytes_split (uintmax_t n_bytes, char *buf, size_t bufsize, size_t initial_read,
         }
       else
         {
+          if (! filter_ok
+              && lseek (STDIN_FILENO, to_write, SEEK_CUR) != -1)
+            {
+              to_write = n_bytes;
+              new_file_flag = true;
+            }
+
           n_read = safe_read (STDIN_FILENO, buf, bufsize);
           if (n_read == SAFE_READ_ERROR)
             die (EXIT_FAILURE, errno, "%s", quotef (infile));
           eof = n_read == 0;
         }
       char *bp_out = buf;
-      size_t to_read = n_read;
-      while (to_write <= to_read)
+      while (to_write <= n_read)
         {
-          size_t w = to_write;
-          bool cwrite_ok = cwrite (new_file_flag, bp_out, w);
+          if (filter_ok || new_file_flag)
+            filter_ok = cwrite (new_file_flag, bp_out, to_write);
           opened += new_file_flag;
           new_file_flag = !max_files || (opened < max_files);
-          if (!new_file_flag && !cwrite_ok)
+          if (! filter_ok && ! new_file_flag)
             {
-              /* If filter no longer accepting input, stop reading.  */
-              n_read = to_read = 0;
+              /* If filters no longer accepting input, stop reading.  */
+              n_read = 0;
+              eof = true;
               break;
             }
-          bp_out += w;
-          to_read -= w;
+          bp_out += to_write;
+          n_read -= to_write;
           to_write = n_bytes;
         }
-      if (to_read != 0)
+      if (n_read != 0)
         {
-          bool cwrite_ok = cwrite (new_file_flag, bp_out, to_read);
+          if (filter_ok || new_file_flag)
+            filter_ok = cwrite (new_file_flag, bp_out, n_read);
           opened += new_file_flag;
-          to_write -= to_read;
           new_file_flag = false;
-          if (!cwrite_ok)
+          if (! filter_ok && opened == max_files)
             {
-              /* If filter no longer accepting input, stop reading.  */
-              n_read = 0;
+              /* If filters no longer accepting input, stop reading.  */
               break;
             }
+          to_write -= n_read;
         }
     }
   while (! eof);
@@ -1314,7 +1326,7 @@ main (int argc, char **argv)
       int this_optind = optind ? optind : 1;
       char *slash;
 
-      c = getopt_long (argc, argv, "0123456789C:a:b:del:n:t:u",
+      c = getopt_long (argc, argv, "0123456789C:a:b:del:n:t:ux",
                        longopts, NULL);
       if (c == -1)
         break;
@@ -1453,13 +1465,19 @@ main (int argc, char **argv)
           break;
 
         case 'd':
-          suffix_alphabet = "0123456789";
+        case 'x':
+          if (c == 'd')
+            suffix_alphabet = "0123456789";
+          else
+            suffix_alphabet = "0123456789abcdef";
           if (optarg)
             {
               if (strlen (optarg) != strspn (optarg, suffix_alphabet))
                 {
                   error (0, 0,
-                         _("%s: invalid start value for numerical suffix"),
+                         (c == 'd') ?
+                           _("%s: invalid start value for numerical suffix") :
+                           _("%s: invalid start value for hexadecimal suffix"),
                          quote (optarg));
                   usage (EXIT_FAILURE);
                 }
@@ -1553,8 +1571,7 @@ main (int argc, char **argv)
          quoteaf (infile));
 
   /* Binary I/O is safer when byte counts are used.  */
-  if (O_BINARY && ! isatty (STDIN_FILENO))
-    xfreopen (NULL, "rb", stdin);
+  xset_binary_mode (STDIN_FILENO, O_BINARY);
 
   /* Get the optimal block size of input device and make a buffer.  */
 
